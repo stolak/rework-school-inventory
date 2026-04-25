@@ -52,26 +52,27 @@ export type Brand = {
 
 export type InventoryItem = {
   id: string;
-  sku?: string;
+  sku?: string | null;
   name: string;
   categoryId?: string;
   subCategoryId?: string;
   brandId?: string;
   uomId?: string;
-  barcode?: string;
+  barcode?: string | null;
   costPrice?: string | number;
   sellingPrice?: string | number;
   lowStockThreshold?: number;
-  currentStock?: number;
+  currentStock?: string | number | null;
   createdById?: string;
   createdAt: string;
   updatedAt: string;
   status: "Active" | "Inactive" | string;
-  // Relations (if API includes them later)
-  category?: Category;
-  subCategory?: SubCategory;
-  brand?: Brand;
-  uom?: Uom;
+  // List responses may include only partial relation objects
+  category?: { name?: string } | null;
+  subCategory?: { name?: string } | null;
+  brand?: { name?: string } | null;
+  uom?: { name?: string; symbol?: string } | null;
+  createdBy?: { firstName?: string; lastName?: string } | null;
 };
 
 export type Supplier = {
@@ -504,6 +505,7 @@ export const studentCollectionsApi = {
 // Inventory-specific helpers
 export const fetchInventoryItems = (params?: {
   q?: string;
+  status?: "Active" | "Inactive" | string;
   categoryId?: string;
   subCategoryId?: string;
   brandId?: string;
@@ -533,9 +535,26 @@ export const createInventoryItem = (body: {
   costPrice: number;
   sellingPrice: number;
   lowStockThreshold: number;
+  status?: "Active" | "Inactive" | string;
 }) => post<ApiResponse<InventoryItem>, typeof body>("/api/v1/inventory-items", body);
-export const updateInventoryItem = (id: string, body: any) =>
-  put<ApiResponse<InventoryItem>, typeof body>(`/api/v1/inventory-items/${id}`, body);
+export type UpdateInventoryItemBody = {
+  sku?: string | null;
+  name?: string;
+  categoryId?: string;
+  subCategoryId?: string;
+  brandId?: string;
+  uomId?: string;
+  barcode?: string | null;
+  costPrice?: number;
+  sellingPrice?: number;
+  lowStockThreshold?: number;
+  status?: "Active" | "Inactive" | string;
+};
+export const updateInventoryItem = (id: string, body: UpdateInventoryItemBody) =>
+  put<ApiResponse<InventoryItem>, UpdateInventoryItemBody>(
+    `/api/v1/inventory-items/${id}`,
+    body
+  );
 export const deleteInventoryItem = (id: string) =>
   del<ApiResponse<InventoryItem>>(`/api/v1/inventory-items/${id}`);
 

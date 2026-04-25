@@ -30,7 +30,7 @@ export default function Suppliers() {
     "Active"
   )
   const { suppliers, addSupplier, updateSupplier, deleteSupplier } = useSuppliers({
-    status: statusFilter === "All" ? undefined : statusFilter,
+    status: statusFilter,
     page: 1,
     limit: 20,
   })

@@ -1,45 +1,74 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { inventoryApi } from "@/lib/api";
+import { inventoryApi, type UpdateInventoryItemBody } from "@/lib/api";
 import { toast } from "sonner";
 
 export interface InventoryItem {
   id: string;
-  sku?: string;
+  sku?: string | null;
   name: string;
   categoryId?: string;
   subCategoryId?: string;
   brandId?: string;
   uomId?: string;
-  barcode?: string;
+  barcode?: string | null;
   costPrice?: string | number;
   sellingPrice?: string | number;
   lowStockThreshold?: number;
-  currentStock?: string | number;
+  currentStock?: string | number | null;
   createdById?: string;
   createdAt?: string;
   updatedAt?: string;
   status?: "Active" | "Inactive" | string;
   // Relations
-  category?: { id: string; name: string };
-  subCategory?: { id: string; name: string };
-  brand?: { id: string; name: string };
-  uom?: { id: string; name: string; symbol?: string };
-  createdBy?: { firstName?: string; lastName?: string };
+  category?: { name?: string } | null;
+  subCategory?: { name?: string } | null;
+  brand?: { name?: string } | null;
+  uom?: { name?: string; symbol?: string } | null;
+  createdBy?: { firstName?: string; lastName?: string } | null;
 }
 
-export function useInventory() {
+export function useInventory(params?: {
+  q?: string;
+  status?: "Active" | "Inactive" | "All";
+  categoryId?: string;
+  subCategoryId?: string;
+  brandId?: string;
+  page?: number;
+  limit?: number;
+}) {
   const queryClient = useQueryClient();
 
   const { data: items = [], isLoading } = useQuery({
-    queryKey: ["inventory"],
+    queryKey: [
+      "inventory",
+      params?.q ?? "",
+      params?.status ?? null,
+      params?.categoryId ?? null,
+      params?.subCategoryId ?? null,
+      params?.brandId ?? null,
+      params?.page ?? 1,
+      params?.limit ?? 100,
+    ],
     queryFn: async () => {
-      const res = await inventoryApi.list({ page: 1, limit: 100 });
+      const res = await inventoryApi.list({
+        q: params?.q,
+        status: params?.status,
+        categoryId: params?.categoryId,
+        subCategoryId: params?.subCategoryId,
+        brandId: params?.brandId,
+        page: params?.page ?? 1,
+        limit: params?.limit ?? 100,
+      });
       return res.data.inventoryItems;
     },
   });
 
   const addMutation = useMutation({
-    mutationFn: inventoryApi.create,
+    mutationFn: (data: any) =>
+      inventoryApi.create({
+        ...data,
+        status: data?.status ?? "Active",
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       toast.success("Inventory item added successfully");
@@ -50,7 +79,7 @@ export function useInventory() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) =>
+    mutationFn: ({ id, data }: { id: string; data: UpdateInventoryItemBody }) =>
       inventoryApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
@@ -76,7 +105,8 @@ export function useInventory() {
     items,
     isLoading,
     addItem: (data: any) => addMutation.mutate(data),
-    updateItem: (id: string, data: any) => updateMutation.mutate({ id, data }),
+    updateItem: (id: string, data: UpdateInventoryItemBody) =>
+      updateMutation.mutate({ id, data }),
     deleteItem: (id: string) => deleteMutation.mutate(id),
   };
 }

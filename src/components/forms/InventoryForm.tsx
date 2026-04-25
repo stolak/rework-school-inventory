@@ -1,3 +1,4 @@
+import { useMemo } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -10,8 +11,15 @@ import { useCategories } from "@/hooks/useCategories"
 import { useSubCategories } from "@/hooks/useSubCategories"
 import { useBrands } from "@/hooks/useBrands"
 import { useUoms } from "@/hooks/useUoms"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
-const inventorySchema = z.object({
+const baseInventorySchema = z.object({
   name: z.string().min(1, "Name is required"),
   sku: z.string().optional(),
   categoryId: z.string().min(1, "Category is required"),
@@ -22,26 +30,39 @@ const inventorySchema = z.object({
   costPrice: z.number().min(0, "Cost price must be non-negative"),
   sellingPrice: z.number().min(0, "Selling price must be non-negative"),
   barcode: z.string().optional(),
+  status: z.enum(["Active", "Inactive"]).optional(),
 })
 
-type InventoryFormData = z.infer<typeof inventorySchema>
+const buildInventorySchema = (mode: "add" | "edit") => {
+  if (mode === "edit") {
+    return baseInventorySchema.extend({
+      status: z.enum(["Active", "Inactive"], { required_error: "Status is required" }),
+    })
+  }
+  return baseInventorySchema
+}
+
+type InventoryFormData = z.infer<ReturnType<typeof buildInventorySchema>>
 
 interface InventoryFormProps {
   initialData?: Partial<InventoryItem>
+  mode: "add" | "edit"
   onSubmit: (data: InventoryFormData) => void
   onCancel: () => void
 }
 
-export function InventoryForm({ initialData, onSubmit, onCancel }: InventoryFormProps) {
+export function InventoryForm({ initialData, mode, onSubmit, onCancel }: InventoryFormProps) {
   const { categories } = useCategories()
   const { brands } = useBrands()
   const { uoms } = useUoms()
 
+  const schema = useMemo(() => buildInventorySchema(mode), [mode])
+
   const form = useForm<InventoryFormData>({
-    resolver: zodResolver(inventorySchema),
+    resolver: zodResolver(schema),
     defaultValues: {
       name: initialData?.name || "",
-      sku: initialData?.sku || "",
+      sku: initialData?.sku ?? "",
       categoryId: initialData?.categoryId || "",
       subCategoryId: initialData?.subCategoryId || "",
       brandId: initialData?.brandId || "",
@@ -49,7 +70,11 @@ export function InventoryForm({ initialData, onSubmit, onCancel }: InventoryForm
       lowStockThreshold: initialData?.lowStockThreshold || 0,
       costPrice: Number(initialData?.costPrice ?? 0),
       sellingPrice: Number(initialData?.sellingPrice ?? 0),
-      barcode: initialData?.barcode || "",
+      barcode: initialData?.barcode ?? "",
+      status:
+        mode === "edit"
+          ? ((initialData?.status as "Active" | "Inactive" | undefined) ?? "Active")
+          : undefined,
     },
   })
 
@@ -65,6 +90,33 @@ export function InventoryForm({ initialData, onSubmit, onCancel }: InventoryForm
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        {mode === "edit" && (
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Status</FormLabel>
+                  <FormControl>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Active">Active</SelectItem>
+                        <SelectItem value="Inactive">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div />
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
@@ -87,7 +139,7 @@ export function InventoryForm({ initialData, onSubmit, onCancel }: InventoryForm
               <FormItem>
                 <FormLabel>SKU</FormLabel>
                 <FormControl>
-                  <Input placeholder="Enter SKU" {...field} />
+                  <Input placeholder="Enter SKU" value={field.value ?? ""} onChange={field.onChange} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -242,7 +294,7 @@ export function InventoryForm({ initialData, onSubmit, onCancel }: InventoryForm
             <FormItem>
               <FormLabel>Barcode (Optional)</FormLabel>
               <FormControl>
-                <Input placeholder="Enter barcode" {...field} />
+                <Input placeholder="Enter barcode" value={field.value ?? ""} onChange={field.onChange} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -254,7 +306,7 @@ export function InventoryForm({ initialData, onSubmit, onCancel }: InventoryForm
             Cancel
           </Button>
           <Button type="submit" className="bg-gradient-primary">
-            {initialData ? "Update Item" : "Add Item"}
+            {mode === "edit" ? "Update Item" : "Add Item"}
           </Button>
         </div>
       </form>

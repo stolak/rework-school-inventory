@@ -40,6 +40,13 @@ export function InventoryDialog({ open, onOpenChange, mode, item, onSubmit }: In
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
+                <label className="text-sm font-medium text-muted-foreground">Status</label>
+                <p className="text-sm">{item.status || "N/A"}</p>
+              </div>
+              <div />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
                 <label className="text-sm font-medium text-muted-foreground">Category</label>
                 <p className="text-sm">{item.category?.name || 'N/A'}</p>
               </div>
@@ -101,7 +108,9 @@ export function InventoryDialog({ open, onOpenChange, mode, item, onSubmit }: In
           </DialogTitle>
         </DialogHeader>
         <InventoryForm
+          key={mode === "edit" ? item?.id ?? "edit" : "add"}
           initialData={item}
+          mode={mode === "add" ? "add" : "edit"}
           onSubmit={handleSubmit}
           onCancel={handleCancel}
         />

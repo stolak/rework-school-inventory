@@ -22,7 +22,7 @@ export interface Supplier {
 }
 
 export const useSuppliers = (params?: {
-  status?: "Active" | "Inactive";
+  status?: "Active" | "Inactive" | "All";
   page?: number;
   limit?: number;
 }) => {

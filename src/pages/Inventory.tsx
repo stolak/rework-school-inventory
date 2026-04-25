@@ -1,4 +1,4 @@
-import { Package, Plus, Search, Filter, Edit, Eye, Trash2 } from "lucide-react"
+import { Package, Plus, Search, Edit, Eye, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -6,6 +6,18 @@ import { Badge } from "@/components/ui/badge"
 import { useInventory } from "@/hooks/useInventory"
 import { InventoryDialog } from "@/components/dialogs/InventoryDialog"
 import { useState } from "react"
+import type { UpdateInventoryItemBody } from "@/lib/api"
+import { Combobox } from "@/components/ui/combobox"
+import { useCategories } from "@/hooks/useCategories"
+import { useSubCategories } from "@/hooks/useSubCategories"
+import { useBrands } from "@/hooks/useBrands"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,7 +30,27 @@ import {
 } from "@/components/ui/alert-dialog"
 
 export default function Inventory() {
-  const { items, addItem, updateItem, deleteItem } = useInventory()
+  const [q, setQ] = useState("")
+  const [status, setStatus] = useState<"All" | "Active" | "Inactive">("All")
+  const [categoryId, setCategoryId] = useState<string>("")
+  const [subCategoryId, setSubCategoryId] = useState<string>("")
+  const [brandId, setBrandId] = useState<string>("")
+
+  const { categories } = useCategories()
+  const { subCategories } = useSubCategories({
+    categoryId: categoryId || undefined,
+  })
+  const { brands } = useBrands()
+
+  const { items, addItem, updateItem, deleteItem } = useInventory({
+    q,
+    status,
+    categoryId: categoryId || undefined,
+    subCategoryId: subCategoryId || undefined,
+    brandId: brandId || undefined,
+    page: 1,
+    limit: 100,
+  })
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<'add' | 'edit' | 'view'>('add')
   const [selectedItem, setSelectedItem] = useState<any>(null)
@@ -71,9 +103,23 @@ export default function Inventory() {
 
   const handleSubmit = async (data: any) => {
     if (dialogMode === 'add') {
-      await addItem(data);
+      const { status: _status, ...createData } = data || {}
+      await addItem(createData);
     } else if (dialogMode === 'edit') {
-      await updateItem(selectedItem.id, data);
+      const payload: UpdateInventoryItemBody = {
+        sku: data.sku,
+        name: data.name,
+        categoryId: data.categoryId,
+        subCategoryId: data.subCategoryId,
+        brandId: data.brandId,
+        uomId: data.uomId,
+        barcode: data.barcode,
+        costPrice: data.costPrice,
+        sellingPrice: data.sellingPrice,
+        lowStockThreshold: data.lowStockThreshold,
+        status: data.status,
+      }
+      await updateItem(selectedItem.id, payload);
     }
   }
 
@@ -103,12 +149,63 @@ export default function Inventory() {
           <Input 
             placeholder="Search inventory items..." 
             className="pl-10"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
           />
         </div>
-        <Button variant="outline">
-          <Filter className="mr-2 h-4 w-4" />
-          Filters
-        </Button>
+
+        <Select value={status} onValueChange={(v) => setStatus(v as any)}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="All">All</SelectItem>
+            <SelectItem value="Active">Active</SelectItem>
+            <SelectItem value="Inactive">Inactive</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <div className="w-full sm:w-[220px]">
+          <Combobox
+            value={categoryId}
+            onValueChange={(v) => {
+              setCategoryId(v)
+              setSubCategoryId("")
+            }}
+            options={[
+              { value: "", label: "All" },
+              ...categories.map((c) => ({ value: c.id, label: c.name })),
+            ]}
+            placeholder="Category"
+            searchPlaceholder="Search categories..."
+          />
+        </div>
+
+        <div className="w-full sm:w-[220px]">
+          <Combobox
+            value={subCategoryId}
+            onValueChange={(v) => setSubCategoryId(v)}
+            options={[
+              { value: "", label: "All" },
+              ...subCategories.map((sc) => ({ value: sc.id, label: sc.name })),
+            ]}
+            placeholder="Subcategory"
+            searchPlaceholder="Search subcategories..."
+          />
+        </div>
+
+        <div className="w-full sm:w-[220px]">
+          <Combobox
+            value={brandId}
+            onValueChange={(v) => setBrandId(v)}
+            options={[
+              { value: "", label: "All" },
+              ...brands.map((b) => ({ value: b.id, label: b.name })),
+            ]}
+            placeholder="Brand"
+            searchPlaceholder="Search brands..."
+          />
+        </div>
       </div>
 
       {/* Inventory Grid */}
