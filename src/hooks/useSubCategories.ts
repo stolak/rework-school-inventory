@@ -17,7 +17,7 @@ export interface SubCategory {
   createdAt: string;
 }
 
-export const useSubCategories = () => {
+export const useSubCategories = (params?: { categoryId?: string }) => {
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
 
   useEffect(() => {
@@ -25,7 +25,11 @@ export const useSubCategories = () => {
 
     const load = async () => {
       try {
-        const res: any = await subCategoryApi.list();
+        const res: any = await subCategoryApi.list({
+          categoryId: params?.categoryId,
+          page: 1,
+          limit: 100,
+        });
         const list = Array.isArray(res)
           ? res
           : res?.data?.subCategories ??
@@ -58,7 +62,7 @@ export const useSubCategories = () => {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [params?.categoryId]);
 
   const addSubCategory = async (
     subCategoryData: Omit<SubCategory, "id" | "createdAt" | "categoryName">

@@ -11,7 +11,7 @@ import { Supplier } from "@/hooks/useSuppliers"
 
 const supplierSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
-  contact_name: z.string().optional(),
+  contactName: z.string().optional(),
   email: z.string().email("Invalid email address.").optional().or(z.literal("")),
   phone: z.string().optional(),
   address: z.string().optional(),
@@ -20,6 +20,7 @@ const supplierSchema = z.object({
   country: z.string().optional(),
   website: z.string().url("Invalid URL").optional().or(z.literal("")),
   notes: z.string().optional(),
+  status: z.string().optional(),
 })
 
 type SupplierFormData = z.infer<typeof supplierSchema>
@@ -35,7 +36,7 @@ export function SupplierForm({ initialData, onSubmit, onCancel }: SupplierFormPr
     resolver: zodResolver(supplierSchema),
     defaultValues: {
       name: initialData?.name || "",
-      contact_name: initialData?.contact_name || "",
+      contactName: initialData?.contactName || "",
       email: initialData?.email || "",
       phone: initialData?.phone || "",
       address: initialData?.address || "",
@@ -44,6 +45,7 @@ export function SupplierForm({ initialData, onSubmit, onCancel }: SupplierFormPr
       country: initialData?.country || "",
       website: initialData?.website || "",
       notes: initialData?.notes || "",
+      status: initialData?.status || "Active",
     },
   })
 
@@ -71,7 +73,7 @@ export function SupplierForm({ initialData, onSubmit, onCancel }: SupplierFormPr
 
           <FormField
             control={form.control}
-            name="contact_name"
+            name="contactName"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Contact Name</FormLabel>
@@ -192,6 +194,28 @@ export function SupplierForm({ initialData, onSubmit, onCancel }: SupplierFormPr
               <FormLabel>Notes</FormLabel>
               <FormControl>
                 <Textarea placeholder="Additional notes about supplier" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="status"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Status</FormLabel>
+              <FormControl>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Active">Active</SelectItem>
+                    <SelectItem value="Inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
               </FormControl>
               <FormMessage />
             </FormItem>

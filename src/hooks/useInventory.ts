@@ -33,7 +33,7 @@ export function useInventory() {
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["inventory"],
     queryFn: async () => {
-      const res = await inventoryApi.list({ page: 1, limit: 20 });
+      const res = await inventoryApi.list({ page: 1, limit: 100 });
       return res.data.inventoryItems;
     },
   });

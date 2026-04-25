@@ -74,6 +74,25 @@ export type InventoryItem = {
   uom?: Uom;
 };
 
+export type Supplier = {
+  id: string;
+  name: string;
+  contactName?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  website?: string | null;
+  notes?: string | null;
+  status: "Active" | "Inactive" | string;
+  createdById?: string;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: { firstName?: string; lastName?: string };
+};
+
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("authToken");
@@ -173,13 +192,37 @@ export const brandApi = {
 };
 
 // Supplier-specific helpers
-export const fetchSuppliers = () => get<any[]>("/api/v1/suppliers");
-export const createSupplier = (body: any) =>
-  post<any>("/api/v1/suppliers", body);
-export const updateSupplier = (id: string, body: any) =>
-  put<any>(`/api/v1/suppliers/${id}`, body);
+export const fetchSuppliers = (params?: {
+  status?: "Active" | "Inactive" | string;
+  page?: number;
+  limit?: number;
+}) => {
+  const searchParams = new URLSearchParams();
+  if (params?.status) searchParams.append("status", params.status);
+  if (params?.page) searchParams.append("page", String(params.page));
+  if (params?.limit) searchParams.append("limit", String(params.limit));
+  const qs = searchParams.toString();
+  return get<ApiResponse<{ suppliers: Supplier[]; pagination: Pagination }>>(
+    `/api/v1/suppliers${qs ? `?${qs}` : ""}`
+  );
+};
+export const createSupplier = (body: {
+  name: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  website?: string;
+  notes?: string;
+  status?: "Active" | "Inactive" | string;
+}) => post<ApiResponse<Supplier>, typeof body>("/api/v1/suppliers", body);
+export const updateSupplier = (id: string, body: Partial<Supplier>) =>
+  put<ApiResponse<Supplier>, typeof body>(`/api/v1/suppliers/${id}`, body);
 export const deleteSupplier = (id: string) =>
-  del<any>(`/api/v1/suppliers/${id}`);
+  del<ApiResponse<Supplier>>(`/api/v1/suppliers/${id}`);
 
 export const supplierApi = {
   list: fetchSuppliers,
@@ -189,9 +232,20 @@ export const supplierApi = {
 };
 
 // Sub-category-specific helpers
-export const fetchSubCategories = () => get<ApiResponse<{ subCategories: SubCategory[]; pagination: Pagination }>>(
-  "/api/v1/sub-categories"
-);
+export const fetchSubCategories = (params?: {
+  categoryId?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const searchParams = new URLSearchParams();
+  if (params?.categoryId) searchParams.append("categoryId", params.categoryId);
+  if (params?.page) searchParams.append("page", String(params.page));
+  if (params?.limit) searchParams.append("limit", String(params.limit));
+  const qs = searchParams.toString();
+  return get<ApiResponse<{ subCategories: SubCategory[]; pagination: Pagination }>>(
+    `/api/v1/sub-categories${qs ? `?${qs}` : ""}`
+  );
+};
 export const createSubCategory = (body: {
   name: string;
   description?: string;

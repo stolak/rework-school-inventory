@@ -41,7 +41,7 @@ export function SupplierDialog({ open, onOpenChange, mode, supplier, onSubmit }:
               </div>
               <div>
                 <h4 className="font-medium text-muted-foreground">Contact Name</h4>
-                <p>{supplier.contact_name || '-'}</p>
+                <p>{supplier.contactName || '-'}</p>
               </div>
               <div>
                 <h4 className="font-medium text-muted-foreground">Email</h4>
@@ -87,7 +87,7 @@ export function SupplierDialog({ open, onOpenChange, mode, supplier, onSubmit }:
 
             <div>
               <h4 className="font-medium text-muted-foreground">Created Date</h4>
-              <p>{supplier.created_at ? new Date(supplier.created_at).toLocaleDateString() : '-'}</p>
+              <p>{supplier.createdAt ? new Date(supplier.createdAt).toLocaleDateString() : '-'}</p>
             </div>
           </div>
         ) : (

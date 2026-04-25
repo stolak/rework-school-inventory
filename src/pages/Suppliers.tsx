@@ -7,6 +7,13 @@ import { Badge } from "@/components/ui/badge"
 import { useSuppliers, Supplier } from "@/hooks/useSuppliers"
 import { SupplierDialog } from "@/components/dialogs/SupplierDialog"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -18,9 +25,16 @@ import {
 } from "@/components/ui/alert-dialog"
 
 export default function Suppliers() {
-  const { suppliers, addSupplier, updateSupplier, deleteSupplier } = useSuppliers()
-  
   const [searchTerm, setSearchTerm] = useState("")
+  const [statusFilter, setStatusFilter] = useState<"All" | "Active" | "Inactive">(
+    "Active"
+  )
+  const { suppliers, addSupplier, updateSupplier, deleteSupplier } = useSuppliers({
+    status: statusFilter === "All" ? undefined : statusFilter,
+    page: 1,
+    limit: 20,
+  })
+  
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<'add' | 'edit' | 'view'>('add')
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | undefined>()
@@ -29,7 +43,7 @@ export default function Suppliers() {
 
   const filteredSuppliers = suppliers.filter(supplier =>
     supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    supplier.contact_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    supplier.contactName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     supplier.email?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
@@ -111,6 +125,20 @@ export default function Suppliers() {
             className="pl-8"
           />
         </div>
+
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => setStatusFilter(v as "All" | "Active" | "Inactive")}
+        >
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Active">Active</SelectItem>
+            <SelectItem value="Inactive">Inactive</SelectItem>
+            <SelectItem value="All">All</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -122,7 +150,7 @@ export default function Suppliers() {
             <CardContent className="space-y-3">
               <div>
                 <p className="text-sm text-muted-foreground">Contact Name</p>
-                <p className="font-medium">{supplier.contact_name || '-'}</p>
+                <p className="font-medium">{supplier.contactName || '-'}</p>
               </div>
               
               <div>

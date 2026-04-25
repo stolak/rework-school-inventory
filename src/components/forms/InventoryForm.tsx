@@ -34,7 +34,6 @@ interface InventoryFormProps {
 
 export function InventoryForm({ initialData, onSubmit, onCancel }: InventoryFormProps) {
   const { categories } = useCategories()
-  const { subCategories } = useSubCategories()
   const { brands } = useBrands()
   const { uoms } = useUoms()
 
@@ -52,6 +51,11 @@ export function InventoryForm({ initialData, onSubmit, onCancel }: InventoryForm
       sellingPrice: Number(initialData?.sellingPrice ?? 0),
       barcode: initialData?.barcode || "",
     },
+  })
+
+  const selectedCategoryId = form.watch("categoryId")
+  const { subCategories } = useSubCategories({
+    categoryId: selectedCategoryId || undefined,
   })
 
   const handleSubmit = (data: InventoryFormData) => {
