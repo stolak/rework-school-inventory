@@ -5,6 +5,7 @@ interface User {
   email: string;
   name?: string;
   role?: string;
+  userType?: string;
   [key: string]: any;
 }
 
@@ -15,7 +16,7 @@ interface AuthContextType {
   isLoading: boolean;
 }
 
-const baseUrl = "http://localhost:3000";
+const baseUrl = "http://localhost:5000";
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
@@ -65,18 +66,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         throw new Error(errText || "Login failed");
       }
 
-      const data = await res.json();
+      const json = await res.json();
 
-      // Expecting shape similar to the provided example
-      const token = data.access_token || data.token || "";
-      const userFromApi = data.user || null;
+      const success = Boolean(json?.success);
+      const message =
+        typeof json?.message === "string" && json.message.trim()
+          ? json.message
+          : "Login failed";
 
-      if (!token || !userFromApi) {
+      if (!success) {
+        throw new Error(message);
+      }
+
+      const accessToken = json?.data?.tokens?.accessToken ?? "";
+      const refreshToken = json?.data?.tokens?.refreshToken ?? "";
+      const userFromApi = json?.data?.user ?? null;
+
+      if (!accessToken || !userFromApi) {
         throw new Error("Invalid login response");
       }
 
-      localStorage.setItem("authToken", token);
+      localStorage.setItem("authToken", accessToken);
       localStorage.setItem("userData", JSON.stringify(userFromApi));
+      if (refreshToken) {
+        localStorage.setItem("refreshToken", refreshToken);
+      }
 
       setUser(userFromApi);
     } finally {
@@ -87,6 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const logout = () => {
     localStorage.removeItem("authToken");
     localStorage.removeItem("userData");
+    localStorage.removeItem("refreshToken");
     setUser(null);
   };
 

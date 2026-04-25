@@ -1,4 +1,26 @@
-const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+export type ApiResponse<T> = {
+  success: boolean;
+  message: string;
+  data: T;
+};
+
+export type Pagination = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
+export type Category = {
+  id: string;
+  name: string;
+  description?: string;
+  status: "Active" | "Inactive" | string;
+  createdAt: string;
+  updatedAt: string;
+};
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -52,13 +74,16 @@ export const del = <T = any>(path: string) =>
   request<T>(path, { method: "DELETE" });
 
 // Category-specific helpers (thin wrappers)
-export const fetchCategories = () => get<any[]>("/api/v1/categories");
+export const fetchCategories = () =>
+  get<ApiResponse<{ categories: Category[]; pagination: Pagination }>>(
+    "/api/v1/categories"
+  );
 export const createCategory = (body: { name: string; description?: string }) =>
-  post<any>("/api/v1/categories", body);
+  post<ApiResponse<Category>, typeof body>("/api/v1/categories", body);
 export const updateCategory = (
   id: string,
   body: { name?: string; description?: string }
-) => put<any>(`/api/v1/categories/${id}`, body);
+) => put<ApiResponse<Category>, typeof body>(`/api/v1/categories/${id}`, body);
 export const deleteCategory = (id: string) =>
   del<any>(`/api/v1/categories/${id}`);
 

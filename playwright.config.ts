@@ -9,7 +9,7 @@ export default defineConfig({
   fullyParallel: true,
   reporter: "list",
   use: {
-    baseURL: "http://localhost:300",
+    baseURL: "http://localhost:5000",
     trace: "on-first-retry",
     headless: true,
   },

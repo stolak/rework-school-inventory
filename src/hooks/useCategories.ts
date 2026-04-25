@@ -11,6 +11,11 @@ export interface Category {
   createdAt: string;
 }
 
+function normalizeStatus(status: unknown): "active" | "inactive" {
+  if (typeof status !== "string") return "active";
+  return status.toLowerCase() === "inactive" ? "inactive" : "active";
+}
+
 export const useCategories = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const { toast } = useToast();
@@ -20,22 +25,29 @@ export const useCategories = () => {
 
     const load = async () => {
       try {
-        const data = await categoryApi.list();
-        if (!Array.isArray(data))
+        const res = await categoryApi.list();
+        const list = res?.data?.categories;
+
+        if (!Array.isArray(list))
           throw new Error("Invalid categories response");
 
-        const mapped: Category[] = data.map((item: any) => ({
+        const mapped: Category[] = list.map((item: any) => ({
           id: item.id,
           name: item.name,
           description: item.description ?? "",
-          status: "active",
-          itemCount: item.item_count ?? 0,
-          createdAt: item.created_at ?? new Date().toISOString().split("T")[0],
+          status: normalizeStatus(item.status),
+          itemCount: item.itemCount ?? 0,
+          createdAt: item.createdAt ?? new Date().toISOString().split("T")[0],
         }));
 
         if (mounted) setCategories(mapped);
       } catch (err) {
         if (mounted) setCategories([]);
+        toast({
+          title: "Error",
+          description: "Failed to load categories",
+          variant: "destructive",
+        });
       }
     };
 
@@ -49,22 +61,24 @@ export const useCategories = () => {
     categoryData: Omit<Category, "id" | "createdAt" | "itemCount">
   ) => {
     try {
-      const data = await categoryApi.create({
+      const res = await categoryApi.create({
         name: categoryData.name,
         description: categoryData.description,
       });
+      const data = res?.data;
+      if (!data?.id) throw new Error(res?.message || "Failed to add category");
       const newCategory: Category = {
         id: data.id,
         name: data.name,
-        description: data.description,
-        status: "active",
-        itemCount: data.item_count ?? 0,
-        createdAt: data.created_at ?? new Date().toISOString().split("T")[0],
+        description: data.description ?? "",
+        status: normalizeStatus(data.status),
+        itemCount: 0,
+        createdAt: data.createdAt ?? new Date().toISOString().split("T")[0],
       };
       setCategories((prev) => [...prev, newCategory]);
       toast({
         title: "Success",
-        description: "Category added successfully",
+        description: res?.message || "Category added successfully",
       });
     } catch (error: any) {
       toast({
@@ -78,15 +92,16 @@ export const useCategories = () => {
 
   const updateCategory = async (id: string, updates: Partial<Category>) => {
     try {
-      const data = await categoryApi.update(id, {
+      const res = await categoryApi.update(id, {
         name: updates.name,
         description: updates.description,
       });
+      const data = res?.data;
+      if (!data?.id)
+        throw new Error(res?.message || "Failed to update category");
       const updated: Partial<Category> = {
         name: data.name,
-        description: data.description,
-        itemCount: data.item_count ?? undefined,
-        createdAt: data.created_at ?? undefined,
+        description: data.description ?? "",
       };
 
       setCategories((prev) =>
@@ -98,7 +113,7 @@ export const useCategories = () => {
       );
       toast({
         title: "Success",
-        description: "Category updated successfully",
+        description: res?.message || "Category updated successfully",
       });
     } catch (error: any) {
       toast({
