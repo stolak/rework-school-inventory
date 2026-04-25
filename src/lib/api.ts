@@ -22,6 +22,34 @@ export type Category = {
   updatedAt: string;
 };
 
+export type SubCategory = {
+  id: string;
+  name: string;
+  description?: string;
+  categoryId: string;
+  status: "Active" | "Inactive" | string;
+  createdAt: string;
+  updatedAt: string;
+  category?: Category;
+};
+
+export type Uom = {
+  id: string;
+  name: string;
+  symbol: string;
+  status: "Active" | "Inactive" | string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Brand = {
+  id: string;
+  name: string;
+  status: "Active" | "Inactive" | string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("authToken");
@@ -95,12 +123,23 @@ export const categoryApi = {
 };
 
 // Brand-specific helpers
-export const fetchBrands = () => get<any[]>("/api/v1/brands");
-export const createBrand = (body: { name: string }) =>
-  post<any>("/api/v1/brands", body);
+export const fetchBrands = (params?: { page?: number; limit?: number }) => {
+  const searchParams = new URLSearchParams();
+  if (params?.page) searchParams.append("page", String(params.page));
+  if (params?.limit) searchParams.append("limit", String(params.limit));
+  const qs = searchParams.toString();
+  return get<ApiResponse<{ brands: Brand[]; pagination: Pagination }>>(
+    `/api/v1/brands${qs ? `?${qs}` : ""}`
+  );
+};
+export const createBrand = (body: {
+  name: string;
+  status?: "Active" | "Inactive" | string;
+}) => post<ApiResponse<Brand>, typeof body>("/api/v1/brands", body);
 export const updateBrand = (id: string, body: { name?: string }) =>
-  put<any>(`/api/v1/brands/${id}`, body);
-export const deleteBrand = (id: string) => del<any>(`/api/v1/brands/${id}`);
+  put<ApiResponse<Brand>, typeof body>(`/api/v1/brands/${id}`, body);
+export const deleteBrand = (id: string) =>
+  del<ApiResponse<Brand>>(`/api/v1/brands/${id}`);
 
 export const brandApi = {
   list: fetchBrands,
@@ -126,18 +165,21 @@ export const supplierApi = {
 };
 
 // Sub-category-specific helpers
-export const fetchSubCategories = () => get<any[]>("/api/v1/sub_categories");
+export const fetchSubCategories = () => get<ApiResponse<{ subCategories: SubCategory[]; pagination: Pagination }>>(
+  "/api/v1/sub-categories"
+);
 export const createSubCategory = (body: {
   name: string;
   description?: string;
-  category_id?: string;
-}) => post<any>("/api/v1/sub_categories", body);
+  categoryId: string;
+}) =>
+  post<ApiResponse<SubCategory>, typeof body>("/api/v1/sub-categories", body);
 export const updateSubCategory = (
   id: string,
   body: { name?: string; description?: string; category_id?: string }
-) => put<any>(`/api/v1/sub_categories/${id}`, body);
+) => put<ApiResponse<SubCategory>, typeof body>(`/api/v1/sub-categories/${id}`, body);
 export const deleteSubCategory = (id: string) =>
-  del<any>(`/api/v1/sub_categories/${id}`);
+  del<ApiResponse<SubCategory>>(`/api/v1/sub-categories/${id}`);
 
 export const subCategoryApi = {
   list: fetchSubCategories,
@@ -146,15 +188,28 @@ export const subCategoryApi = {
   remove: deleteSubCategory,
 };
 
+
 // UOM-specific helpers
-export const fetchUoms = () => get<any[]>("/api/v1/uoms");
-export const createUom = (body: { name: string; symbol: string }) =>
-  post<any>("/api/v1/uoms", body);
+export const fetchUoms = (params?: { page?: number; limit?: number }) => {
+  const searchParams = new URLSearchParams();
+  if (params?.page) searchParams.append("page", String(params.page));
+  if (params?.limit) searchParams.append("limit", String(params.limit));
+  const qs = searchParams.toString();
+  return get<ApiResponse<{ uoms: Uom[]; pagination: Pagination }>>(
+    `/api/v1/uoms${qs ? `?${qs}` : ""}`
+  );
+};
+export const createUom = (body: {
+  name: string;
+  symbol: string;
+  status?: "Active" | "Inactive" | string;
+}) => post<ApiResponse<Uom>, typeof body>("/api/v1/uoms", body);
 export const updateUom = (
   id: string,
   body: { name?: string; symbol?: string }
-) => put<any>(`/api/v1/uoms/${id}`, body);
-export const deleteUom = (id: string) => del<any>(`/api/v1/uoms/${id}`);
+) => put<ApiResponse<Uom>, typeof body>(`/api/v1/uoms/${id}`, body);
+export const deleteUom = (id: string) =>
+  del<ApiResponse<Uom>>(`/api/v1/uoms/${id}`);
 
 export const uomApi = {
   list: fetchUoms,

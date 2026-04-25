@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 export interface Brand {
   id: string;
   name: string;
+  status?: "Active" | "Inactive" | string;
   createdAt: string;
 }
 
@@ -17,18 +18,26 @@ export const useBrands = () => {
 
     const load = async () => {
       try {
-        const data = await brandApi.list();
-        if (!Array.isArray(data)) throw new Error("Invalid brands response");
+        const res = await brandApi.list({ page: 1, limit: 20 });
+        const list = res?.data?.brands;
+        if (!Array.isArray(list)) throw new Error("Invalid brands response");
 
-        const mapped: Brand[] = data.map((item: any) => ({
+        const mapped: Brand[] = list.map((item: any) => ({
           id: item.id,
           name: item.name,
-          createdAt: item.created_at ?? new Date().toISOString().split("T")[0],
+          status: item.status,
+          createdAt:
+            item.createdAt ?? new Date().toISOString().split("T")[0],
         }));
 
         if (mounted) setBrands(mapped);
       } catch (err) {
         if (mounted) setBrands([]);
+        toast({
+          title: "Error",
+          description: "Failed to load brands",
+          variant: "destructive",
+        });
       }
     };
 
@@ -40,18 +49,22 @@ export const useBrands = () => {
 
   const addBrand = async (brandData: Omit<Brand, "id" | "createdAt">) => {
     try {
-      const data = await brandApi.create({
+      const res = await brandApi.create({
         name: brandData.name,
+        status: brandData.status ?? "Active",
       });
+      const data = res?.data;
+      if (!data?.id) throw new Error(res?.message || "Failed to add brand");
       const newBrand: Brand = {
         id: data.id,
         name: data.name,
-        createdAt: data.created_at ?? new Date().toISOString().split("T")[0],
+        status: data.status,
+        createdAt: data.createdAt ?? new Date().toISOString().split("T")[0],
       };
       setBrands((prev) => [...prev, newBrand]);
       toast({
         title: "Success",
-        description: "Brand added successfully",
+        description: res?.message || "Brand added successfully",
       });
     } catch (error: any) {
       toast({
@@ -65,12 +78,15 @@ export const useBrands = () => {
 
   const updateBrand = async (id: string, updates: Partial<Brand>) => {
     try {
-      const data = await brandApi.update(id, {
+      const res = await brandApi.update(id, {
         name: updates.name,
       });
+      const data = res?.data;
+      if (!data?.id) throw new Error(res?.message || "Failed to update brand");
       const updated: Partial<Brand> = {
         name: data.name,
-        createdAt: data.created_at ?? undefined,
+        status: data.status,
+        createdAt: data.createdAt ?? undefined,
       };
 
       setBrands((prev) =>
@@ -80,7 +96,7 @@ export const useBrands = () => {
       );
       toast({
         title: "Success",
-        description: "Brand updated successfully",
+        description: res?.message || "Brand updated successfully",
       });
     } catch (error: any) {
       toast({

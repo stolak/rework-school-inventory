@@ -49,7 +49,7 @@ export function SubCategoryDialog({
             <div>
               <p className="text-sm font-medium">Category</p>
               <p className="text-sm text-muted-foreground">
-                {subCategory.categoryName || "N/A"}
+                {subCategory.category?.name || "N/A"}
               </p>
             </div>
             <div>

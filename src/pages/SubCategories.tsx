@@ -37,7 +37,7 @@ export default function SubCategories() {
   const filteredSubCategories = subCategories.filter(
     (subCategory) =>
       subCategory.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      subCategory.categoryName
+      subCategory.category?.name
         ?.toLowerCase()
         .includes(searchQuery.toLowerCase())
   );
@@ -123,7 +123,7 @@ export default function SubCategories() {
             <CardContent className="space-y-3">
               <div>
                 <p className="text-sm text-muted-foreground">Category</p>
-                <p className="text-sm">{subCategory.categoryName || "N/A"}</p>
+                <p className="text-sm">{subCategory.category?.name || "N/A"}</p>
               </div>
 
               <div>

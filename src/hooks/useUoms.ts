@@ -6,6 +6,7 @@ export interface Uom {
   id: string;
   name: string;
   symbol: string;
+  status?: "Active" | "Inactive" | string;
   createdAt: string;
 }
 
@@ -16,12 +17,16 @@ export function useUoms() {
   useEffect(() => {
     const loadUoms = async () => {
       try {
-        const data = await uomApi.list();
-        const mapped = data.map((item: any) => ({
+        const res = await uomApi.list({ page: 1, limit: 20 });
+        const list = res?.data?.uoms;
+        if (!Array.isArray(list)) throw new Error("Invalid UOM response");
+
+        const mapped = list.map((item: any) => ({
           id: item.id,
           name: item.name,
           symbol: item.symbol,
-          createdAt: new Date(item.created_at).toLocaleDateString(),
+          status: item.status,
+          createdAt: new Date(item.createdAt).toLocaleDateString(),
         }));
         setUoms(mapped);
       } catch (error) {
@@ -38,10 +43,13 @@ export function useUoms() {
   }, [toast]);
 
   const addUom = async (uomData: Omit<Uom, "id" | "createdAt">) => {
-    const newUom = await uomApi.create({
+    const res = await uomApi.create({
       name: uomData.name,
       symbol: uomData.symbol,
+      status: uomData.status ?? "Active",
     });
+    const newUom = res?.data;
+    if (!newUom?.id) throw new Error(res?.message || "Failed to create UOM");
 
     setUoms((prev) => [
       ...prev,
@@ -49,21 +57,24 @@ export function useUoms() {
         id: newUom.id,
         name: newUom.name,
         symbol: newUom.symbol,
-        createdAt: new Date(newUom.created_at).toLocaleDateString(),
+        status: newUom.status,
+        createdAt: new Date(newUom.createdAt).toLocaleDateString(),
       },
     ]);
 
     toast({
       title: "Success",
-      description: "Unit of measurement added successfully",
+      description: res?.message || "Unit of measurement added successfully",
     });
   };
 
   const updateUom = async (id: string, updates: Partial<Uom>) => {
-    const updated = await uomApi.update(id, {
+    const res = await uomApi.update(id, {
       name: updates.name,
       symbol: updates.symbol,
     });
+    const updated = res?.data;
+    if (!updated?.id) throw new Error(res?.message || "Failed to update UOM");
 
     setUoms((prev) =>
       prev.map((uom) =>
@@ -79,7 +90,7 @@ export function useUoms() {
 
     toast({
       title: "Success",
-      description: "Unit of measurement updated successfully",
+      description: res?.message || "Unit of measurement updated successfully",
     });
   };
 
