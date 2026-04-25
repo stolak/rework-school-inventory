@@ -41,41 +41,43 @@ export function InventoryDialog({ open, onOpenChange, mode, item, onSubmit }: In
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Category</label>
-                <p className="text-sm">{item.categories?.name || 'N/A'}</p>
+                <p className="text-sm">{item.category?.name || 'N/A'}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Sub-Category</label>
-                <p className="text-sm">{item.sub_categories?.name || 'N/A'}</p>
+                <p className="text-sm">{item.subCategory?.name || 'N/A'}</p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Brand</label>
-                <p className="text-sm">{item.brands?.name || 'N/A'}</p>
+                <p className="text-sm">{item.brand?.name || 'N/A'}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Unit of Measurement</label>
-                <p className="text-sm">{item.uoms ? `${item.uoms.name} (${item.uoms.symbol})` : 'N/A'}</p>
+                <p className="text-sm">
+                  {item.uom ? `${item.uom.name}${item.uom.symbol ? ` (${item.uom.symbol})` : ""}` : 'N/A'}
+                </p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Current Stock</label>
-                <p className="text-sm font-semibold">{item.current_stock} units</p>
+                <p className="text-sm font-semibold">{item.currentStock ?? 0} units</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Low Stock Threshold</label>
-                <p className="text-sm">{item.low_stock_threshold} units</p>
+                <p className="text-sm">{item.lowStockThreshold ?? 0} units</p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Cost Price</label>
-                <p className="text-sm">₦{Number(item.cost_price).toLocaleString()}</p>
+                <p className="text-sm">₦{Number(item.costPrice ?? 0).toLocaleString()}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Selling Price</label>
-                <p className="text-sm font-semibold">₦{Number(item.selling_price).toLocaleString()}</p>
+                <p className="text-sm font-semibold">₦{Number(item.sellingPrice ?? 0).toLocaleString()}</p>
               </div>
             </div>
             {item.barcode && (

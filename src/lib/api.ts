@@ -50,6 +50,30 @@ export type Brand = {
   updatedAt: string;
 };
 
+export type InventoryItem = {
+  id: string;
+  sku?: string;
+  name: string;
+  categoryId?: string;
+  subCategoryId?: string;
+  brandId?: string;
+  uomId?: string;
+  barcode?: string;
+  costPrice?: string | number;
+  sellingPrice?: string | number;
+  lowStockThreshold?: number;
+  currentStock?: number;
+  createdById?: string;
+  createdAt: string;
+  updatedAt: string;
+  status: "Active" | "Inactive" | string;
+  // Relations (if API includes them later)
+  category?: Category;
+  subCategory?: SubCategory;
+  brand?: Brand;
+  uom?: Uom;
+};
+
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("authToken");
@@ -424,13 +448,42 @@ export const studentCollectionsApi = {
 };
 
 // Inventory-specific helpers
-export const fetchInventoryItems = () => get<any[]>("/api/v1/inventory_items");
-export const createInventoryItem = (body: any) =>
-  post<any>("/api/v1/inventory_items", body);
+export const fetchInventoryItems = (params?: {
+  q?: string;
+  categoryId?: string;
+  subCategoryId?: string;
+  brandId?: string;
+  uomId?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const searchParams = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      searchParams.append(key, String(value));
+    }
+  });
+  const qs = searchParams.toString();
+  return get<
+    ApiResponse<{ inventoryItems: InventoryItem[]; pagination: Pagination }>
+  >(`/api/v1/inventory-items${qs ? `?${qs}` : ""}`);
+};
+export const createInventoryItem = (body: {
+  sku?: string;
+  name: string;
+  categoryId: string;
+  subCategoryId?: string;
+  brandId?: string;
+  uomId?: string;
+  barcode?: string;
+  costPrice: number;
+  sellingPrice: number;
+  lowStockThreshold: number;
+}) => post<ApiResponse<InventoryItem>, typeof body>("/api/v1/inventory-items", body);
 export const updateInventoryItem = (id: string, body: any) =>
-  put<any>(`/api/v1/inventory_items/${id}`, body);
+  put<ApiResponse<InventoryItem>, typeof body>(`/api/v1/inventory-items/${id}`, body);
 export const deleteInventoryItem = (id: string) =>
-  del<any>(`/api/v1/inventory_items/${id}`);
+  del<ApiResponse<InventoryItem>>(`/api/v1/inventory-items/${id}`);
 
 export const inventoryApi = {
   list: fetchInventoryItems,

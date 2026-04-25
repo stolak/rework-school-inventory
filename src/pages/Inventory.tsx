@@ -25,8 +25,8 @@ export default function Inventory() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [itemToDelete, setItemToDelete] = useState<string | null>(null)
 
-  const getStatusBadge = (currentStock: number, threshold: number) => {
-    if (currentStock <= threshold) {
+  const getStatusBadge = (currentStock: string | number, threshold: number) => {
+    if (Number(currentStock) <= threshold) {
       return <Badge variant="destructive">Low Stock</Badge>
     }
     return <Badge variant="secondary" className="bg-success/10 text-success">In Stock</Badge>
@@ -121,29 +121,33 @@ export default function Inventory() {
                   <CardTitle className="text-lg font-semibold mb-1">{item.name}</CardTitle>
                   <p className="text-sm text-muted-foreground">SKU: {item.sku || 'N/A'}</p>
                 </div>
-                {getStatusBadge(item.current_stock, item.low_stock_threshold)}
+                {getStatusBadge(item.currentStock ?? 0, item.lowStockThreshold ?? 0)}
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground">Category</p>
-                  <p className="font-medium">{item.categories?.name || 'N/A'}</p>
+                  <p className="font-medium">{item.category?.name || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Brand</p>
-                  <p className="font-medium">{item.brands?.name || 'N/A'}</p>
+                  <p className="font-medium">{item.brand?.name || 'N/A'}</p>
                 </div>
               </div>
               
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground">Stock Level</p>
-                  <p className="font-medium text-lg">{item.current_stock} {item.uoms?.symbol||"units"}</p>
+                  <p className="font-medium text-lg">
+                    {item.currentStock ?? 0} {item.uom?.symbol || "units"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Selling Price</p>
-                  <p className="font-medium text-lg">₦{Number(item.selling_price).toLocaleString()}</p>
+                  <p className="font-medium text-lg">
+                    ₦{Number(item.sellingPrice ?? 0).toLocaleString()}
+                  </p>
                 </div>
               </div>
 

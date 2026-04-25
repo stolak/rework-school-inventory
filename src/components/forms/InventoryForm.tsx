@@ -14,13 +14,13 @@ import { useUoms } from "@/hooks/useUoms"
 const inventorySchema = z.object({
   name: z.string().min(1, "Name is required"),
   sku: z.string().optional(),
-  category_id: z.string().min(1, "Category is required"),
-  sub_category_id: z.string().min(1, "Sub-category is required"),
-  brand_id: z.string().min(1, "Brand is required"),
-  uom_id: z.string().min(1, "Unit of measurement is required"),
-  low_stock_threshold: z.number().min(0, "Threshold must be non-negative"),
-  cost_price: z.number().min(0, "Cost price must be non-negative"),
-  selling_price: z.number().min(0, "Selling price must be non-negative"),
+  categoryId: z.string().min(1, "Category is required"),
+  subCategoryId: z.string().min(1, "Sub-category is required"),
+  brandId: z.string().min(1, "Brand is required"),
+  uomId: z.string().min(1, "Unit of measurement is required"),
+  lowStockThreshold: z.number().min(0, "Threshold must be non-negative"),
+  costPrice: z.number().min(0, "Cost price must be non-negative"),
+  sellingPrice: z.number().min(0, "Selling price must be non-negative"),
   barcode: z.string().optional(),
 })
 
@@ -43,13 +43,13 @@ export function InventoryForm({ initialData, onSubmit, onCancel }: InventoryForm
     defaultValues: {
       name: initialData?.name || "",
       sku: initialData?.sku || "",
-      category_id: initialData?.category_id || "",
-      sub_category_id: initialData?.sub_category_id || "",
-      brand_id: initialData?.brand_id || "",
-      uom_id: initialData?.uom_id || "",
-      low_stock_threshold: initialData?.low_stock_threshold || 0,
-      cost_price: initialData?.cost_price || 0,
-      selling_price: initialData?.selling_price || 0,
+      categoryId: initialData?.categoryId || "",
+      subCategoryId: initialData?.subCategoryId || "",
+      brandId: initialData?.brandId || "",
+      uomId: initialData?.uomId || "",
+      lowStockThreshold: initialData?.lowStockThreshold || 0,
+      costPrice: Number(initialData?.costPrice ?? 0),
+      sellingPrice: Number(initialData?.sellingPrice ?? 0),
       barcode: initialData?.barcode || "",
     },
   })
@@ -94,7 +94,7 @@ export function InventoryForm({ initialData, onSubmit, onCancel }: InventoryForm
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="category_id"
+            name="categoryId"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Category</FormLabel>
@@ -117,7 +117,7 @@ export function InventoryForm({ initialData, onSubmit, onCancel }: InventoryForm
 
           <FormField
             control={form.control}
-            name="sub_category_id"
+            name="subCategoryId"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Sub-Category</FormLabel>
@@ -142,7 +142,7 @@ export function InventoryForm({ initialData, onSubmit, onCancel }: InventoryForm
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="brand_id"
+            name="brandId"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Brand</FormLabel>
@@ -165,7 +165,7 @@ export function InventoryForm({ initialData, onSubmit, onCancel }: InventoryForm
 
           <FormField
             control={form.control}
-            name="uom_id"
+            name="uomId"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Unit of Measurement</FormLabel>
@@ -192,7 +192,7 @@ export function InventoryForm({ initialData, onSubmit, onCancel }: InventoryForm
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="cost_price"
+            name="costPrice"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Cost Price (₦)</FormLabel>
@@ -212,7 +212,7 @@ export function InventoryForm({ initialData, onSubmit, onCancel }: InventoryForm
 
           <FormField
             control={form.control}
-            name="selling_price"
+            name="sellingPrice"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Selling Price (₦)</FormLabel>
