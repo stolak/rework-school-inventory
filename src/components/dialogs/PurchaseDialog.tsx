@@ -45,13 +45,8 @@ export function PurchaseDialog({
     }
   }
 
-  const handleOpenChange = (nextOpen: boolean) => {
-    // Prevent closing by outside click / escape; close only via explicit buttons or successful submit.
-    if (nextOpen) onOpenChange(true)
-  }
-
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="max-w-4xl max-h-[90vh] overflow-y-auto"
         onEscapeKeyDown={(e) => e.preventDefault()}
