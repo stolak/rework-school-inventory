@@ -4,7 +4,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { PurchaseForm } from "@/components/forms/PurchaseForm"
+import { PurchaseCreateForm } from "@/components/forms/PurchaseCreateForm"
+import { PurchaseEditForm } from "@/components/forms/PurchaseEditForm"
 import type { Purchase } from "@/hooks/usePurchases"
 
 interface PurchaseDialogProps {
@@ -94,10 +95,11 @@ export function PurchaseDialog({
               </div>
             )}
           </div>
+        ) : mode === "add" ? (
+          <PurchaseCreateForm onSubmit={handleSubmit} onCancel={handleCancel} />
         ) : (
-          <PurchaseForm
+          <PurchaseEditForm
             purchase={purchase}
-            mode={mode === "add" ? "add" : "edit"}
             onSubmit={handleSubmit}
             onCancel={handleCancel}
           />

@@ -50,6 +50,24 @@ export function usePurchases(params?: { page?: number; limit?: number }) {
     },
   });
 
+  const bulkCreateMutation = useMutation({
+    mutationFn: purchaseApi.bulkCreate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["purchases"] });
+      toast({
+        title: "Success",
+        description: "Purchases created successfully",
+      });
+    },
+    onError: (e: any) => {
+      toast({
+        title: "Error",
+        description: e?.message || "Failed to create purchases",
+        variant: "destructive",
+      });
+    },
+  });
+
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) =>
       purchaseApi.update(id, data),
@@ -86,6 +104,7 @@ export function usePurchases(params?: { page?: number; limit?: number }) {
     isLoading,
     error,
     addPurchase: addMutation.mutateAsync,
+    bulkCreatePurchases: bulkCreateMutation.mutateAsync,
     updatePurchase: (id: string, data: any) => updateMutation.mutateAsync({ id, data }),
     deletePurchase: deleteMutation.mutateAsync,
   };

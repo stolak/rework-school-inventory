@@ -681,6 +681,15 @@ export const createPurchase = (body: {
   status?: "pending" | "completed" | "cancelled" | string;
 }) => post<ApiResponse<Purchase>, typeof body>("/api/v1/purchases", body);
 
+export const createPurchasesBulk = (body: {
+  supplierId: string;
+  referenceNo?: string;
+  notes?: string;
+  transactionDate: string;
+  amountPaid?: string | number;
+  items: { itemId: string; qtyIn: number; inCost: number }[];
+}) => post<ApiResponse<Purchase[]>, typeof body>("/api/v1/purchases/bulk", body);
+
 export const updatePurchase = (id: string, body: Partial<{
   itemId: string;
   supplierId: string | null;
@@ -699,6 +708,7 @@ export const deletePurchase = (id: string) =>
 export const purchaseApi = {
   list: fetchPurchases,
   create: createPurchase,
+  bulkCreate: createPurchasesBulk,
   update: updatePurchase,
   remove: deletePurchase,
 };

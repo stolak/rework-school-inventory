@@ -34,7 +34,8 @@ export default function Purchases() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [purchaseToDelete, setPurchaseToDelete] = useState<Purchase | null>(null)
 
-  const { purchases, addPurchase, updatePurchase, deletePurchase } = usePurchases({ page: 1, limit: 20 })
+  const { purchases, bulkCreatePurchases, updatePurchase, deletePurchase } =
+    usePurchases({ page: 1, limit: 20 })
   const { toast } = useToast()
   const filteredPurchases = purchases.filter((purchase) => {
     const matchesSearch = 
@@ -96,18 +97,20 @@ export default function Purchases() {
       });
       
       const purchaseData = {
-        itemId: data.itemId,
         supplierId: data.supplierId,
-        qtyIn: data.qtyIn,
-        inCost: data.inCost,
-        amountPaid: data.amountPaid,
         referenceNo: data.referenceNo || undefined,
         notes: data.notes || undefined,
         transactionDate: data.transactionDate.toISOString(),
+        amountPaid: data.amountPaid ?? undefined,
+        items: (data.items || []).map((it: any) => ({
+          itemId: it.itemId,
+          qtyIn: Number(it.qtyIn),
+          inCost: Number(it.inCost),
+        })),
       }
       
       try {
-        await addPurchase(purchaseData);
+        await bulkCreatePurchases(purchaseData);
         toast({
           title: "Success",
           description: "Purchase order added successfully",
