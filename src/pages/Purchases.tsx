@@ -25,6 +25,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 export default function Purchases() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -38,6 +46,7 @@ export default function Purchases() {
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase | undefined>()
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [purchaseToDelete, setPurchaseToDelete] = useState<Purchase | null>(null)
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid")
 
   const listQuery = useMemo(
     () => ({
@@ -356,80 +365,152 @@ export default function Purchases() {
               <SelectItem value="cancelled">Cancelled</SelectItem>
             </SelectContent>
           </Select>
+
+          <div className="flex items-center gap-2 w-full xl:w-auto xl:ml-auto">
+            <Button
+              type="button"
+              variant={viewMode === "grid" ? "default" : "outline"}
+              onClick={() => setViewMode("grid")}
+            >
+              Grid
+            </Button>
+            <Button
+              type="button"
+              variant={viewMode === "table" ? "default" : "outline"}
+              onClick={() => setViewMode("table")}
+            >
+              Table
+            </Button>
+          </div>
       </div>
 
-      {/* Purchase Orders Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredPurchases.map((purchase) => (
-          <Card key={purchase.id} className="hover:shadow-md transition-shadow">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <CardTitle className="text-lg">{purchase.item?.name || "N/A"}</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    {purchase.supplier?.name || "No Supplier"}
-                  </p>
+      {viewMode === "grid" ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredPurchases.map((purchase) => (
+            <Card key={purchase.id} className="hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="text-lg">{purchase.item?.name || "N/A"}</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      {purchase.supplier?.name || "No Supplier"}
+                    </p>
+                  </div>
+                  {getStatusBadge(purchase.status)}
                 </div>
-                {getStatusBadge(purchase.status)}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Quantity</p>
-                  <p className="font-semibold">{purchase.qtyIn}</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Quantity</p>
+                    <p className="font-semibold">{purchase.qtyIn}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Total Cost</p>
+                    <p className="font-semibold">₦{Number(purchase.inCost || 0).toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Reference</p>
+                    <p className="font-semibold">{purchase.referenceNo || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Date</p>
+                    <p className="font-semibold">
+                      {purchase.transactionDate ? new Date(purchase.transactionDate).toLocaleDateString() : 'N/A'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-muted-foreground">Total Cost</p>
-                  <p className="font-semibold">₦{Number(purchase.inCost || 0).toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Reference</p>
-                  <p className="font-semibold">{purchase.referenceNo || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Date</p>
-                  <p className="font-semibold">
-                    {purchase.transactionDate ? new Date(purchase.transactionDate).toLocaleDateString() : 'N/A'}
-                  </p>
-                </div>
-              </div>
 
-              {purchase.notes && (
-                <div className="text-sm">
-                  <p className="text-muted-foreground">Notes</p>
-                  <p className="text-foreground line-clamp-2">{purchase.notes}</p>
-                </div>
-              )}
+                {purchase.notes && (
+                  <div className="text-sm">
+                    <p className="text-muted-foreground">Notes</p>
+                    <p className="text-foreground line-clamp-2">{purchase.notes}</p>
+                  </div>
+                )}
 
-              <div className="flex justify-end space-x-2 pt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleView(purchase)}
-                >
-                  <Eye className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleEdit(purchase)}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDelete(purchase)}
-                  className="text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                <div className="flex justify-end space-x-2 pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleView(purchase)}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEdit(purchase)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDelete(purchase)}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-md border bg-background overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Item</TableHead>
+                <TableHead>Supplier</TableHead>
+                <TableHead className="text-right">Qty</TableHead>
+                <TableHead className="text-right">Total cost</TableHead>
+                <TableHead>Reference</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredPurchases.map((purchase) => (
+                <TableRow key={purchase.id}>
+                  <TableCell className="font-medium">{purchase.item?.name || "N/A"}</TableCell>
+                  <TableCell>{purchase.supplier?.name || "No Supplier"}</TableCell>
+                  <TableCell className="text-right">{purchase.qtyIn}</TableCell>
+                  <TableCell className="text-right">
+                    ₦{Number(purchase.inCost || 0).toLocaleString()}
+                  </TableCell>
+                  <TableCell>{purchase.referenceNo || "N/A"}</TableCell>
+                  <TableCell>
+                    {purchase.transactionDate
+                      ? new Date(purchase.transactionDate).toLocaleDateString()
+                      : "N/A"}
+                  </TableCell>
+                  <TableCell>{getStatusBadge(purchase.status)}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" size="sm" onClick={() => handleView(purchase)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handleEdit(purchase)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDelete(purchase)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       {filteredPurchases.length === 0 && (
         <div className="text-center py-10">
