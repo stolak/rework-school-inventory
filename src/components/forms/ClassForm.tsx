@@ -9,7 +9,7 @@ import { SchoolClass } from "@/hooks/useClasses"
 
 const classSchema = z.object({
   name: z.string().min(1, "Class name is required"),
-  status: z.enum(["active", "inactive", "archived"]),
+  status: z.enum(["Active", "Inactive"]),
 })
 
 type ClassFormData = z.infer<typeof classSchema>
@@ -27,7 +27,7 @@ export function ClassForm({ initialData, mode, onSubmit, onCancel }: ClassFormPr
     resolver: zodResolver(classSchema),
     defaultValues: {
       name: initialData?.name || "",
-      status: initialData?.status || "active",
+      status: (initialData?.status as any) || "Active",
     },
   })
 
@@ -49,30 +49,27 @@ export function ClassForm({ initialData, mode, onSubmit, onCancel }: ClassFormPr
         />
 
 
-        {mode === 'edit' && (
-          <FormField
-            control={form.control}
-            name="status"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Status</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                    <SelectItem value="archived">Archived</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
+        <FormField
+          control={form.control}
+          name="status"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Status</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <div className="flex justify-end space-x-2 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>

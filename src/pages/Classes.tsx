@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/alert-dialog"
 
 export default function Classes() {
-  const { classes, addClass, updateClass, deleteClass } = useClasses()
+  const { classes, addClass, updateClass, deleteClass } = useClasses({ page: 1, limit: 20 })
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<'add' | 'edit' | 'view'>('add')
   const [selectedClass, setSelectedClass] = useState<any>(null)
@@ -34,14 +34,13 @@ export default function Classes() {
 
   const getStatusBadge = (status: string) => {
     const variants = {
-      active: "bg-success/10 text-success",
-      inactive: "bg-warning/10 text-warning",
-      archived: "bg-muted text-muted-foreground"
-    }
+      Active: "bg-success/10 text-success",
+      Inactive: "bg-warning/10 text-warning",
+    } as const
     
     return (
-      <Badge variant="secondary" className={variants[status as keyof typeof variants]}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+      <Badge variant="secondary" className={variants[status as keyof typeof variants] ?? "bg-muted text-muted-foreground"}>
+        {status}
       </Badge>
     )
   }

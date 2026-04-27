@@ -780,20 +780,26 @@ export const studentApi = {
 };
 
 // Class-specific helpers
-export const fetchClasses = () => get<any[]>("/api/v1/school_classes");
+export const fetchClasses = (params?: { page?: number; limit?: number }) => {
+  const queryParams = new URLSearchParams();
+  if (params?.page) queryParams.append("page", String(params.page));
+  if (params?.limit) queryParams.append("limit", String(params.limit));
+  const qs = queryParams.toString();
+  return get<any>(`/api/v1/school-classes${qs ? `?${qs}` : ""}`);
+};
 export const createClass = (body: {
   name: string;
-  status: "active" | "inactive" | "archived";
-}) => post<any>("/api/v1/school_classes", body);
+  status: "Active" | "Inactive";
+}) => post<any>("/api/v1/school-classes", body);
 export const updateClass = (
   id: string,
   body: {
     name?: string;
-    status?: "active" | "inactive" | "archived";
+    status?: "Active" | "Inactive";
   }
-) => put<any>(`/api/v1/school_classes/${id}`, body);
+) => put<any>(`/api/v1/school-classes/${id}`, body);
 export const deleteClass = (id: string) =>
-  del<any>(`/api/v1/school_classes/${id}`);
+  del<any>(`/api/v1/school-classes/${id}`);
 
 export const classApi = {
   list: fetchClasses,

@@ -9,25 +9,31 @@ export interface SchoolClass {
   distributionProgress?: number; // for display purposes
   totalItems?: number; // for display purposes
   distributedItems?: number; // for display purposes
-  status: "active" | "inactive" | "archived";
+  status: "Active" | "Inactive" | string;
   session?: string;
   created_by?: string;
   created_at?: string;
   updated_at?: string;
 }
 
-export const useClasses = () => {
+export const useClasses = (params?: { page?: number; limit?: number }) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const {
-    data: rawClasses = [],
+    data,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["classes"],
-    queryFn: classApi.list,
+    queryKey: ["classes", params?.page ?? 1, params?.limit ?? 20],
+    queryFn: async () => {
+      const res = await classApi.list({ page: params?.page ?? 1, limit: params?.limit ?? 20 });
+      return res;
+    },
   });
+
+  const rawClasses = (data as any)?.data?.schoolClasses ?? [];
+  const pagination = (data as any)?.data?.pagination;
 
   // Transform backend data to frontend format
   const classes: SchoolClass[] = rawClasses.map((classItem: any) => ({
@@ -39,9 +45,11 @@ export const useClasses = () => {
     distributedItems: 0, // This would need to be calculated
     status: classItem.status,
     session: classItem.session,
-    created_by: classItem.created_by,
-    created_at: classItem.created_at,
-    updated_at: classItem.updated_at,
+    created_by: classItem.createdBy
+      ? `${classItem.createdBy.firstName ?? ""} ${classItem.createdBy.lastName ?? ""}`.trim()
+      : undefined,
+    created_at: classItem.createdAt,
+    updated_at: classItem.updatedAt,
   }));
 
   const addMutation = useMutation({
@@ -103,6 +111,7 @@ export const useClasses = () => {
     classes,
     isLoading,
     error,
+    pagination,
     addClass: addMutation.mutate,
     updateClass: (id: string, data: Partial<SchoolClass>) =>
       updateMutation.mutate({ id, data }),
