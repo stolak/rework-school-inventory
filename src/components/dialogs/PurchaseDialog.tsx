@@ -13,7 +13,7 @@ interface PurchaseDialogProps {
   onOpenChange: (open: boolean) => void
   mode: 'add' | 'edit' | 'view'
   purchase?: Purchase
-  onSubmit: (data: any) => void
+  onSubmit: (data: any) => Promise<void>
 }
 
 export function PurchaseDialog({ 
@@ -23,8 +23,8 @@ export function PurchaseDialog({
   purchase, 
   onSubmit 
 }: PurchaseDialogProps) {
-  const handleSubmit = (data: any) => {
-    onSubmit(data)
+  const handleSubmit = async (data: any) => {
+    await onSubmit(data)
     onOpenChange(false)
   }
 
@@ -45,9 +45,18 @@ export function PurchaseDialog({
     }
   }
 
+  const handleOpenChange = (nextOpen: boolean) => {
+    // Prevent closing by outside click / escape; close only via explicit buttons or successful submit.
+    if (nextOpen) onOpenChange(true)
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent
+        className="max-w-4xl max-h-[90vh] overflow-y-auto"
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>{getTitle()}</DialogTitle>
         </DialogHeader>

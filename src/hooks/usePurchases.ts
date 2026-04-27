@@ -36,10 +36,17 @@ export function usePurchases(params?: { page?: number; limit?: number }) {
   });
 
   const addMutation = useMutation({
-    mutationFn: purchaseApi.create,
-    onSuccess: () => {
+    mutationFn: async (body: any) => {
+      const res = await purchaseApi.create(body);
+      if (!res?.success) throw new Error(res?.message || "Failed to create purchase");
+      return res;
+    },
+    onSuccess: (res: any) => {
       queryClient.invalidateQueries({ queryKey: ["purchases"] });
-      toast({ title: "Success", description: "Purchase created successfully" });
+      toast({
+        title: "Success",
+        description: res?.message || "Purchase created successfully",
+      });
     },
     onError: (e: any) => {
       toast({
@@ -51,12 +58,17 @@ export function usePurchases(params?: { page?: number; limit?: number }) {
   });
 
   const bulkCreateMutation = useMutation({
-    mutationFn: purchaseApi.bulkCreate,
-    onSuccess: () => {
+    mutationFn: async (body: any) => {
+      const res = await purchaseApi.bulkCreate(body);
+      if (!res?.success)
+        throw new Error(res?.message || "Failed to create purchases");
+      return res;
+    },
+    onSuccess: (res: any) => {
       queryClient.invalidateQueries({ queryKey: ["purchases"] });
       toast({
         title: "Success",
-        description: "Purchases created successfully",
+        description: res?.message || "Purchases created successfully",
       });
     },
     onError: (e: any) => {
@@ -71,9 +83,13 @@ export function usePurchases(params?: { page?: number; limit?: number }) {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) =>
       purchaseApi.update(id, data),
-    onSuccess: () => {
+    onSuccess: (res: any) => {
+      if (!res?.success) throw new Error(res?.message || "Failed to update purchase");
       queryClient.invalidateQueries({ queryKey: ["purchases"] });
-      toast({ title: "Success", description: "Purchase updated successfully" });
+      toast({
+        title: "Success",
+        description: res?.message || "Purchase updated successfully",
+      });
     },
     onError: (e: any) => {
       toast({
@@ -85,10 +101,17 @@ export function usePurchases(params?: { page?: number; limit?: number }) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: purchaseApi.remove,
-    onSuccess: () => {
+    mutationFn: async (id: string) => {
+      const res = await purchaseApi.remove(id);
+      if (!res?.success) throw new Error(res?.message || "Failed to delete purchase");
+      return res;
+    },
+    onSuccess: (res: any) => {
       queryClient.invalidateQueries({ queryKey: ["purchases"] });
-      toast({ title: "Success", description: "Purchase deleted successfully" });
+      toast({
+        title: "Success",
+        description: res?.message || "Purchase deleted successfully",
+      });
     },
     onError: (e: any) => {
       toast({

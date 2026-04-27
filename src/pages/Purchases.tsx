@@ -121,6 +121,7 @@ export default function Purchases() {
           description: "Failed to add purchase order",
           variant: "destructive",
         });
+        throw err
       }
     } else if (dialogMode === 'edit' && selectedPurchase) {
       toast({
@@ -152,6 +153,7 @@ export default function Purchases() {
           description: "Failed to update purchase order",
           variant: "destructive",
         });
+        throw err
       }
     }
   }
