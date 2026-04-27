@@ -11,6 +11,7 @@ import { Combobox } from "@/components/ui/combobox"
 import { useCategories } from "@/hooks/useCategories"
 import { useSubCategories } from "@/hooks/useSubCategories"
 import { useBrands } from "@/hooks/useBrands"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   Select,
   SelectContent,
@@ -35,6 +36,7 @@ export default function Inventory() {
   const [categoryId, setCategoryId] = useState<string>("")
   const [subCategoryId, setSubCategoryId] = useState<string>("")
   const [brandId, setBrandId] = useState<string>("")
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid")
 
   const { categories } = useCategories()
   const { subCategories } = useSubCategories({
@@ -206,79 +208,146 @@ export default function Inventory() {
             searchPlaceholder="Search brands..."
           />
         </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant={viewMode === "grid" ? "default" : "outline"}
+            onClick={() => setViewMode("grid")}
+          >
+            Grid
+          </Button>
+          <Button
+            type="button"
+            variant={viewMode === "table" ? "default" : "outline"}
+            onClick={() => setViewMode("table")}
+          >
+            Table
+          </Button>
+        </div>
       </div>
 
-      {/* Inventory Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {items.map((item) => (
-          <Card key={item.id} className="shadow-card hover:shadow-elevated transition-all duration-300">
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <CardTitle className="text-lg font-semibold mb-1">{item.name}</CardTitle>
-                  <p className="text-sm text-muted-foreground">SKU: {item.sku || 'N/A'}</p>
+      {viewMode === "grid" ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {items.map((item) => (
+            <Card key={item.id} className="shadow-card hover:shadow-elevated transition-all duration-300">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <CardTitle className="text-lg font-semibold mb-1">{item.name}</CardTitle>
+                    <p className="text-sm text-muted-foreground">SKU: {item.sku || 'N/A'}</p>
+                  </div>
+                  {getStatusBadge(item.currentStock ?? 0, item.lowStockThreshold ?? 0)}
                 </div>
-                {getStatusBadge(item.currentStock ?? 0, item.lowStockThreshold ?? 0)}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Category</p>
-                  <p className="font-medium">{item.category?.name || 'N/A'}</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Category</p>
+                    <p className="font-medium">{item.category?.name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Brand</p>
+                    <p className="font-medium">{item.brand?.name || 'N/A'}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-muted-foreground">Brand</p>
-                  <p className="font-medium">{item.brand?.name || 'N/A'}</p>
+                
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Stock Level</p>
+                    <p className="font-medium text-lg">
+                      {item.currentStock ?? 0} {item.uom?.symbol || "units"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Selling Price</p>
+                    <p className="font-medium text-lg">
+                      ₦{Number(item.sellingPrice ?? 0).toLocaleString()}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Stock Level</p>
-                  <p className="font-medium text-lg">
+
+                <div className="flex gap-2 pt-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => handleView(item)}
+                  >
+                    <Eye className="mr-1 h-3 w-3" />
+                    View
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => handleEdit(item)}
+                  >
+                    <Edit className="mr-1 h-3 w-3" />
+                    Edit
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => handleDelete(item.id)}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-md border bg-background overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>SKU</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Subcategory</TableHead>
+                <TableHead>Brand</TableHead>
+                <TableHead className="text-right">Stock</TableHead>
+                <TableHead className="text-right">Price</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell className="font-medium">{item.name}</TableCell>
+                  <TableCell>{item.sku || "N/A"}</TableCell>
+                  <TableCell>{item.category?.name || "N/A"}</TableCell>
+                  <TableCell>{item.subCategory?.name || "N/A"}</TableCell>
+                  <TableCell>{item.brand?.name || "N/A"}</TableCell>
+                  <TableCell className="text-right">
                     {item.currentStock ?? 0} {item.uom?.symbol || "units"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Selling Price</p>
-                  <p className="font-medium text-lg">
+                  </TableCell>
+                  <TableCell className="text-right">
                     ₦{Number(item.sellingPrice ?? 0).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex-1"
-                  onClick={() => handleView(item)}
-                >
-                  <Eye className="mr-1 h-3 w-3" />
-                  View
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex-1"
-                  onClick={() => handleEdit(item)}
-                >
-                  <Edit className="mr-1 h-3 w-3" />
-                  Edit
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => handleDelete(item.id)}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                  </TableCell>
+                  <TableCell>{item.status || "N/A"}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" size="sm" onClick={() => handleView(item)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handleEdit(item)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handleDelete(item.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       {/* Load More */}
       <div className="text-center">
