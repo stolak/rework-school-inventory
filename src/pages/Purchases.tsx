@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Plus, Search, Eye, Edit, Trash2, Filter, ShoppingCart, CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { Button } from "@/components/ui/button"
@@ -9,6 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
+import { Combobox } from "@/components/ui/combobox"
+import { useInventory } from "@/hooks/useInventory"
+import { useSuppliers } from "@/hooks/useSuppliers"
 import { PurchaseDialog } from "@/components/dialogs/PurchaseDialog"
 import { usePurchases, type Purchase } from "@/hooks/usePurchases"
 import { useToast } from "@/hooks/use-toast"
@@ -26,6 +29,8 @@ import {
 export default function Purchases() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [itemId, setItemId] = useState("")
+  const [supplierId, setSupplierId] = useState("")
   const [startDate, setStartDate] = useState<Date | undefined>()
   const [endDate, setEndDate] = useState<Date | undefined>()
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -34,23 +39,40 @@ export default function Purchases() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [purchaseToDelete, setPurchaseToDelete] = useState<Purchase | null>(null)
 
+  const listQuery = useMemo(
+    () => ({
+      itemId: itemId || undefined,
+      supplierId: supplierId || undefined,
+      status: statusFilter === "all" ? undefined : statusFilter,
+      transactionDateFrom: startDate ? format(startDate, "yyyy-MM-dd") : undefined,
+      transactionDateTo: endDate ? format(endDate, "yyyy-MM-dd") : undefined,
+      page: 1,
+      limit: 20,
+    }),
+    [itemId, supplierId, statusFilter, startDate, endDate]
+  )
+
+  const { items: inventoryItems } = useInventory({ page: 1, limit: 100 })
+  const { suppliers } = useSuppliers({ status: "Active", page: 1, limit: 100 })
+
   const { purchases, bulkCreatePurchases, updatePurchase, deletePurchase } =
-    usePurchases({ page: 1, limit: 20 })
+    usePurchases(listQuery)
   const { toast } = useToast()
-  const filteredPurchases = purchases.filter((purchase) => {
-    const matchesSearch = 
-      (purchase.item?.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (purchase.supplier?.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (purchase.referenceNo && purchase.referenceNo.toLowerCase().includes(searchTerm.toLowerCase()))
-    
-    const matchesStatus = statusFilter === "all" || purchase.status === statusFilter
-    
-    const transactionDate = purchase.transactionDate ? new Date(purchase.transactionDate) : new Date()
-    const matchesStartDate = !startDate || transactionDate >= startDate
-    const matchesEndDate = !endDate || transactionDate <= endDate
-    
-    return matchesSearch && matchesStatus && matchesStartDate && matchesEndDate
-  })
+
+  /** Client-side only: narrows the list returned by the API (search box). */
+  const filteredPurchases = useMemo(
+    () =>
+      purchases.filter((purchase) => {
+        if (!searchTerm.trim()) return true
+        const q = searchTerm.toLowerCase()
+        return (
+          (purchase.item?.name || "").toLowerCase().includes(q) ||
+          (purchase.supplier?.name || "").toLowerCase().includes(q) ||
+          (purchase.referenceNo || "").toLowerCase().includes(q)
+        )
+      }),
+    [purchases, searchTerm]
+  )
 
   const handleAdd = () => {
     setDialogMode('add')
@@ -231,79 +253,109 @@ export default function Purchases() {
         </Card>
       </div>
 
-      {/* Search and Filter */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search by item, supplier, or reference number..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        
-        {/* Date Range Filters */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                "w-full sm:w-[240px] justify-start text-left font-normal",
-                !startDate && "text-muted-foreground"
-              )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {startDate ? format(startDate, "PPP") : "Start date"}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={startDate}
-              onSelect={setStartDate}
-              initialFocus
-              className={cn("p-3 pointer-events-auto")}
-            />
-          </PopoverContent>
-        </Popover>
+      {/* Search (client-side only) */}
+      <div className="relative max-w-xl">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+        <Input
+          placeholder="Search by item, supplier, or reference number..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10"
+        />
+      </div>
 
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                "w-full sm:w-[240px] justify-start text-left font-normal",
-                !endDate && "text-muted-foreground"
-              )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {endDate ? format(endDate, "PPP") : "End date"}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={endDate}
-              onSelect={setEndDate}
-              initialFocus
-              className={cn("p-3 pointer-events-auto")}
+      {/* Backend: itemId, supplierId, status, transactionDateFrom/To, page, limit */}
+      <div className="flex flex-col xl:flex-row flex-wrap gap-4">
+          <div className="w-full sm:w-[220px]">
+            <Combobox
+              value={itemId}
+              onValueChange={setItemId}
+              options={[
+                { value: "", label: "All items" },
+                ...inventoryItems.map((it) => ({
+                  value: it.id,
+                  label: `${it.name}${it.sku ? ` — ${it.sku}` : ""}`,
+                })),
+              ]}
+              placeholder="Item"
+              searchPlaceholder="Search items..."
             />
-          </PopoverContent>
-        </Popover>
-        
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <Filter className="mr-2 h-4 w-4" />
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent className="bg-background border shadow-md">
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
+          </div>
+          <div className="w-full sm:w-[220px]">
+            <Combobox
+              value={supplierId}
+              onValueChange={setSupplierId}
+              options={[
+                { value: "", label: "All suppliers" },
+                ...suppliers.map((s) => ({ value: s.id, label: s.name })),
+              ]}
+              placeholder="Supplier"
+              searchPlaceholder="Search suppliers..."
+            />
+          </div>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className={cn(
+                  "w-full sm:w-[220px] justify-start text-left font-normal",
+                  !startDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {startDate ? format(startDate, "PPP") : "From date"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={startDate}
+                onSelect={setStartDate}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className={cn(
+                  "w-full sm:w-[220px] justify-start text-left font-normal",
+                  !endDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {endDate ? format(endDate, "PPP") : "To date"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={endDate}
+                onSelect={setEndDate}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <Filter className="mr-2 h-4 w-4" />
+              <SelectValue placeholder="status" />
+            </SelectTrigger>
+            <SelectContent className="bg-background border shadow-md">
+              <SelectItem value="all">All status</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
       </div>
 
       {/* Purchase Orders Grid */}
@@ -384,12 +436,21 @@ export default function Purchases() {
           <ShoppingCart className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-semibold">No purchase orders found</h3>
           <p className="text-muted-foreground">
-            {searchTerm || statusFilter !== "all" || startDate || endDate
+            {searchTerm ||
+            itemId ||
+            supplierId ||
+            statusFilter !== "all" ||
+            startDate ||
+            endDate
               ? "Try adjusting your search or filter criteria."
-              : "Get started by creating your first purchase order."
-            }
+              : "Get started by creating your first purchase order."}
           </p>
-          {!searchTerm && statusFilter === "all" && !startDate && !endDate && (
+          {!searchTerm &&
+            !itemId &&
+            !supplierId &&
+            statusFilter === "all" &&
+            !startDate &&
+            !endDate && (
             <Button onClick={handleAdd} className="mt-4">
               <Plus className="mr-2 h-4 w-4" />
               Create Purchase Order

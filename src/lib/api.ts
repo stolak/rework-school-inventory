@@ -659,8 +659,23 @@ export const purchaseTransactionApi = {
 };
 
 // Purchases (new API)
-export const fetchPurchases = (params?: { page?: number; limit?: number }) => {
+export const fetchPurchases = (params?: {
+  itemId?: string;
+  supplierId?: string;
+  status?: string;
+  transactionDateFrom?: string;
+  transactionDateTo?: string;
+  page?: number;
+  limit?: number;
+}) => {
   const searchParams = new URLSearchParams();
+  if (params?.itemId) searchParams.append("itemId", params.itemId);
+  if (params?.supplierId) searchParams.append("supplierId", params.supplierId);
+  if (params?.status) searchParams.append("status", params.status);
+  if (params?.transactionDateFrom)
+    searchParams.append("transactionDateFrom", params.transactionDateFrom);
+  if (params?.transactionDateTo)
+    searchParams.append("transactionDateTo", params.transactionDateTo);
   if (params?.page) searchParams.append("page", String(params.page));
   if (params?.limit) searchParams.append("limit", String(params.limit));
   const qs = searchParams.toString();

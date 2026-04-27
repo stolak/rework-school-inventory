@@ -20,14 +20,36 @@ export interface Purchase {
   createdBy?: { firstName?: string; lastName?: string } | null;
 }
 
-export function usePurchases(params?: { page?: number; limit?: number }) {
+export function usePurchases(params?: {
+  itemId?: string;
+  supplierId?: string;
+  status?: string;
+  transactionDateFrom?: string;
+  transactionDateTo?: string;
+  page?: number;
+  limit?: number;
+}) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const { data: purchases = [], isLoading, error } = useQuery({
-    queryKey: ["purchases", params?.page ?? 1, params?.limit ?? 20],
+    queryKey: [
+      "purchases",
+      params?.itemId ?? null,
+      params?.supplierId ?? null,
+      params?.status ?? null,
+      params?.transactionDateFrom ?? null,
+      params?.transactionDateTo ?? null,
+      params?.page ?? 1,
+      params?.limit ?? 20,
+    ],
     queryFn: async () => {
       const res = await purchaseApi.list({
+        itemId: params?.itemId,
+        supplierId: params?.supplierId,
+        status: params?.status,
+        transactionDateFrom: params?.transactionDateFrom,
+        transactionDateTo: params?.transactionDateTo,
         page: params?.page ?? 1,
         limit: params?.limit ?? 20,
       });
