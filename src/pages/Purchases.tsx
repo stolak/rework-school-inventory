@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
 import { PurchaseDialog } from "@/components/dialogs/PurchaseDialog"
-import { useTransactions, type Transaction } from "@/hooks/useTransactions"
+import { usePurchases, type Purchase } from "@/hooks/usePurchases"
 import { useToast } from "@/hooks/use-toast"
 import {
   AlertDialog,
@@ -30,21 +30,21 @@ export default function Purchases() {
   const [endDate, setEndDate] = useState<Date | undefined>()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<'add' | 'edit' | 'view'>('add')
-  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | undefined>()
+  const [selectedPurchase, setSelectedPurchase] = useState<Purchase | undefined>()
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null)
+  const [purchaseToDelete, setPurchaseToDelete] = useState<Purchase | null>(null)
 
-  const { purchaseTransactions, addTransaction, updateTransaction, deleteTransaction } = useTransactions()
+  const { purchases, addPurchase, updatePurchase, deletePurchase } = usePurchases({ page: 1, limit: 20 })
   const { toast } = useToast()
-  const filteredTransactions = purchaseTransactions.filter((transaction) => {
+  const filteredPurchases = purchases.filter((purchase) => {
     const matchesSearch = 
-      transaction.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.supplierName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (transaction.reference_no && transaction.reference_no.toLowerCase().includes(searchTerm.toLowerCase()))
+      (purchase.item?.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (purchase.supplier?.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (purchase.referenceNo && purchase.referenceNo.toLowerCase().includes(searchTerm.toLowerCase()))
     
-    const matchesStatus = statusFilter === "all" || transaction.status === statusFilter
+    const matchesStatus = statusFilter === "all" || purchase.status === statusFilter
     
-    const transactionDate = transaction.transaction_date ? new Date(transaction.transaction_date) : new Date()
+    const transactionDate = purchase.transactionDate ? new Date(purchase.transactionDate) : new Date()
     const matchesStartDate = !startDate || transactionDate >= startDate
     const matchesEndDate = !endDate || transactionDate <= endDate
     
@@ -53,36 +53,36 @@ export default function Purchases() {
 
   const handleAdd = () => {
     setDialogMode('add')
-    setSelectedTransaction(undefined)
+    setSelectedPurchase(undefined)
     setDialogOpen(true)
   }
 
-  const handleEdit = (transaction: Transaction) => {
+  const handleEdit = (purchase: Purchase) => {
     setDialogMode('edit')
-    setSelectedTransaction(transaction)
+    setSelectedPurchase(purchase)
     setDialogOpen(true)
   }
 
-  const handleView = (transaction: Transaction) => {
+  const handleView = (purchase: Purchase) => {
     setDialogMode('view')
-    setSelectedTransaction(transaction)
+    setSelectedPurchase(purchase)
     setDialogOpen(true)
   }
 
-  const handleDelete = (transaction: Transaction) => {
-    setTransactionToDelete(transaction);
+  const handleDelete = (purchase: Purchase) => {
+    setPurchaseToDelete(purchase);
     setDeleteDialogOpen(true);
   };
 
   const confirmDelete = async () => {
-    if (transactionToDelete) {
+    if (purchaseToDelete) {
       try {
-        await deleteTransaction(transactionToDelete.id);
-        setTransactionToDelete(null);
+        await deletePurchase(purchaseToDelete.id);
+        setPurchaseToDelete(null);
         setDeleteDialogOpen(false);
       } catch (err) {
         // Error is already handled in the hook
-        setTransactionToDelete(null);
+        setPurchaseToDelete(null);
         setDeleteDialogOpen(false);
       }
     }
@@ -95,21 +95,19 @@ export default function Purchases() {
         description: "Please wait while we add the purchase order",
       });
       
-      const transactionData = {
-        item_id: data.item_id,
-        supplier_id: data.supplier_id || undefined,
-        supplier_receiver: data.supplier_receiver || undefined,
-        transaction_type: 'purchase' as const,
-        qty_in: data.qty_in,
-        in_cost: data.in_cost,
-        status: data.status,
-        reference_no: data.reference_no || undefined,
+      const purchaseData = {
+        itemId: data.itemId,
+        supplierId: data.supplierId,
+        qtyIn: data.qtyIn,
+        inCost: data.inCost,
+        amountPaid: data.amountPaid,
+        referenceNo: data.referenceNo || undefined,
         notes: data.notes || undefined,
-        transaction_date: data.transaction_date.toISOString(),
+        transactionDate: data.transactionDate.toISOString(),
       }
       
       try {
-        await addTransaction(transactionData);
+        await addPurchase(purchaseData);
         toast({
           title: "Success",
           description: "Purchase order added successfully",
@@ -121,26 +119,26 @@ export default function Purchases() {
           variant: "destructive",
         });
       }
-    } else if (dialogMode === 'edit' && selectedTransaction) {
+    } else if (dialogMode === 'edit' && selectedPurchase) {
       toast({
         title: "Updating...",
         description: "Please wait while we update the purchase order",
       });
       
       const updateData = {
-        item_id: data.item_id,
-        supplier_id: data.supplier_id || undefined,
-        supplier_receiver: data.supplier_receiver || undefined,
-        qty_in: data.qty_in,
-        in_cost: data.in_cost,
+        itemId: data.itemId,
+        supplierId: data.supplierId,
+        qtyIn: data.qtyIn,
+        inCost: data.inCost,
+        amountPaid: data.amountPaid,
         status: data.status,
-        reference_no: data.reference_no || undefined,
+        referenceNo: data.referenceNo || undefined,
         notes: data.notes || undefined,
-        transaction_date: data.transaction_date.toISOString(),
+        transactionDate: data.transactionDate.toISOString(),
       }
       
       try {
-        await updateTransaction(selectedTransaction.id, updateData);
+        await updatePurchase(selectedPurchase.id, updateData);
         toast({
           title: "Success",
           description: "Purchase order updated successfully",
@@ -168,9 +166,9 @@ export default function Purchases() {
     }
   }
 
-  const totalValue = filteredTransactions.reduce((sum, t) => sum + t.in_cost, 0)
-  const completedOrders = filteredTransactions.filter(t => t.status === 'completed').length
-  const pendingOrders = filteredTransactions.filter(t => t.status === 'pending').length
+  const totalValue = filteredPurchases.reduce((sum, p) => sum + Number(p.inCost || 0), 0)
+  const completedOrders = filteredPurchases.filter(p => p.status === 'completed').length
+  const pendingOrders = filteredPurchases.filter(p => p.status === 'pending').length
 
   return (
     <div className="p-6 space-y-6">
@@ -200,7 +198,7 @@ export default function Purchases() {
           <CardContent>
             <div className="text-2xl font-bold">₦{totalValue.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              {filteredTransactions.length} orders
+              {filteredPurchases.length} orders
             </p>
           </CardContent>
         </Card>
@@ -305,45 +303,45 @@ export default function Purchases() {
 
       {/* Purchase Orders Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredTransactions.map((transaction) => (
-          <Card key={transaction.id} className="hover:shadow-md transition-shadow">
+        {filteredPurchases.map((purchase) => (
+          <Card key={purchase.id} className="hover:shadow-md transition-shadow">
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
-                  <CardTitle className="text-lg">{transaction.itemName}</CardTitle>
+                  <CardTitle className="text-lg">{purchase.item?.name || "N/A"}</CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    {transaction.supplierName}
+                    {purchase.supplier?.name || "No Supplier"}
                   </p>
                 </div>
-                {getStatusBadge(transaction.status)}
+                {getStatusBadge(purchase.status)}
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground">Quantity</p>
-                  <p className="font-semibold">{transaction.qty_in}</p>
+                  <p className="font-semibold">{purchase.qtyIn}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Total Cost</p>
-                  <p className="font-semibold">₦{transaction.in_cost.toLocaleString()}</p>
+                  <p className="font-semibold">₦{Number(purchase.inCost || 0).toLocaleString()}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Reference</p>
-                  <p className="font-semibold">{transaction.reference_no || 'N/A'}</p>
+                  <p className="font-semibold">{purchase.referenceNo || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Date</p>
                   <p className="font-semibold">
-                    {transaction.transaction_date ? new Date(transaction.transaction_date).toLocaleDateString() : 'N/A'}
+                    {purchase.transactionDate ? new Date(purchase.transactionDate).toLocaleDateString() : 'N/A'}
                   </p>
                 </div>
               </div>
 
-              {transaction.notes && (
+              {purchase.notes && (
                 <div className="text-sm">
                   <p className="text-muted-foreground">Notes</p>
-                  <p className="text-foreground line-clamp-2">{transaction.notes}</p>
+                  <p className="text-foreground line-clamp-2">{purchase.notes}</p>
                 </div>
               )}
 
@@ -351,21 +349,21 @@ export default function Purchases() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleView(transaction)}
+                  onClick={() => handleView(purchase)}
                 >
                   <Eye className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleEdit(transaction)}
+                  onClick={() => handleEdit(purchase)}
                 >
                   <Edit className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleDelete(transaction)}
+                  onClick={() => handleDelete(purchase)}
                   className="text-destructive hover:text-destructive"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -376,7 +374,7 @@ export default function Purchases() {
         ))}
       </div>
 
-      {filteredTransactions.length === 0 && (
+      {filteredPurchases.length === 0 && (
         <div className="text-center py-10">
           <ShoppingCart className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-semibold">No purchase orders found</h3>
@@ -399,7 +397,7 @@ export default function Purchases() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         mode={dialogMode}
-        transaction={selectedTransaction}
+        purchase={selectedPurchase}
         onSubmit={handleSubmit}
       />
 

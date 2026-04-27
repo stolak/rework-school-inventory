@@ -94,6 +94,34 @@ export type Supplier = {
   createdBy?: { firstName?: string; lastName?: string };
 };
 
+export type Purchase = {
+  id: string;
+  itemId: string;
+  supplierId: string | null;
+  receiverId: string | null;
+  supplierReceiver: string | null;
+  transactionType: "purchase";
+  qtyIn: string;
+  inCost: string;
+  qtyOut: string;
+  outCost: string;
+  amountPaid: string;
+  status: "pending" | "completed" | "cancelled" | string;
+  referenceNo: string | null;
+  notes: string | null;
+  studentId: string | null;
+  classId: string | null;
+  termId: string | null;
+  transactionDate: string;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+  classInventoryDistributionId: string | null;
+  item?: { name?: string } | null;
+  supplier?: { name?: string } | null;
+  createdBy?: { firstName?: string; lastName?: string } | null;
+};
+
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("authToken");
@@ -628,6 +656,51 @@ export const purchaseTransactionApi = {
   create: createPurchaseTransaction,
   update: updatePurchaseTransaction,
   remove: deletePurchaseTransaction,
+};
+
+// Purchases (new API)
+export const fetchPurchases = (params?: { page?: number; limit?: number }) => {
+  const searchParams = new URLSearchParams();
+  if (params?.page) searchParams.append("page", String(params.page));
+  if (params?.limit) searchParams.append("limit", String(params.limit));
+  const qs = searchParams.toString();
+  return get<ApiResponse<{ purchases: Purchase[]; pagination: Pagination }>>(
+    `/api/v1/purchases${qs ? `?${qs}` : ""}`
+  );
+};
+
+export const createPurchase = (body: {
+  itemId: string;
+  supplierId: string;
+  qtyIn: string | number;
+  inCost: string | number;
+  amountPaid?: string | number;
+  referenceNo?: string;
+  notes?: string;
+  transactionDate?: string;
+  status?: "pending" | "completed" | "cancelled" | string;
+}) => post<ApiResponse<Purchase>, typeof body>("/api/v1/purchases", body);
+
+export const updatePurchase = (id: string, body: Partial<{
+  itemId: string;
+  supplierId: string | null;
+  qtyIn: string | number;
+  inCost: string | number;
+  amountPaid: string | number;
+  referenceNo: string | null;
+  notes: string | null;
+  transactionDate: string;
+  status: "pending" | "completed" | "cancelled" | string;
+}>) => put<ApiResponse<Purchase>, typeof body>(`/api/v1/purchases/${id}`, body);
+
+export const deletePurchase = (id: string) =>
+  del<ApiResponse<Purchase>>(`/api/v1/purchases/${id}`);
+
+export const purchaseApi = {
+  list: fetchPurchases,
+  create: createPurchase,
+  update: updatePurchase,
+  remove: deletePurchase,
 };
 
 // Student-specific helpers

@@ -21,45 +21,49 @@ import {
 } from "@/components/ui/form"
 import { useInventory } from "@/hooks/useInventory"
 import { useSuppliers } from "@/hooks/useSuppliers"
-import type { Transaction } from "@/hooks/useTransactions"
+import type { Purchase } from "@/hooks/usePurchases"
 
 const purchaseSchema = z.object({
-  item_id: z.string().min(1, "Please select an item"),
-  supplier_id: z.string().optional(),
-  supplier_receiver: z.string().optional(),
-  qty_in: z.number().min(1, "Quantity must be at least 1"),
-  in_cost: z.number().min(0, "Cost must be positive"),
-  reference_no: z.string().optional(),
+  itemId: z.string().min(1, "Please select an item"),
+  supplierId: z.string().min(1, "Please select a supplier"),
+  qtyIn: z.string().min(1, "Quantity must be at least 1"),
+  inCost: z.string().min(1, "Cost must be provided"),
+  amountPaid: z.string().optional(),
+  referenceNo: z.string().optional(),
   notes: z.string().optional(),
-  transaction_date: z.date(),
-  status: z.enum(["pending", "completed", "cancelled"]),
+  transactionDate: z.date(),
+  status: z.enum(["pending", "completed", "cancelled"]).optional(),
 })
 
 type PurchaseFormData = z.infer<typeof purchaseSchema>
 
 interface PurchaseFormProps {
-  transaction?: Transaction
+  mode: "add" | "edit"
+  purchase?: Purchase
   onSubmit: (data: PurchaseFormData) => void
   onCancel: () => void
 }
 
-export function PurchaseForm({ transaction, onSubmit, onCancel }: PurchaseFormProps) {
-  const { items } = useInventory()
+export function PurchaseForm({ mode, purchase, onSubmit, onCancel }: PurchaseFormProps) {
+  const { items } = useInventory({ page: 1, limit: 100 })
   const { suppliers } = useSuppliers()
   const form = useForm<PurchaseFormData>({
     resolver: zodResolver(purchaseSchema),
     defaultValues: {
-      item_id: transaction?.item_id || "",
-      supplier_id: transaction?.supplier_id || "",
-      supplier_receiver: transaction?.supplier_receiver || "",
-      qty_in: transaction?.qty_in || 1,
-      in_cost: transaction?.in_cost || 0,
-      reference_no: transaction?.reference_no || "",
-      notes: transaction?.notes || "",
-      transaction_date: transaction?.transaction_date ? new Date(transaction.transaction_date) : new Date(),
-      status: (transaction?.status && ['pending', 'completed', 'cancelled'].includes(transaction.status)) 
-        ? transaction.status as "pending" | "completed" | "cancelled"
-        : "pending",
+      itemId: purchase?.itemId || "",
+      supplierId: purchase?.supplierId || "",
+      qtyIn: purchase?.qtyIn || "1",
+      inCost: purchase?.inCost || "0",
+      amountPaid: purchase?.amountPaid || "",
+      referenceNo: purchase?.referenceNo || "",
+      notes: purchase?.notes || "",
+      transactionDate: purchase?.transactionDate
+        ? new Date(purchase.transactionDate)
+        : new Date(),
+      status:
+        mode === "edit"
+          ? ((purchase?.status as any) ?? "completed")
+          : undefined,
     },
   })
 
@@ -67,17 +71,17 @@ export function PurchaseForm({ transaction, onSubmit, onCancel }: PurchaseFormPr
     onSubmit(data)
   }
 
-  const selectedItem = form.watch("item_id")
-  const selectedQty = form.watch("qty_in")
+  const selectedItem = form.watch("itemId")
+  const selectedQty = form.watch("qtyIn")
   const item = items.find(i => i.id === selectedItem)
 
-
-  // Auto-calculate total cost based on item cost price and quantity
-  const handleQtyChange = (qty: number) => {
-    if (item && qty > 0) {
-      form.setValue("in_cost", item.costPrice * qty)
+  const handleQtyChange = (qty: string) => {
+    const parsedQty = Number(qty);
+    const unitCost = Number(item?.costPrice ?? 0);
+    if (item && parsedQty > 0) {
+      form.setValue("inCost", String(unitCost * parsedQty));
     }
-  }
+  };
 
   return (
     <Form {...form}>
@@ -85,7 +89,7 @@ export function PurchaseForm({ transaction, onSubmit, onCancel }: PurchaseFormPr
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="item_id"
+            name="itemId"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Item</FormLabel>
@@ -95,7 +99,7 @@ export function PurchaseForm({ transaction, onSubmit, onCancel }: PurchaseFormPr
                     onValueChange={field.onChange}
                     options={items.map((item) => ({
                       value: item.id,
-                      label: `${item.name} - ${item.sku}`
+                      label: `${item.name}${item.sku ? ` - ${item.sku}` : ""}`
                     }))}
                     placeholder="Select item"
                     searchPlaceholder="Search items..."
@@ -108,10 +112,10 @@ export function PurchaseForm({ transaction, onSubmit, onCancel }: PurchaseFormPr
 
           <FormField
             control={form.control}
-            name="supplier_id"
+            name="supplierId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Supplier (Optional)</FormLabel>
+                <FormLabel>Supplier</FormLabel>
                 <FormControl>
                   <Combobox
                     value={field.value || ""}
@@ -120,7 +124,7 @@ export function PurchaseForm({ transaction, onSubmit, onCancel }: PurchaseFormPr
                       value: supplier.id,
                       label: supplier.name
                     }))}
-                    placeholder="Select supplier (optional)"
+                    placeholder="Select supplier"
                     searchPlaceholder="Search suppliers..."
                   />
                 </FormControl>
@@ -133,17 +137,17 @@ export function PurchaseForm({ transaction, onSubmit, onCancel }: PurchaseFormPr
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="qty_in"
+            name="qtyIn"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Quantity</FormLabel>
                 <FormControl>
                   <Input
-                    type="number"
+                    type="text"
                     placeholder="Enter quantity"
                     {...field}
                     onChange={(e) => {
-                      const qty = parseInt(e.target.value) || 0
+                      const qty = e.target.value
                       field.onChange(qty)
                       handleQtyChange(qty)
                     }}
@@ -156,23 +160,22 @@ export function PurchaseForm({ transaction, onSubmit, onCancel }: PurchaseFormPr
 
           <FormField
             control={form.control}
-            name="in_cost"
+            name="inCost"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Total Cost (₦)</FormLabel>
                 <FormControl>
                   <Input
-                    type="number"
-                    step="0.01"
+                    type="text"
                     placeholder="Total cost"
                     {...field}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => field.onChange(e.target.value)}
                   />
                 </FormControl>
                 <FormMessage />
                 {item && selectedQty && (
                   <p className="text-xs text-muted-foreground">
-                    Unit cost: ₦{item.cost_price.toLocaleString()} × {selectedQty} = ₦{(item.cost_price * selectedQty).toLocaleString()}
+                    Unit cost: ₦{Number(item.costPrice ?? 0).toLocaleString()} × {selectedQty} = ₦{Number(field.value || 0).toLocaleString()}
                   </p>
                 )}
               </FormItem>
@@ -183,7 +186,23 @@ export function PurchaseForm({ transaction, onSubmit, onCancel }: PurchaseFormPr
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="reference_no"
+            name="amountPaid"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Amount Paid (₦)</FormLabel>
+                <FormControl>
+                  <Input type="text" placeholder="0" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="referenceNo"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Reference Number (Optional)</FormLabel>
@@ -195,25 +214,13 @@ export function PurchaseForm({ transaction, onSubmit, onCancel }: PurchaseFormPr
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="supplier_receiver"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Delivery Person (Optional)</FormLabel>
-                <FormControl>
-                  <Input placeholder="Name of delivery person" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="transaction_date"
+            name="transactionDate"
             render={({ field }) => (
               <FormItem className="flex flex-col">
                 <FormLabel>Transaction Date</FormLabel>
@@ -263,6 +270,7 @@ export function PurchaseForm({ transaction, onSubmit, onCancel }: PurchaseFormPr
                 <Select 
                   onValueChange={field.onChange} 
                   defaultValue={field.value}
+                  disabled={mode === "add"}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -304,7 +312,7 @@ export function PurchaseForm({ transaction, onSubmit, onCancel }: PurchaseFormPr
             Cancel
           </Button>
           <Button type="submit">
-            {transaction ? "Update Purchase" : "Create Purchase"}
+            {purchase ? "Update Purchase" : "Create Purchase"}
           </Button>
         </div>
       </form>

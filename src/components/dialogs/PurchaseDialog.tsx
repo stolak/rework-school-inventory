@@ -5,13 +5,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { PurchaseForm } from "@/components/forms/PurchaseForm"
-import type { Transaction } from "@/hooks/useTransactions"
+import type { Purchase } from "@/hooks/usePurchases"
 
 interface PurchaseDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   mode: 'add' | 'edit' | 'view'
-  transaction?: Transaction
+  purchase?: Purchase
   onSubmit: (data: any) => void
 }
 
@@ -19,7 +19,7 @@ export function PurchaseDialog({
   open, 
   onOpenChange, 
   mode, 
-  transaction, 
+  purchase, 
   onSubmit 
 }: PurchaseDialogProps) {
   const handleSubmit = (data: any) => {
@@ -51,52 +51,53 @@ export function PurchaseDialog({
           <DialogTitle>{getTitle()}</DialogTitle>
         </DialogHeader>
         
-        {mode === 'view' && transaction ? (
+        {mode === 'view' && purchase ? (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium">Item</label>
-                <p className="text-sm text-muted-foreground">{transaction.itemName}</p>
+                <p className="text-sm text-muted-foreground">{purchase.item?.name || "N/A"}</p>
               </div>
               <div>
                 <label className="text-sm font-medium">Supplier</label>
-                <p className="text-sm text-muted-foreground">{transaction.supplierName}</p>
+                <p className="text-sm text-muted-foreground">{purchase.supplier?.name || "N/A"}</p>
               </div>
               <div>
                 <label className="text-sm font-medium">Quantity</label>
-                <p className="text-sm text-muted-foreground">{transaction.qty_in}</p>
+                <p className="text-sm text-muted-foreground">{purchase.qtyIn}</p>
               </div>
               <div>
                 <label className="text-sm font-medium">Total Cost</label>
-                <p className="text-sm text-muted-foreground">₦{transaction.in_cost.toLocaleString()}</p>
+                <p className="text-sm text-muted-foreground">₦{Number(purchase.inCost || 0).toLocaleString()}</p>
               </div>
               <div>
                 <label className="text-sm font-medium">Reference No</label>
-                <p className="text-sm text-muted-foreground">{transaction.reference_no || 'N/A'}</p>
+                <p className="text-sm text-muted-foreground">{purchase.referenceNo || 'N/A'}</p>
               </div>
               <div>
                 <label className="text-sm font-medium">Status</label>
-                <p className="text-sm text-muted-foreground capitalize">{transaction.status}</p>
+                <p className="text-sm text-muted-foreground capitalize">{purchase.status}</p>
               </div>
               <div>
                 <label className="text-sm font-medium">Delivery Person</label>
-                <p className="text-sm text-muted-foreground">{transaction.supplier_receiver || 'N/A'}</p>
+                <p className="text-sm text-muted-foreground">N/A</p>
               </div>
               <div>
                 <label className="text-sm font-medium">Transaction Date</label>
-                <p className="text-sm text-muted-foreground">{transaction.transaction_date ? new Date(transaction.transaction_date).toLocaleDateString() : 'N/A'}</p>
+                <p className="text-sm text-muted-foreground">{purchase.transactionDate ? new Date(purchase.transactionDate).toLocaleDateString() : 'N/A'}</p>
               </div>
             </div>
-            {transaction.notes && (
+            {purchase.notes && (
               <div>
                 <label className="text-sm font-medium">Notes</label>
-                <p className="text-sm text-muted-foreground">{transaction.notes}</p>
+                <p className="text-sm text-muted-foreground">{purchase.notes}</p>
               </div>
             )}
           </div>
         ) : (
           <PurchaseForm
-            transaction={transaction}
+            purchase={purchase}
+            mode={mode === "add" ? "add" : "edit"}
             onSubmit={handleSubmit}
             onCancel={handleCancel}
           />
