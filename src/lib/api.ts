@@ -735,9 +735,13 @@ export const fetchStudents = (params?: {
   status?: string;
   /** Filter by school class id (camelCase query param) */
   classId?: string;
+  /** Filter by sub class id (camelCase query param) */
+  subClassId?: string;
   /** Alias used by older callers */
   class_id?: string;
   gender?: "male" | "female" | "other";
+  /** Optional extra filter (backend-dependent) */
+  station?: string;
 }) => {
   const queryParams = new URLSearchParams();
   queryParams.append("page", String(params?.page ?? 1));
@@ -745,7 +749,9 @@ export const fetchStudents = (params?: {
   if (params?.status) queryParams.append("status", params.status);
   const classId = params?.classId ?? params?.class_id;
   if (classId) queryParams.append("classId", classId);
+  if (params?.subClassId) queryParams.append("subClassId", params.subClassId);
   if (params?.gender) queryParams.append("gender", params.gender);
+  if (params?.station) queryParams.append("station", params.station);
   const qs = queryParams.toString();
   return get<any>(`/api/v1/students${qs ? `?${qs}` : ""}`);
 };
@@ -758,6 +764,7 @@ export const createStudent = (body: {
   gender: "male" | "female" | "other";
   dateOfBirth?: string;
   classId: string;
+  subClassId?: string;
   guardianName: string;
   guardianEmail?: string;
   guardianContact: string;
@@ -774,6 +781,7 @@ export const updateStudent = (
     gender?: "male" | "female" | "other";
     dateOfBirth?: string;
     classId?: string;
+    subClassId?: string;
     guardianName?: string;
     guardianEmail?: string;
     guardianContact?: string;
@@ -817,6 +825,39 @@ export const classApi = {
   create: createClass,
   update: updateClass,
   remove: deleteClass,
+};
+
+// SubClass-specific helpers
+export const fetchSubClasses = (params?: { page?: number; limit?: number }) => {
+  const queryParams = new URLSearchParams();
+  queryParams.append("page", String(params?.page ?? 1));
+  queryParams.append("limit", String(params?.limit ?? 20));
+  const qs = queryParams.toString();
+  return get<any>(`/api/v1/sub-classes${qs ? `?${qs}` : ""}`);
+};
+
+export const createSubClass = (body: {
+  name: string;
+  classId: string;
+  status: "Active" | "Inactive";
+}) => post<any>("/api/v1/sub-classes", body);
+
+export const updateSubClass = (
+  id: string,
+  body: Partial<{
+    name: string;
+    classId: string;
+    status: "Active" | "Inactive" | string;
+  }>
+) => put<any>(`/api/v1/sub-classes/${id}`, body);
+
+export const deleteSubClass = (id: string) => del<any>(`/api/v1/sub-classes/${id}`);
+
+export const subClassApi = {
+  list: fetchSubClasses,
+  create: createSubClass,
+  update: updateSubClass,
+  remove: deleteSubClass,
 };
 
 // Users API

@@ -48,6 +48,7 @@ const mainMenuItems = [
 
 const schoolMenuItems = [
   { title: "Classes", url: "/classes", icon: GraduationCap },
+  { title: "Sub Classes", url: "/sub-classes", icon: Layers },
   { title: "Students", url: "/students", icon: Users },
   { title: "Class Teachers", url: "/class-teachers", icon: UserCheck },
   { title: "Sessions/Terms", url: "/sessions", icon: BookOpen },

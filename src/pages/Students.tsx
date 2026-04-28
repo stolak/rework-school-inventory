@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useStudents } from "@/hooks/useStudents"
 import { StudentDialog } from "@/components/dialogs/StudentDialog"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,17 +17,55 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Combobox } from "@/components/ui/combobox"
+import { useClasses } from "@/hooks/useClasses"
+import { useSubClasses } from "@/hooks/useSubClasses"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function Students() {
-  const { students, addStudent, updateStudent, deleteStudent, isLoading } = useStudents({
-    page: 1,
-    limit: 20,
-  })
+  const [searchTerm, setSearchTerm] = useState("")
+  const [classId, setClassId] = useState("all")
+  const [subClassId, setSubClassId] = useState("all")
+  const [statusFilter, setStatusFilter] = useState("all")
+
+  const { classes } = useClasses({ page: 1, limit: 100 })
+  const { subClasses } = useSubClasses({ page: 1, limit: 500 })
+
+  const listQuery = useMemo(
+    () => ({
+      page: 1,
+      limit: 20,
+      classId: classId === "all" ? undefined : classId,
+      subClassId: subClassId === "all" ? undefined : subClassId,
+      status: statusFilter === "all" ? undefined : statusFilter,
+    }),
+    [classId, subClassId, statusFilter]
+  )
+
+  const { students, addStudent, updateStudent, deleteStudent, isLoading } = useStudents(listQuery)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<'add' | 'edit' | 'view'>('add')
   const [selectedStudent, setSelectedStudent] = useState<any>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [studentToDelete, setStudentToDelete] = useState<string | null>(null)
+
+  const availableSubClasses = useMemo(() => {
+    if (classId === "all") return subClasses
+    return subClasses.filter((sc) => sc.classId === classId)
+  }, [subClasses, classId])
+
+  const filteredStudents = useMemo(() => {
+    if (!searchTerm.trim()) return students
+    const q = searchTerm.toLowerCase()
+    return students.filter((s) => {
+      return (
+        `${s.firstName} ${s.lastName}`.toLowerCase().includes(q) ||
+        (s.admissionNumber || "").toLowerCase().includes(q) ||
+        (s.className || "").toLowerCase().includes(q) ||
+        (s.subClassName || "").toLowerCase().includes(q)
+      )
+    })
+  }, [students, searchTerm])
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, string> = {
@@ -120,15 +158,63 @@ export default function Students() {
         </Button>
       </div>
 
-      {/* Search */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      {/* Search (client-side) + Backend filters (classId, subClassId, status) */}
+      <div className="flex flex-col xl:flex-row gap-4 xl:items-center">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input 
             placeholder="Search students..." 
             className="pl-10"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+
+        <div className="w-full sm:w-[240px]">
+          <Combobox
+            value={classId === "all" ? "" : classId}
+            onValueChange={(v) => {
+              const next = v || "all"
+              setClassId(next)
+              setSubClassId("all")
+            }}
+            options={[
+              { value: "", label: "All classes" },
+              ...classes.map((c) => ({ value: c.id, label: c.name })),
+            ]}
+            placeholder="Class"
+            searchPlaceholder="Search classes..."
+          />
+        </div>
+
+        <div className="w-full sm:w-[240px]">
+          <Combobox
+            value={subClassId === "all" ? "" : subClassId}
+            onValueChange={(v) => setSubClassId(v || "all")}
+            options={[
+              { value: "", label: "All sub classes" },
+              ...availableSubClasses.map((sc) => ({
+                value: sc.id,
+                label: `${sc.name}${sc.class?.name ? ` — ${sc.class.name}` : ""}`,
+              })),
+            ]}
+            placeholder="Sub Class"
+            searchPlaceholder="Search sub classes..."
+            disabled={classId === "all"}
+          />
+        </div>
+
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent className="bg-background border shadow-md">
+            <SelectItem value="all">All status</SelectItem>
+            <SelectItem value="Active">Active</SelectItem>
+            <SelectItem value="Inactive">Inactive</SelectItem>
+            <SelectItem value="Graduated">Graduated</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Students Grid */}
@@ -138,7 +224,7 @@ export default function Students() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {students.map((student) => (
+          {filteredStudents.map((student) => (
           <Card key={student.id} className="shadow-card hover:shadow-elevated transition-all duration-300">
             <CardHeader>
               <div className="flex items-start gap-3">
@@ -168,6 +254,11 @@ export default function Students() {
                   <GraduationCap className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">{student.className || 'No Class'}</span>
                 </div>
+                {student.subClassName && (
+                  <p className="text-xs text-muted-foreground pl-6">
+                    Sub Class: <span className="font-medium text-foreground">{student.subClassName}</span>
+                  </p>
+                )}
               </div>
               
               <div className="space-y-1">

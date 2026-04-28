@@ -12,7 +12,9 @@ export interface Student {
   gender?: "male" | "female" | "other";
   dateOfBirth?: string;
   classId?: string;
+  subClassId?: string;
   className?: string;
+  subClassName?: string;
   guardianName: string;
   guardianContact: string;
   guardianEmail?: string;
@@ -24,6 +26,7 @@ export interface Student {
   createdAt?: string;
   updatedAt?: string;
   class?: { id: string; name: string };
+  subClass?: { id: string; name: string; classId: string };
 }
 
 export type StudentCreatePayload = Omit<
@@ -43,6 +46,7 @@ function sanitizeStudentPayload<T extends Record<string, unknown>>(body: T): T {
   const next = { ...body } as Record<string, unknown>;
   for (const key of Object.keys(next)) {
     if (next[key] === "") delete next[key];
+    if (next[key] === "none") delete next[key];
   }
   return next as T;
 }
@@ -52,8 +56,10 @@ export const useStudents = (params?: {
   limit?: number;
   status?: string;
   classId?: string;
+  subClassId?: string;
   class_id?: string;
   gender?: "male" | "female" | "other";
+  station?: string;
 }) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -62,14 +68,25 @@ export const useStudents = (params?: {
   const limit = params?.limit ?? 20;
 
   const { data: response, isLoading, error } = useQuery({
-    queryKey: ["students", page, limit, params?.status, params?.classId ?? params?.class_id ?? null, params?.gender ?? null],
+    queryKey: [
+      "students",
+      page,
+      limit,
+      params?.status ?? null,
+      params?.classId ?? params?.class_id ?? null,
+      params?.subClassId ?? null,
+      params?.gender ?? null,
+      params?.station ?? null,
+    ],
     queryFn: () =>
       studentApi.list({
         page,
         limit,
         status: params?.status,
         classId: params?.classId ?? params?.class_id,
+        subClassId: params?.subClassId,
         gender: params?.gender,
+        station: params?.station,
       }),
   });
 
@@ -87,6 +104,8 @@ export const useStudents = (params?: {
     dateOfBirth: student.dateOfBirth,
     classId: student.classId,
     className: student.class?.name ?? "No Class",
+    subClassId: student.subClassId,
+    subClassName: student.subClass?.name,
     guardianName: student.guardianName,
     guardianContact: student.guardianContact,
     guardianEmail: student.guardianEmail,
@@ -100,6 +119,7 @@ export const useStudents = (params?: {
     createdAt: student.createdAt,
     updatedAt: student.updatedAt,
     class: student.class,
+    subClass: student.subClass,
   }));
 
   const addMutation = useMutation({

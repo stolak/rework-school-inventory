@@ -67,6 +67,10 @@ export function StudentDialog({ open, onOpenChange, mode, student, onSubmit }: S
                 <p className="text-sm font-semibold">{student.className || 'No Class'}</p>
               </div>
               <div>
+                <label className="text-sm font-medium text-muted-foreground">Sub Class</label>
+                <p className="text-sm">{student.subClassName || student.subClass?.name || "N/A"}</p>
+              </div>
+              <div>
                 <label className="text-sm font-medium text-muted-foreground">Gender</label>
                 <p className="text-sm">{student.gender || 'N/A'}</p>
               </div>
@@ -132,7 +136,7 @@ export function StudentDialog({ open, onOpenChange, mode, student, onSubmit }: S
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle>
             {mode === 'add' ? 'Add New Student' : 'Edit Student'}

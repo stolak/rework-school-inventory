@@ -8,6 +8,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Textarea } from "@/components/ui/textarea"
 import { Student } from "@/hooks/useStudents"
 import { useClasses } from "@/hooks/useClasses"
+import { useSubClasses } from "@/hooks/useSubClasses"
 
 const studentSchema = z.object({
   admissionNumber: z.string().min(1, "Admission number is required"),
@@ -15,6 +16,7 @@ const studentSchema = z.object({
   middleName: z.string().optional(),
   lastName: z.string().min(1, "Last name is required"),
   classId: z.string().min(1, "Class is required"),
+  subClassId: z.string().optional().or(z.literal("none")),
   guardianName: z.string().min(1, "Guardian name is required"),
   guardianContact: z.string().min(1, "Guardian contact is required"),
   guardianEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
@@ -40,6 +42,7 @@ function toDateInputValue(iso?: string) {
 
 export function StudentForm({ initialData, onSubmit, onCancel }: StudentFormProps) {
   const { classes } = useClasses({ page: 1, limit: 100 })
+  const { subClasses } = useSubClasses({ page: 1, limit: 500 })
 
   const form = useForm<StudentFormData>({
     resolver: zodResolver(studentSchema),
@@ -49,6 +52,7 @@ export function StudentForm({ initialData, onSubmit, onCancel }: StudentFormProp
       middleName: initialData?.middleName || "",
       lastName: initialData?.lastName || "",
       classId: initialData?.classId || "",
+      subClassId: initialData?.subClassId || "none",
       guardianName: initialData?.guardianName || "",
       guardianContact: initialData?.guardianContact || "",
       guardianEmail: initialData?.guardianEmail || "",
@@ -61,6 +65,8 @@ export function StudentForm({ initialData, onSubmit, onCancel }: StudentFormProp
   })
 
   const isEdit = Boolean(initialData?.id)
+  const selectedClassId = form.watch("classId")
+  const subClassOptions = subClasses.filter((sc) => sc.classId === selectedClassId)
 
   return (
     <Form {...form}>
@@ -140,6 +146,36 @@ export function StudentForm({ initialData, onSubmit, onCancel }: StudentFormProp
                     {classes.map((classItem) => (
                       <SelectItem key={classItem.id} value={classItem.id}>
                         {classItem.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="subClassId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Sub Class (Optional)</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  disabled={!selectedClassId}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder={selectedClassId ? "Select sub class" : "Select class first"} />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {subClassOptions.map((sc) => (
+                      <SelectItem key={sc.id} value={sc.id}>
+                        {sc.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

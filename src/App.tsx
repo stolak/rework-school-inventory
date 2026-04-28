@@ -24,6 +24,7 @@ import StudentInventoryReport from "./pages/StudentInventoryReport";
 import InventoryCollectionsReport from "./pages/InventoryCollectionsReport";
 import DistributionCollectionReport from "./pages/DistributionCollectionReport";
 import ClassTeachers from "./pages/ClassTeachers";
+import SubClasses from "./pages/SubClasses";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 
@@ -51,6 +52,7 @@ const AppContent = () => {
         <Route path="/inventory" element={<Inventory />} />
         <Route path="/students" element={<Students />} />
         <Route path="/classes" element={<Classes />} />
+        <Route path="/sub-classes" element={<SubClasses />} />
         <Route path="/class-teachers" element={<ClassTeachers />} />
           <Route path="/purchases" element={<Purchases />} />
           <Route path="/sales" element={<Sales />} />
