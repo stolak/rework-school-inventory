@@ -1,12 +1,11 @@
-import { useState } from "react"
-import { Plus, Search, Eye, Edit, Trash2, Calendar, Users, BookOpen } from "lucide-react"
+import { useMemo, useState } from "react"
+import { Plus, Search, Eye, Edit, Trash2, BookOpen } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { useToast } from "@/hooks/use-toast"
-import { useSessions, Session } from "@/hooks/useSessions"
-import { SessionDialog } from "@/components/dialogs/SessionDialog"
+import { useSchoolSessions, type SchoolSession } from "@/hooks/useSchoolSessions"
+import { SchoolSessionDialog } from "@/components/dialogs/SchoolSessionDialog"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,20 +18,23 @@ import {
 } from "@/components/ui/alert-dialog"
 
 export default function Sessions() {
-  const { sessions, addSession, updateSession, deleteSession, isLoading } = useSessions()
-  const { toast } = useToast()
-  
+  const { sessions, addSession, updateSession, deleteSession, isLoading } = useSchoolSessions({
+    page: 1,
+    limit: 20,
+  })
+
   const [searchTerm, setSearchTerm] = useState("")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<'add' | 'edit' | 'view'>('add')
-  const [selectedSession, setSelectedSession] = useState<Session | undefined>()
+  const [selectedSession, setSelectedSession] = useState<SchoolSession | undefined>()
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null)
 
-  const filteredSessions = sessions.filter(session =>
-    session.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    session.session.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredSessions = useMemo(() => {
+    if (!searchTerm.trim()) return sessions
+    const q = searchTerm.toLowerCase()
+    return sessions.filter((s) => s.name.toLowerCase().includes(q))
+  }, [sessions, searchTerm])
 
   const handleAdd = () => {
     setDialogMode('add')
@@ -40,13 +42,13 @@ export default function Sessions() {
     setDialogOpen(true)
   }
 
-  const handleEdit = (session: Session) => {
+  const handleEdit = (session: SchoolSession) => {
     setDialogMode('edit')
     setSelectedSession(session)
     setDialogOpen(true)
   }
 
-  const handleView = (session: Session) => {
+  const handleView = (session: SchoolSession) => {
     setDialogMode('view')
     setSelectedSession(session)
     setDialogOpen(true)
@@ -73,67 +75,33 @@ export default function Sessions() {
 
   const handleSubmit = async (data: any) => {
     if (dialogMode === 'add') {
-      toast({
-        title: "Adding...",
-        description: "Please wait while we add the session",
-      });
-      try {
-        await addSession(data);
-        toast({
-          title: "Success",
-          description: "Session added successfully",
-        });
-      } catch (err) {
-        toast({
-          title: "Error",
-          description: "Failed to add session",
-          variant: "destructive",
-        });
-      }
+      await addSession(data)
     } else if (dialogMode === 'edit' && selectedSession) {
-      toast({
-        title: "Updating...",
-        description: "Please wait while we update the session",
-      });
-      try {
-        await updateSession(selectedSession.id, data);
-        toast({
-          title: "Success",
-          description: "Session updated successfully",
-        });
-      } catch (err) {
-        toast({
-          title: "Error",
-          description: "Failed to update session",
-          variant: "destructive",
-        });
-      }
+      await updateSession(selectedSession.id, data)
     }
   }
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "destructive" | "outline" | "secondary"> = {
-      'active': 'default',
-      'inactive': 'secondary',
-      'archived': 'outline',
-    }
+    const variants: Record<string, string> = {
+      Active: "bg-success/10 text-success",
+      Inactive: "bg-warning/10 text-warning",
+    };
     return (
-      <Badge variant={variants[status] || 'secondary'}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+      <Badge variant="secondary" className={variants[status] ?? "bg-muted text-muted-foreground"}>
+        {status}
       </Badge>
     )
-  }
-
-  const formatDateRange = (startDate: string, endDate: string) => {
-    return `${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}`
   }
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Sessions & Terms</h1>
-          <p className="text-muted-foreground">Manage academic sessions and terms</p>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <BookOpen className="h-8 w-8" />
+            Sessions
+          </h1>
+          <p className="text-muted-foreground">Manage academic sessions</p>
         </div>
         <Button onClick={handleAdd}>
           <Plus className="mr-2 h-4 w-4" />
@@ -158,71 +126,41 @@ export default function Sessions() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredSessions.map((session) => (
-          <Card key={session.id} className="hover:shadow-md transition-shadow">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <CardTitle className="text-lg">{session.name}</CardTitle>
-                {getStatusBadge(session.status)}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Duration</p>
-                  <p className="text-sm font-medium">{formatDateRange(session.start_date, session.end_date)}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <BookOpen className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Academic Session</p>
-                  <p className="font-medium">{session.session}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center p-3 bg-muted/50 rounded-lg">
-                  <BookOpen className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-                  <p className="text-lg font-semibold text-primary">{session.totalClasses}</p>
-                  <p className="text-xs text-muted-foreground">Classes</p>
-                </div>
-                <div className="text-center p-3 bg-muted/50 rounded-lg">
-                  <Users className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-                  <p className="text-lg font-semibold text-primary">{session.totalStudents}</p>
-                  <p className="text-xs text-muted-foreground">Students</p>
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-1 pt-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleView(session)}
-                >
-                  <Eye className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleEdit(session)}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleDelete(session.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-          ))}
+        <div className="rounded-md border bg-background overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Session</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredSessions.map((session) => (
+                <TableRow key={session.id}>
+                  <TableCell className="font-medium">{session.name}</TableCell>
+                  <TableCell>{getStatusBadge(session.status)}</TableCell>
+                  <TableCell>
+                    {session.createdAt ? new Date(session.createdAt).toLocaleString() : "N/A"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button size="sm" variant="outline" onClick={() => handleView(session)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => handleEdit(session)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => handleDelete(session.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
 
@@ -232,7 +170,7 @@ export default function Sessions() {
         </div>
       )}
 
-      <SessionDialog
+      <SchoolSessionDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         mode={dialogMode}

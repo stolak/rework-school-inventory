@@ -399,6 +399,60 @@ export const sessionApi = {
   remove: deleteSession,
 };
 
+// School Sessions (new endpoint: /api/v1/sessions)
+export const fetchSchoolSessions = (params?: { page?: number; limit?: number; status?: string }) => {
+  const queryParams = new URLSearchParams();
+  queryParams.append("page", String(params?.page ?? 1));
+  queryParams.append("limit", String(params?.limit ?? 20));
+  if (params?.status) queryParams.append("status", params.status);
+  const qs = queryParams.toString();
+  return get<any>(`/api/v1/sessions${qs ? `?${qs}` : ""}`);
+};
+
+export const createSchoolSession = (body: { name: string; status: "Active" | "Inactive" }) =>
+  post<any>("/api/v1/sessions", body);
+
+export const updateSchoolSession = (
+  id: string,
+  body: Partial<{ name: string; status: "Active" | "Inactive" | string }>
+) => put<any>(`/api/v1/sessions/${id}`, body);
+
+export const deleteSchoolSession = (id: string) => del<any>(`/api/v1/sessions/${id}`);
+
+export const schoolSessionApi = {
+  list: fetchSchoolSessions,
+  create: createSchoolSession,
+  update: updateSchoolSession,
+  remove: deleteSchoolSession,
+};
+
+// School Terms (endpoint: /api/v1/terms)
+export const fetchTerms = (params?: { page?: number; limit?: number; status?: string }) => {
+  const queryParams = new URLSearchParams();
+  queryParams.append("page", String(params?.page ?? 1));
+  queryParams.append("limit", String(params?.limit ?? 20));
+  if (params?.status) queryParams.append("status", params.status);
+  const qs = queryParams.toString();
+  return get<any>(`/api/v1/terms${qs ? `?${qs}` : ""}`);
+};
+
+export const createTerm = (body: { name: string; status: "Active" | "Inactive" }) =>
+  post<any>("/api/v1/terms", body);
+
+export const updateTerm = (
+  id: string,
+  body: Partial<{ name: string; status: "Active" | "Inactive" | string }>
+) => put<any>(`/api/v1/terms/${id}`, body);
+
+export const deleteTerm = (id: string) => del<any>(`/api/v1/terms/${id}`);
+
+export const termApi = {
+  list: fetchTerms,
+  create: createTerm,
+  update: updateTerm,
+  remove: deleteTerm,
+};
+
 // Class Entitlements-specific helpers
 export const fetchClassEntitlements = (params?: {
   class_id?: string;

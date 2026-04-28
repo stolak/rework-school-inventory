@@ -17,6 +17,7 @@ import SubCategories from "./pages/SubCategories";
 import Brands from "./pages/Brands";
 import Uoms from "./pages/Uoms";
 import Sessions from "./pages/Sessions";
+import Terms from "./pages/Terms";
 import ClassEntitlements from "./pages/ClassEntitlements";
 import ClassInventoryDistributions from "./pages/ClassInventoryDistributions";
 import StudentItemCollections from "./pages/StudentItemCollections";
@@ -62,6 +63,7 @@ const AppContent = () => {
           <Route path="/brands" element={<Brands />} />
           <Route path="/uoms" element={<Uoms />} />
           <Route path="/sessions" element={<Sessions />} />
+          <Route path="/terms" element={<Terms />} />
           <Route path="/class-entitlements" element={<ClassEntitlements />} />
           <Route path="/class-distributions" element={<ClassInventoryDistributions />} />
           <Route path="/student-collections" element={<StudentItemCollections />} />
