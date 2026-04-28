@@ -51,8 +51,10 @@ export default function StudentItemCollections() {
   const { items } = useInventory()
   const { sessions } = useSessions({ status: 'active' })
   const { students: classStudents, isLoading: studentsLoading } = useStudents({
-    class_id: selectedClassId || undefined,
-    status: 'active'
+    classId: selectedClassId || undefined,
+    status: "Active",
+    page: 1,
+    limit: 500,
   })
   const { toast } = useToast()
 
@@ -76,7 +78,7 @@ export default function StudentItemCollections() {
         // Populate display names
         if (field === 'student_id') {
           const student = classStudents.find(s => s.id === value)
-          updated.studentName = student ? `${student.first_name} ${student.last_name}` : undefined
+          updated.studentName = student ? `${student.firstName} ${student.lastName}` : undefined
         }
         if (field === 'inventory_item_id') {
           const inventoryItem = items.find(item => item.id === value)
@@ -295,7 +297,7 @@ export default function StudentItemCollections() {
                           onValueChange={(value) => updateNewCollection(index, 'student_id', value)}
                           options={studentsLoading ? [] : classStudents.map((student) => ({
                             value: student.id,
-                            label: `${student.first_name} ${student.last_name} - ${student.admission_number}`
+                            label: `${student.firstName} ${student.lastName} - ${student.admissionNumber}`
                           }))}
                           placeholder={studentsLoading ? "Loading students..." : "Select student..."}
                           searchPlaceholder="Search students..."
@@ -404,7 +406,7 @@ export default function StudentItemCollections() {
                               <SelectContent>
                                 {classStudents.map(student => (
                                   <SelectItem key={student.id} value={student.id}>
-                                    {student.first_name} {student.last_name}
+                                    {student.firstName} {student.lastName}
                                   </SelectItem>
                                 ))}
                               </SelectContent>

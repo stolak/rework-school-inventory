@@ -19,7 +19,7 @@ export default function StudentInventoryReport() {
 
   const { classes } = useClasses()
   const { sessions } = useSessions({ status: 'active' })
-  const { students: allStudents } = useStudents({ status: 'active' })
+  const { students: allStudents } = useStudents({ status: "Active", page: 1, limit: 500 })
   const { toast } = useToast()
 
   // Build query parameters
@@ -124,7 +124,7 @@ export default function StudentInventoryReport() {
                 onValueChange={setSelectedStudentId}
                 options={allStudents.map((student) => ({
                   value: student.id,
-                  label: `${student.first_name} ${student.last_name} - ${student.admission_number}`
+                  label: `${student.firstName} ${student.lastName} - ${student.admissionNumber}`
                 }))}
                 placeholder="Select student..."
                 searchPlaceholder="Search students..."
@@ -184,7 +184,7 @@ export default function StudentInventoryReport() {
                 Report Results 
                 {selectedStudent && (
                   <span className="text-lg font-normal text-muted-foreground ml-2">
-                    for {selectedStudent.first_name} {selectedStudent.last_name}
+                    for {selectedStudent.firstName} {selectedStudent.lastName}
                     {selectedClass && ` - ${selectedClass.name}`}
                     {selectedSession && ` - ${selectedSession.name}`}
                   </span>

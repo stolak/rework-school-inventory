@@ -730,44 +730,55 @@ export const purchaseApi = {
 
 // Student-specific helpers
 export const fetchStudents = (params?: {
-  status?: "active" | "inactive" | "graduated";
+  page?: number;
+  limit?: number;
+  status?: string;
+  /** Filter by school class id (camelCase query param) */
+  classId?: string;
+  /** Alias used by older callers */
   class_id?: string;
   gender?: "male" | "female" | "other";
 }) => {
   const queryParams = new URLSearchParams();
+  queryParams.append("page", String(params?.page ?? 1));
+  queryParams.append("limit", String(params?.limit ?? 20));
   if (params?.status) queryParams.append("status", params.status);
-  if (params?.class_id) queryParams.append("class_id", params.class_id);
+  const classId = params?.classId ?? params?.class_id;
+  if (classId) queryParams.append("classId", classId);
   if (params?.gender) queryParams.append("gender", params.gender);
-  const queryString = queryParams.toString();
-  return get<any[]>(`/api/v1/students${queryString ? `?${queryString}` : ""}`);
+  const qs = queryParams.toString();
+  return get<any>(`/api/v1/students${qs ? `?${qs}` : ""}`);
 };
 export const createStudent = (body: {
-  admission_number: string;
-  first_name: string;
-  middle_name?: string;
-  last_name: string;
+  admissionNumber: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  studentEmail?: string;
   gender: "male" | "female" | "other";
-  date_of_birth?: string;
-  class_id?: string;
-  guardian_name: string;
-  guardian_contact: string;
+  dateOfBirth?: string;
+  classId: string;
+  guardianName: string;
+  guardianEmail?: string;
+  guardianContact: string;
   address?: string;
-  status: "active" | "inactive" | "graduated";
 }) => post<any>("/api/v1/students", body);
 export const updateStudent = (
   id: string,
   body: {
-    admission_number?: string;
-    first_name?: string;
-    middle_name?: string;
-    last_name?: string;
+    admissionNumber?: string;
+    firstName?: string;
+    middleName?: string;
+    lastName?: string;
+    studentEmail?: string;
     gender?: "male" | "female" | "other";
-    date_of_birth?: string;
-    class_id?: string;
-    guardian_name?: string;
-    guardian_contact?: string;
+    dateOfBirth?: string;
+    classId?: string;
+    guardianName?: string;
+    guardianEmail?: string;
+    guardianContact?: string;
     address?: string;
-    status?: "active" | "inactive" | "graduated";
+    status?: "Active" | "Inactive" | "Graduated" | string;
   }
 ) => put<any>(`/api/v1/students/${id}`, body);
 export const deleteStudent = (id: string) => del<any>(`/api/v1/students/${id}`);

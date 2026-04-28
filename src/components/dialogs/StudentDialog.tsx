@@ -27,15 +27,15 @@ export function StudentDialog({ open, onOpenChange, mode, student, onSubmit }: S
   }
 
   const getStatusBadge = (status: string) => {
-    const variants = {
-      active: "bg-success/10 text-success",
-      inactive: "bg-warning/10 text-warning",
-      graduated: "bg-primary/10 text-primary"
+    const variants: Record<string, string> = {
+      Active: "bg-success/10 text-success",
+      Inactive: "bg-warning/10 text-warning",
+      Graduated: "bg-primary/10 text-primary",
     }
-    
+
     return (
-      <Badge variant="secondary" className={variants[status as keyof typeof variants]}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+      <Badge variant="secondary" className={variants[status] ?? "bg-muted text-muted-foreground"}>
+        {status}
       </Badge>
     )
   }
@@ -51,12 +51,12 @@ export function StudentDialog({ open, onOpenChange, mode, student, onSubmit }: S
             <div className="flex items-center gap-4">
               <Avatar className="h-16 w-16 bg-gradient-primary">
                 <AvatarFallback className="text-primary-foreground font-medium text-lg">
-                  {getInitials(student.first_name, student.last_name)}
+                  {getInitials(student.firstName, student.lastName)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
-                <h3 className="text-xl font-semibold">{student.first_name} {student.last_name}</h3>
-                <p className="text-muted-foreground">{student.admission_number}</p>
+                <h3 className="text-xl font-semibold">{student.firstName} {student.lastName}</h3>
+                <p className="text-muted-foreground">{student.admissionNumber}</p>
                 {getStatusBadge(student.status)}
               </div>
             </div>
@@ -75,35 +75,35 @@ export function StudentDialog({ open, onOpenChange, mode, student, onSubmit }: S
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Guardian Name</label>
-                <p className="text-sm">{student.guardian_name}</p>
+                <p className="text-sm">{student.guardianName}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Guardian Contact</label>
-                <p className="text-sm">{student.guardian_contact}</p>
+                <p className="text-sm">{student.guardianContact}</p>
               </div>
             </div>
 
-            {(student.guardian_email || student.student_email) && (
+            {(student.guardianEmail || student.studentEmail) && (
               <div className="grid grid-cols-2 gap-4">
-                {student.guardian_email && (
+                {student.guardianEmail && (
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Guardian Email</label>
-                    <p className="text-sm">{student.guardian_email}</p>
+                    <p className="text-sm">{student.guardianEmail}</p>
                   </div>
                 )}
-                {student.student_email && (
+                {student.studentEmail && (
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Student Email</label>
-                    <p className="text-sm">{student.student_email}</p>
+                    <p className="text-sm">{student.studentEmail}</p>
                   </div>
                 )}
               </div>
             )}
 
-            {student.date_of_birth && (
+            {student.dateOfBirth && (
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Date of Birth</label>
-                <p className="text-sm">{new Date(student.date_of_birth).toLocaleDateString()}</p>
+                <p className="text-sm">{new Date(student.dateOfBirth).toLocaleDateString()}</p>
               </div>
             )}
 

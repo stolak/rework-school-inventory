@@ -4,77 +4,107 @@ import { useToast } from "@/hooks/use-toast";
 
 export interface Student {
   id: string;
-  admission_number: string;
-  first_name: string;
-  middle_name?: string;
-  last_name: string;
+  admissionNumber: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  studentEmail?: string;
   gender?: "male" | "female" | "other";
-  date_of_birth?: string;
-  class_id?: string;
-  className?: string; // for display purposes - populated from classes
-  guardian_name: string;
-  guardian_contact: string;
-  guardian_email?: string;
-  student_email?: string;
+  dateOfBirth?: string;
+  classId?: string;
+  className?: string;
+  guardianName: string;
+  guardianContact: string;
+  guardianEmail?: string;
   address?: string;
-  status: "active" | "inactive" | "graduated";
-  itemsReceived?: number; // for display purposes
-  itemsPending?: number; // for display purposes
-  created_by?: string;
-  created_at?: string;
-  updated_at?: string;
-  // Nested objects from API response
-  school_classes?: {
-    id: string;
-    name: string;
-  };
+  status: string;
+  itemsReceived?: number;
+  itemsPending?: number;
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  class?: { id: string; name: string };
+}
+
+export type StudentCreatePayload = Omit<
+  Student,
+  | "id"
+  | "className"
+  | "itemsReceived"
+  | "itemsPending"
+  | "createdBy"
+  | "createdAt"
+  | "updatedAt"
+  | "class"
+  | "status"
+>;
+
+function sanitizeStudentPayload<T extends Record<string, unknown>>(body: T): T {
+  const next = { ...body } as Record<string, unknown>;
+  for (const key of Object.keys(next)) {
+    if (next[key] === "") delete next[key];
+  }
+  return next as T;
 }
 
 export const useStudents = (params?: {
-  status?: "active" | "inactive" | "graduated";
+  page?: number;
+  limit?: number;
+  status?: string;
+  classId?: string;
   class_id?: string;
   gender?: "male" | "female" | "other";
 }) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const {
-    data: rawStudents = [],
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["students", params],
-    queryFn: () => studentApi.list(params),
+  const page = params?.page ?? 1;
+  const limit = params?.limit ?? 20;
+
+  const { data: response, isLoading, error } = useQuery({
+    queryKey: ["students", page, limit, params?.status, params?.classId ?? params?.class_id ?? null, params?.gender ?? null],
+    queryFn: () =>
+      studentApi.list({
+        page,
+        limit,
+        status: params?.status,
+        classId: params?.classId ?? params?.class_id,
+        gender: params?.gender,
+      }),
   });
 
-  // Transform backend data to frontend format
+  const rawStudents = (response as any)?.data?.students ?? [];
+  const pagination = (response as any)?.data?.pagination;
+
   const students: Student[] = rawStudents.map((student: any) => ({
     id: student.id,
-    admission_number: student.admission_number,
-    first_name: student.first_name,
-    middle_name: student.middle_name,
-    last_name: student.last_name,
+    admissionNumber: student.admissionNumber,
+    firstName: student.firstName,
+    middleName: student.middleName,
+    lastName: student.lastName,
+    studentEmail: student.studentEmail,
     gender: student.gender,
-    date_of_birth: student.date_of_birth,
-    class_id: student.class_id,
-    className: student.school_classes?.name || "No Class", // Populated from nested school_classes
-    guardian_name: student.guardian_name,
-    guardian_contact: student.guardian_contact,
-    guardian_email: student.guardian_email,
-    student_email: student.student_email,
+    dateOfBirth: student.dateOfBirth,
+    classId: student.classId,
+    className: student.class?.name ?? "No Class",
+    guardianName: student.guardianName,
+    guardianContact: student.guardianContact,
+    guardianEmail: student.guardianEmail,
     address: student.address,
     status: student.status,
-    itemsReceived: 0, // This would need to be calculated from transactions
-    itemsPending: 0, // This would need to be calculated from transactions
-    created_by: student.created_by,
-    created_at: student.created_at,
-    updated_at: student.updated_at,
-    // Include nested object for additional data access
-    school_classes: student.school_classes,
+    itemsReceived: student.itemsReceived ?? 0,
+    itemsPending: student.itemsPending ?? 0,
+    createdBy: student.createdBy
+      ? `${student.createdBy.firstName ?? ""} ${student.createdBy.lastName ?? ""}`.trim()
+      : undefined,
+    createdAt: student.createdAt,
+    updatedAt: student.updatedAt,
+    class: student.class,
   }));
 
   const addMutation = useMutation({
-    mutationFn: studentApi.create,
+    mutationFn: (body: StudentCreatePayload) =>
+      studentApi.create(sanitizeStudentPayload(body as Record<string, unknown>)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
       toast({
@@ -93,7 +123,7 @@ export const useStudents = (params?: {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Student> }) =>
-      studentApi.update(id, data),
+      studentApi.update(id, sanitizeStudentPayload(data as Record<string, unknown>)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
       toast({
@@ -130,12 +160,13 @@ export const useStudents = (params?: {
 
   return {
     students,
+    pagination,
     isLoading,
     error,
-    addStudent: addMutation.mutate,
+    addStudent: addMutation.mutateAsync,
     updateStudent: (id: string, data: Partial<Student>) =>
-      updateMutation.mutate({ id, data }),
-    deleteStudent: deleteMutation.mutate,
+      updateMutation.mutateAsync({ id, data }),
+    deleteStudent: deleteMutation.mutateAsync,
     getStudent: (id: string) => students.find((student) => student.id === id),
   };
 };

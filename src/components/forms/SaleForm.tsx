@@ -45,7 +45,7 @@ interface SaleFormProps {
 
 export function SaleForm({ transaction, onSubmit, onCancel }: SaleFormProps) {
   const { items } = useInventory()
-  const { students } = useStudents()
+  const { students } = useStudents({ page: 1, limit: 200 })
   const { classTeachers } = useClassTeachers()
 
   const form = useForm<SaleFormData>({
@@ -121,7 +121,7 @@ export function SaleForm({ transaction, onSubmit, onCancel }: SaleFormProps) {
                 </FormControl>
                 <datalist id="customer-suggestions">
                   {students.map((student) => (
-                    <option key={`student-${student.id}`} value={`${student.first_name} ${student.last_name}`} />
+                    <option key={`student-${student.id}`} value={`${student.firstName} ${student.lastName}`} />
                   ))}
                   {classTeachers.map((teacher) => (
                     <option key={`teacher-${teacher.id}`} value={teacher.name} />

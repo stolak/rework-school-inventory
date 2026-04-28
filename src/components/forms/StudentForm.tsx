@@ -10,18 +10,18 @@ import { Student } from "@/hooks/useStudents"
 import { useClasses } from "@/hooks/useClasses"
 
 const studentSchema = z.object({
-  admission_number: z.string().min(1, "Admission number is required"),
-  first_name: z.string().min(1, "First name is required"),
-  middle_name: z.string().optional(),
-  last_name: z.string().min(1, "Last name is required"),
-  class_id: z.string().min(1, "Class is required"),
-  guardian_name: z.string().min(1, "Guardian name is required"),
-  guardian_contact: z.string().min(1, "Guardian contact is required"),
-  guardian_email: z.string().email("Invalid email address").optional().or(z.literal("")),
-  student_email: z.string().email("Invalid email address").optional().or(z.literal("")),
-  status: z.enum(["active", "inactive", "graduated"]),
+  admissionNumber: z.string().min(1, "Admission number is required"),
+  firstName: z.string().min(1, "First name is required"),
+  middleName: z.string().optional(),
+  lastName: z.string().min(1, "Last name is required"),
+  classId: z.string().min(1, "Class is required"),
+  guardianName: z.string().min(1, "Guardian name is required"),
+  guardianContact: z.string().min(1, "Guardian contact is required"),
+  guardianEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
+  studentEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
+  status: z.enum(["Active", "Inactive", "Graduated"]).optional(),
   gender: z.enum(["male", "female", "other"]),
-  date_of_birth: z.string().optional(),
+  dateOfBirth: z.string().optional(),
   address: z.string().optional(),
 })
 
@@ -33,35 +33,41 @@ interface StudentFormProps {
   onCancel: () => void
 }
 
-export function StudentForm({ initialData, onSubmit, onCancel }: StudentFormProps) {
-  const { classes } = useClasses()
+function toDateInputValue(iso?: string) {
+  if (!iso) return ""
+  return iso.includes("T") ? iso.slice(0, 10) : iso.slice(0, 10)
+}
 
-  
+export function StudentForm({ initialData, onSubmit, onCancel }: StudentFormProps) {
+  const { classes } = useClasses({ page: 1, limit: 100 })
+
   const form = useForm<StudentFormData>({
     resolver: zodResolver(studentSchema),
     defaultValues: {
-      admission_number: initialData?.admission_number || "",
-      first_name: initialData?.first_name || "",
-      middle_name: initialData?.middle_name || "",
-      last_name: initialData?.last_name || "",
-      class_id: initialData?.class_id || "",
-      guardian_name: initialData?.guardian_name || "",
-      guardian_contact: initialData?.guardian_contact || "",
-      guardian_email: initialData?.guardian_email || "",
-      student_email: initialData?.student_email || "",
-      status: initialData?.status || "active",
+      admissionNumber: initialData?.admissionNumber || "",
+      firstName: initialData?.firstName || "",
+      middleName: initialData?.middleName || "",
+      lastName: initialData?.lastName || "",
+      classId: initialData?.classId || "",
+      guardianName: initialData?.guardianName || "",
+      guardianContact: initialData?.guardianContact || "",
+      guardianEmail: initialData?.guardianEmail || "",
+      studentEmail: initialData?.studentEmail || "",
+      status: (initialData?.status as StudentFormData["status"]) || "Active",
       gender: initialData?.gender || "male",
-      date_of_birth: initialData?.date_of_birth || "",
+      dateOfBirth: toDateInputValue(initialData?.dateOfBirth),
       address: initialData?.address || "",
     },
   })
+
+  const isEdit = Boolean(initialData?.id)
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
           control={form.control}
-          name="admission_number"
+          name="admissionNumber"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Admission Number</FormLabel>
@@ -76,7 +82,7 @@ export function StudentForm({ initialData, onSubmit, onCancel }: StudentFormProp
         <div className="grid grid-cols-3 gap-4">
           <FormField
             control={form.control}
-            name="first_name"
+            name="firstName"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>First Name</FormLabel>
@@ -87,10 +93,10 @@ export function StudentForm({ initialData, onSubmit, onCancel }: StudentFormProp
               </FormItem>
             )}
           />
-          
+
           <FormField
             control={form.control}
-            name="middle_name"
+            name="middleName"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Middle Name (Optional)</FormLabel>
@@ -101,10 +107,10 @@ export function StudentForm({ initialData, onSubmit, onCancel }: StudentFormProp
               </FormItem>
             )}
           />
-          
+
           <FormField
             control={form.control}
-            name="last_name"
+            name="lastName"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Last Name</FormLabel>
@@ -120,7 +126,7 @@ export function StudentForm({ initialData, onSubmit, onCancel }: StudentFormProp
         <div className="grid grid-cols-3 gap-4">
           <FormField
             control={form.control}
-            name="class_id"
+            name="classId"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Class</FormLabel>
@@ -168,7 +174,7 @@ export function StudentForm({ initialData, onSubmit, onCancel }: StudentFormProp
 
           <FormField
             control={form.control}
-            name="date_of_birth"
+            name="dateOfBirth"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Date of Birth</FormLabel>
@@ -184,7 +190,7 @@ export function StudentForm({ initialData, onSubmit, onCancel }: StudentFormProp
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="guardian_name"
+            name="guardianName"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Guardian Name</FormLabel>
@@ -198,7 +204,7 @@ export function StudentForm({ initialData, onSubmit, onCancel }: StudentFormProp
 
           <FormField
             control={form.control}
-            name="guardian_contact"
+            name="guardianContact"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Guardian Contact</FormLabel>
@@ -214,7 +220,7 @@ export function StudentForm({ initialData, onSubmit, onCancel }: StudentFormProp
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="guardian_email"
+            name="guardianEmail"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Guardian Email (Optional)</FormLabel>
@@ -228,7 +234,7 @@ export function StudentForm({ initialData, onSubmit, onCancel }: StudentFormProp
 
           <FormField
             control={form.control}
-            name="student_email"
+            name="studentEmail"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Student Email (Optional)</FormLabel>
@@ -255,35 +261,37 @@ export function StudentForm({ initialData, onSubmit, onCancel }: StudentFormProp
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="status"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Status</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                  <SelectItem value="graduated">Graduated</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {isEdit && (
+          <FormField
+            control={form.control}
+            name="status"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Status</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="Active">Active</SelectItem>
+                    <SelectItem value="Inactive">Inactive</SelectItem>
+                    <SelectItem value="Graduated">Graduated</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <div className="flex justify-end space-x-2 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
           <Button type="submit" className="bg-gradient-primary">
-            {initialData ? "Update Student" : "Add Student"}
+            {initialData?.id ? "Update Student" : "Add Student"}
           </Button>
         </div>
       </form>
