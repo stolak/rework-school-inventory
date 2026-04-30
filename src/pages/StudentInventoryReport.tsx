@@ -5,6 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Combobox } from "@/components/ui/combobox"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { useClasses } from "@/hooks/useClasses"
 import { useSessions } from "@/hooks/useSessions"
 import { useStudents } from "@/hooks/useStudents"
@@ -13,7 +20,7 @@ import { useTerms } from "@/hooks/useTerms"
 import { useInventory } from "@/hooks/useInventory"
 import { useToast } from "@/hooks/use-toast"
 import { useQuery } from "@tanstack/react-query"
-import { studentCollectionsApi, type StudentCollectionSummaryRow } from "@/lib/api"
+import { studentCollectionsApi, type StudentCollectionRow, type StudentCollectionSummaryRow } from "@/lib/api"
 
 export default function StudentInventoryReport() {
   const today = useMemo(() => new Date(), [])
@@ -35,6 +42,8 @@ export default function StudentInventoryReport() {
   const [transactionDateFrom, setTransactionDateFrom] = useState<string>(defaultFrom)
   const [transactionDateTo, setTransactionDateTo] = useState<string>(defaultTo)
   const [hasSearched, setHasSearched] = useState(true)
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [detailsItemId, setDetailsItemId] = useState<string | null>(null)
 
   const { classes } = useClasses()
   const { sessions } = useSessions({ status: 'active' })
@@ -78,6 +87,38 @@ export default function StudentInventoryReport() {
   })
 
   const summaryRows: StudentCollectionSummaryRow[] = data?.data?.summary ?? []
+
+  const detailsQueryParams = useMemo(() => ({
+    itemId: detailsItemId ?? undefined,
+    studentId: selectedStudentId || undefined,
+    classId: selectedClassId || undefined,
+    subclassId: selectedSubClassId || undefined,
+    sessionId: selectedSessionId || undefined,
+    termId: selectedTermId || undefined,
+    transactionDateFrom: transactionDateFrom || undefined,
+    transactionDateTo: transactionDateTo || undefined,
+    page: 1,
+    limit: 100,
+  }), [
+    detailsItemId,
+    selectedStudentId,
+    selectedClassId,
+    selectedSubClassId,
+    selectedSessionId,
+    selectedTermId,
+    transactionDateFrom,
+    transactionDateTo,
+  ])
+
+  const { data: detailsData, isLoading: isDetailsLoading } = useQuery({
+    queryKey: ["student-collections-details", detailsQueryParams],
+    queryFn: () => studentCollectionsApi.list(detailsQueryParams),
+    enabled: detailsOpen && !!detailsItemId,
+  })
+
+  const detailRows: StudentCollectionRow[] =
+    detailsData?.data?.studentCollections ?? []
+  const detailsPagination = detailsData?.data?.pagination
 
   const selectedStudent = filteredStudents.find(s => s.id === selectedStudentId)
   const selectedClass = classes.find(c => c.id === selectedClassId)
@@ -359,6 +400,7 @@ export default function StudentInventoryReport() {
                     <TableRow>
                       <TableHead>Item</TableHead>
                       <TableHead>Total Qty Out</TableHead>
+                      <TableHead className="w-[140px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -390,6 +432,18 @@ export default function StudentInventoryReport() {
                         <TableCell>
                           <Badge variant="outline">{row.totalQtyOut}</Badge>
                         </TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setDetailsItemId(row.itemId)
+                              setDetailsOpen(true)
+                            }}
+                          >
+                            View details
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -399,6 +453,94 @@ export default function StudentInventoryReport() {
           </CardContent>
         </Card>
       )}
+
+      <Dialog
+        open={detailsOpen}
+        onOpenChange={(open) => {
+          setDetailsOpen(open)
+          if (!open) setDetailsItemId(null)
+        }}
+      >
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Collection details</DialogTitle>
+            <DialogDescription>
+              Showing up to 100 collection rows for the selected item, using the
+              same filters and date range as the summary.
+            </DialogDescription>
+          </DialogHeader>
+
+          {isDetailsLoading ? (
+            <div className="flex justify-center items-center py-10">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : detailRows.length === 0 ? (
+            <div className="py-6 text-sm text-muted-foreground">
+              No collection details found for this item.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">
+                  {detailsPagination
+                    ? `Page ${detailsPagination.page} of ${detailsPagination.totalPages} • Total ${detailsPagination.total}`
+                    : `Showing ${detailRows.length} rows`}
+                </div>
+              </div>
+
+              <div className="max-h-[60vh] overflow-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Student</TableHead>
+                      <TableHead>Qty Out</TableHead>
+                      <TableHead>Reference</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Notes</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {detailRows.map((r) => (
+                      <TableRow key={r.id}>
+                        <TableCell>
+                          <div className="font-medium">
+                            {r.student
+                              ? `${r.student.firstName ?? ""} ${r.student.lastName ?? ""}`.trim() ||
+                                r.student.admissionNumber ||
+                                r.student.id
+                              : r.studentId ?? "—"}
+                          </div>
+                          {r.student?.admissionNumber && (
+                            <div className="text-xs text-muted-foreground">
+                              {r.student.admissionNumber}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{r.qtyOut}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">
+                            {r.referenceNo ?? "—"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {r.transactionDate
+                            ? new Date(r.transactionDate).toLocaleDateString()
+                            : "—"}
+                        </TableCell>
+                        <TableCell className="max-w-[320px] truncate">
+                          {r.notes ?? "—"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
