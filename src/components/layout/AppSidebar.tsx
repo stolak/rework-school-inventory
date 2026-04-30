@@ -59,7 +59,7 @@ const schoolMenuItems = [
 ]
 
 const reportsMenuItems = [
-  { title: "Student Inventory Report", url: "/reports/student-inventory", icon: FileBarChart },
+  { title: "Student collections summary", url: "/reports/student-inventory", icon: FileBarChart },
   { title: "Inventory Collections Report", url: "/reports/inventory-collections", icon: BarChart },
   { title: "Distribution & Collection Report", url: "/reports/distribution-collection", icon: BarChart3 },
 ]

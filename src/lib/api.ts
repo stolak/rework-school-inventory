@@ -590,6 +590,46 @@ export const createStudentCollectionsBulk = (body: {
   body
 );
 
+export type StudentCollectionSummaryRow = {
+  itemId: string;
+  totalQtyOut: string;
+  item?: {
+    id: string;
+    name: string;
+    category?: { id: string; name: string } | null;
+    subCategory?: { id: string; name: string } | null;
+    brand?: { id: string; name: string } | null;
+  } | null;
+};
+
+export const fetchStudentCollectionsSummary = (params?: {
+  itemId?: string;
+  studentId?: string;
+  classId?: string;
+  subclassId?: string;
+  sessionId?: string;
+  termId?: string;
+  transactionDateFrom?: string;
+  transactionDateTo?: string;
+}) => {
+  const queryParams = new URLSearchParams();
+  if (params?.itemId) queryParams.append("itemId", params.itemId);
+  if (params?.studentId) queryParams.append("studentId", params.studentId);
+  if (params?.classId) queryParams.append("classId", params.classId);
+  if (params?.subclassId) queryParams.append("subclassId", params.subclassId);
+  if (params?.sessionId) queryParams.append("sessionId", params.sessionId);
+  if (params?.termId) queryParams.append("termId", params.termId);
+  if (params?.transactionDateFrom)
+    queryParams.append("transactionDateFrom", params.transactionDateFrom);
+  if (params?.transactionDateTo)
+    queryParams.append("transactionDateTo", params.transactionDateTo);
+
+  const qs = queryParams.toString();
+  return get<ApiResponse<{ summary: StudentCollectionSummaryRow[] }>>(
+    `/api/v1/student-collections/summary${qs ? `?${qs}` : ""}`
+  );
+};
+
 export const updateStudentCollection = (
   id: string,
   body: Partial<{
@@ -608,6 +648,7 @@ export const deleteStudentCollection = (id: string) =>
 export const studentCollectionsApi = {
   list: fetchStudentCollections,
   bulkCreate: createStudentCollectionsBulk,
+  summary: fetchStudentCollectionsSummary,
   update: updateStudentCollection,
   remove: deleteStudentCollection,
 };
