@@ -528,6 +528,12 @@ export type StudentCollectionRow = {
   createdAt: string;
   updatedAt: string;
   item?: { name?: string } | null;
+  student?: {
+    id: string;
+    admissionNumber?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+  } | null;
   createdBy?: { firstName?: string; lastName?: string } | null;
 };
 
@@ -536,6 +542,9 @@ export const fetchStudentCollections = (params?: {
   limit?: number;
   studentId?: string;
   classId?: string;
+  subclassId?: string;
+  sessionId?: string;
+  termId?: string;
   itemId?: string;
   referenceNo?: string;
   transactionDateFrom?: string;
@@ -553,6 +562,9 @@ export const fetchStudentCollections = (params?: {
   const itemId = params?.itemId ?? params?.inventory_item_id;
   if (studentId) queryParams.append("studentId", studentId);
   if (classId) queryParams.append("classId", classId);
+  if (params?.subclassId) queryParams.append("subclassId", params.subclassId);
+  if (params?.sessionId) queryParams.append("sessionId", params.sessionId);
+  if (params?.termId) queryParams.append("termId", params.termId);
   if (itemId) queryParams.append("itemId", itemId);
   if (params?.referenceNo) queryParams.append("referenceNo", params.referenceNo);
   if (params?.transactionDateFrom)

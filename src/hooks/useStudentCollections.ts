@@ -49,6 +49,9 @@ export function useStudentCollections(params?: {
   limit?: number;
   studentId?: string;
   classId?: string;
+  subclassId?: string;
+  sessionId?: string;
+  termId?: string;
   itemId?: string;
   referenceNo?: string;
   transactionDateFrom?: string;
@@ -90,7 +93,10 @@ export function useStudentCollections(params?: {
       createdById: collection.createdById,
       createdAt: collection.createdAt,
       updatedAt: collection.updatedAt,
-      studentName: "Unknown Student",
+      studentName: collection.student
+        ? `${collection.student.firstName ?? ""} ${collection.student.lastName ?? ""}`.trim() ||
+          "Unknown Student"
+        : "Unknown Student",
       itemName: collection.item?.name || "Unknown Item",
       createdByName: collection.createdBy
         ? `${collection.createdBy.firstName ?? ""} ${collection.createdBy.lastName ?? ""}`.trim()
@@ -109,7 +115,14 @@ export function useStudentCollections(params?: {
       updated_at: collection.updatedAt ?? undefined,
 
       // Legacy nested objects (not provided by new API)
-      students: undefined,
+      students: collection.student
+        ? {
+            id: collection.student.id,
+            first_name: collection.student.firstName,
+            last_name: collection.student.lastName,
+            admission_number: collection.student.admissionNumber,
+          }
+        : undefined,
       inventory_items: undefined,
       academic_session_terms: undefined,
       school_classes: undefined,

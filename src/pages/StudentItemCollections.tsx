@@ -12,6 +12,8 @@ import { useClasses } from "@/hooks/useClasses"
 import { useInventory } from "@/hooks/useInventory"
 import { useSessions } from "@/hooks/useSessions"
 import { useStudents } from "@/hooks/useStudents"
+import { useSubClasses } from "@/hooks/useSubClasses"
+import { useTerms } from "@/hooks/useTerms"
 import { useToast } from "@/hooks/use-toast"
 import {
   AlertDialog,
@@ -31,8 +33,13 @@ interface NewCollectionItem {
 }
 
 export default function StudentItemCollections() {
+  const [filterStudentId, setFilterStudentId] = useState<string>("")
   const [selectedClassId, setSelectedClassId] = useState<string>("")
-  const [selectedSessionTermId, setSelectedSessionTermId] = useState<string>("")
+  const [selectedSubClassId, setSelectedSubClassId] = useState<string>("")
+  const [selectedSessionId, setSelectedSessionId] = useState<string>("")
+  const [selectedTermId, setSelectedTermId] = useState<string>("")
+  const [page, setPage] = useState<number>(1)
+  const [limit, setLimit] = useState<number>(20)
 
   const [selectedStudentId, setSelectedStudentId] = useState<string>("")
   const [transactionDate, setTransactionDate] = useState<string>(
@@ -45,25 +52,41 @@ export default function StudentItemCollections() {
   const [collectionToDelete, setCollectionToDelete] = useState<string | null>(null)
 
   const { collections, createBulkCollection, deleteCollection, isLoading } = useStudentCollections({
-    class_id: selectedClassId || undefined,
-    // Keep this wired for now (back-compat alias in the hook), but the new API may not filter by it
-    session_term_id: selectedSessionTermId || undefined,
-    page: 1,
-    limit: 200,
+    studentId: filterStudentId || undefined,
+    classId: selectedClassId || undefined,
+    subclassId: selectedSubClassId || undefined,
+    sessionId: selectedSessionId || undefined,
+    termId: selectedTermId || undefined,
+    page,
+    limit,
   })
   const { classes } = useClasses()
   const { items } = useInventory()
   const { sessions } = useSessions({ status: 'active' })
+  const { subClasses } = useSubClasses({ page: 1, limit: 500 })
+  const { terms } = useTerms({ page: 1, limit: 200, status: "Active" })
   const { students: classStudents, isLoading: studentsLoading } = useStudents({
     classId: selectedClassId || undefined,
+    subClassId: selectedSubClassId || undefined,
     status: "Active",
+    page: 1,
+    limit: 500,
+  })
+  const { students: allStudents, isLoading: allStudentsLoading } = useStudents({
+    status: "Active",
+    classId: selectedClassId || undefined,
+    subClassId: selectedSubClassId || undefined,
     page: 1,
     limit: 500,
   })
   const { toast } = useToast()
 
   const selectedClass = classes.find(c => c.id === selectedClassId)
-  const selectedSession = sessions.find(s => s.id === selectedSessionTermId)
+  const selectedSession = sessions.find(s => s.id === selectedSessionId)
+  const selectedTerm = terms.find(t => t.id === selectedTermId)
+  const filteredSubClasses = selectedClassId
+    ? subClasses.filter(sc => sc.classId === selectedClassId)
+    : subClasses
 
   const addNewItemRow = () => {
     setNewItems(prev => [
@@ -172,10 +195,6 @@ export default function StudentItemCollections() {
     }
   };
 
-  const studentById = new Map(
-    classStudents.map(s => [s.id, `${s.firstName} ${s.lastName}`] as const)
-  )
-
   const groupedBatches = collections.reduce((acc, row) => {
     const studentId = row.studentId ?? "unknown-student"
     const ref = row.referenceNo ?? row.id
@@ -184,7 +203,8 @@ export default function StudentItemCollections() {
     if (!acc.has(key)) {
       acc.set(key, {
         studentId,
-        studentName: studentById.get(studentId) ?? "Unknown Student",
+        studentName: row.studentName || "Unknown Student",
+        admissionNumber: row.students?.admission_number,
         referenceNo: row.referenceNo,
         notes: row.notes,
         transactionDate: row.transactionDate,
@@ -196,6 +216,7 @@ export default function StudentItemCollections() {
   }, new Map<string, {
     studentId: string
     studentName: string
+    admissionNumber?: string
     referenceNo: string | null
     notes: string | null
     transactionDate: string
@@ -215,41 +236,135 @@ export default function StudentItemCollections() {
       {/* Class and Session Selection */}
       <Card>
         <CardHeader>
-          <CardTitle>Select Class and Session/Term</CardTitle>
+          <CardTitle>Filters (optional)</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            
             <div>
               <Label>Class</Label>
               <Combobox
                 value={selectedClassId}
-                onValueChange={setSelectedClassId}
-                options={classes.map((class_) => ({
-                  value: class_.id,
-                  label: `${class_.name}  (${class_.totalStudents} students)`
-                }))}
-                placeholder="Choose a class..."
+                onValueChange={(v) => {
+                  setSelectedClassId(v)
+                  // When class changes, reset subclass (since it's dependent)
+                  setSelectedSubClassId("")
+                  setPage(1)
+                }}
+                options={[
+                  { value: "", label: "All classes" },
+                  ...classes.map((class_) => ({
+                    value: class_.id,
+                    label: `${class_.name}  (${class_.totalStudents} students)`,
+                  })),
+                ]}
+                placeholder="All classes"
                 searchPlaceholder="Search classes..."
               />
             </div>
+            
             <div>
-              <Label>Session/Term</Label>
+              <Label>Sub class</Label>
               <Combobox
-                value={selectedSessionTermId}
-                onValueChange={setSelectedSessionTermId}
-                options={sessions.map((session) => ({
-                  value: session.id,
-                  label: `${session.name} - ${session.session}`
-                }))}
-                placeholder="Choose a session/term..."
+                value={selectedSubClassId}
+                onValueChange={(v) => {
+                  setSelectedSubClassId(v)
+                  setPage(1)
+                }}
+                options={[
+                  { value: "", label: "All sub classes" },
+                  ...filteredSubClasses.map((sc) => ({
+                    value: sc.id,
+                    label: sc.name,
+                  })),
+                ]}
+                placeholder="All sub classes"
+                searchPlaceholder="Search sub classes..."
+              />
+            </div>
+            <div>
+              <Label>Session</Label>
+              <Combobox
+                value={selectedSessionId}
+                onValueChange={(v) => {
+                  setSelectedSessionId(v)
+                  setPage(1)
+                }}
+                options={[
+                  { value: "", label: "All sessions" },
+                  ...sessions.map((session) => ({
+                    value: session.id,
+                    label: `${session.name} - ${session.session}`,
+                  })),
+                ]}
+                placeholder="All sessions"
                 searchPlaceholder="Search sessions..."
               />
+            </div>
+            <div>
+              <Label>Term</Label>
+              <Combobox
+                value={selectedTermId}
+                onValueChange={(v) => {
+                  setSelectedTermId(v)
+                  setPage(1)
+                }}
+                options={[
+                  { value: "", label: "All terms" },
+                  ...terms.map((t) => ({
+                    value: t.id,
+                    label: t.name,
+                  })),
+                ]}
+                placeholder="All terms"
+                searchPlaceholder="Search terms..."
+              />
+            </div>
+            <div>
+              <Label>Student</Label>
+              <Combobox
+                value={filterStudentId}
+                onValueChange={(v) => {
+                  setFilterStudentId(v)
+                  setPage(1)
+                }}
+                options={[
+                  { value: "", label: "All students" },
+                  ...(allStudentsLoading ? [] : allStudents.map((student) => ({
+                    value: student.id,
+                    label: `${student.firstName} ${student.lastName} - ${student.admissionNumber}`,
+                  }))),
+                ]}
+                placeholder={allStudentsLoading ? "Loading students..." : "All students"}
+                searchPlaceholder="Search students..."
+                disabled={allStudentsLoading}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Page</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={page}
+                  onChange={(e) => setPage(Math.max(1, parseInt(e.target.value) || 1))}
+                />
+              </div>
+              <div>
+                <Label>Limit</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={limit}
+                  onChange={(e) => setLimit(Math.max(1, parseInt(e.target.value) || 20))}
+                />
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {selectedClassId && (
+      {/* {selectedClassId && ( */}
         <>
           {/* Add New Collection Batch */}
           <Card>
@@ -257,6 +372,7 @@ export default function StudentItemCollections() {
               <CardTitle>
                 Add New Collections for {selectedClass?.name}
                 {selectedSession ? ` - ${selectedSession.name}` : ""}
+                {selectedTerm ? ` - ${selectedTerm.name}` : ""}
               </CardTitle>
               <div className="space-x-2">
                 <Button onClick={addNewItemRow} variant="outline" size="sm">
@@ -387,7 +503,7 @@ export default function StudentItemCollections() {
                         <TableCell>
                           <div className="font-medium">{batch.studentName}</div>
                           <Badge variant="secondary" className="text-xs">
-                            {batch.studentId}
+                            {batch.admissionNumber || batch.studentId}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -437,7 +553,7 @@ export default function StudentItemCollections() {
             </CardContent>
           </Card>
         </>
-      )}
+      {/* )} */}
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
