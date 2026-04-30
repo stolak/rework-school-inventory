@@ -1,9 +1,8 @@
 import { useState } from "react"
-import { Plus, Save, Trash2, Edit, Users } from "lucide-react"
+import { Plus, Save, Trash2, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Combobox } from "@/components/ui/combobox"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -25,27 +24,32 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-interface NewCollection {
-  student_id: string
-  inventory_item_id: string
-  qty: number
-  received: boolean
-  studentName?: string
+interface NewCollectionItem {
+  itemId: string
+  qtyOut: number
   itemName?: string
 }
 
 export default function StudentItemCollections() {
   const [selectedClassId, setSelectedClassId] = useState<string>("")
   const [selectedSessionTermId, setSelectedSessionTermId] = useState<string>("")
-  const [newCollections, setNewCollections] = useState<NewCollection[]>([])
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState<Partial<StudentCollection>>({})
+
+  const [selectedStudentId, setSelectedStudentId] = useState<string>("")
+  const [transactionDate, setTransactionDate] = useState<string>(
+    new Date().toISOString().slice(0, 10)
+  )
+  const [notes, setNotes] = useState<string>("")
+  const [newItems, setNewItems] = useState<NewCollectionItem[]>([])
+
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [collectionToDelete, setCollectionToDelete] = useState<string | null>(null)
 
-  const { collections, addMultipleCollections, updateCollection, deleteCollection, isLoading } = useStudentCollections({
+  const { collections, createBulkCollection, deleteCollection, isLoading } = useStudentCollections({
     class_id: selectedClassId || undefined,
-    session_term_id: selectedSessionTermId || undefined
+    // Keep this wired for now (back-compat alias in the hook), but the new API may not filter by it
+    session_term_id: selectedSessionTermId || undefined,
+    page: 1,
+    limit: 200,
   })
   const { classes } = useClasses()
   const { items } = useInventory()
@@ -61,41 +65,39 @@ export default function StudentItemCollections() {
   const selectedClass = classes.find(c => c.id === selectedClassId)
   const selectedSession = sessions.find(s => s.id === selectedSessionTermId)
 
-  const addNewCollectionRow = () => {
-    setNewCollections(prev => [...prev, {
-      student_id: "",
-      inventory_item_id: "",
-      qty: 1,
-      received: true
-    }])
+  const addNewItemRow = () => {
+    setNewItems(prev => [
+      ...prev,
+      {
+        itemId: "",
+        qtyOut: 1,
+      },
+    ])
   }
 
-  const updateNewCollection = (index: number, field: keyof NewCollection, value: string | number | boolean) => {
-    setNewCollections(prev => prev.map((item, i) => {
-      if (i === index) {
-        const updated = { ...item, [field]: value }
-        
-        // Populate display names
-        if (field === 'student_id') {
-          const student = classStudents.find(s => s.id === value)
-          updated.studentName = student ? `${student.firstName} ${student.lastName}` : undefined
-        }
-        if (field === 'inventory_item_id') {
-          const inventoryItem = items.find(item => item.id === value)
+  const updateNewItem = (
+    index: number,
+    field: keyof NewCollectionItem,
+    value: string | number
+  ) => {
+    setNewItems(prev =>
+      prev.map((row, i) => {
+        if (i !== index) return row
+        const updated = { ...row, [field]: value } as NewCollectionItem
+        if (field === "itemId") {
+          const inventoryItem = items.find(it => it.id === value)
           updated.itemName = inventoryItem?.name
         }
-        
         return updated
-      }
-      return item
-    }))
+      })
+    )
   }
 
-  const removeNewCollection = (index: number) => {
-    setNewCollections(prev => prev.filter((_, i) => i !== index))
+  const removeNewItem = (index: number) => {
+    setNewItems(prev => prev.filter((_, i) => i !== index))
   }
 
-  const saveNewCollections = async () => {
+  const saveBatch = async () => {
     if (!selectedClassId) {
       toast({
         title: "Error",
@@ -105,95 +107,50 @@ export default function StudentItemCollections() {
       return
     }
 
-    if (!selectedSessionTermId) {
+    if (!selectedStudentId) {
       toast({
         title: "Error",
-        description: "Please select a session/term first",
+        description: "Please select a student first",
         variant: "destructive"
       })
       return
     }
 
-    const validCollections = newCollections.filter(item => 
-      item.student_id && item.inventory_item_id && item.qty > 0
-    )
-
-    if (validCollections.length === 0) {
+    const validItems = newItems.filter(it => it.itemId && it.qtyOut > 0)
+    if (validItems.length === 0) {
       toast({
         title: "Error", 
-        description: "Please add at least one valid collection",
+        description: "Please add at least one valid item",
         variant: "destructive"
       })
       return
     }
-
-    const collectionsToAdd = validCollections.map(item => ({
-      student_id: item.student_id,
-      class_id: selectedClassId,
-      session_term_id: selectedSessionTermId,
-      inventory_item_id: item.inventory_item_id,
-      qty: item.qty,
-      eligible: true, // Always true by default
-      received: item.received,
-    }))
 
     toast({
       title: "Saving...",
-      description: "Please wait while we save the collections",
+      description: "Please wait while we save the collection batch",
     });
     
     try {
-      await addMultipleCollections(collectionsToAdd);
+      await createBulkCollection({
+        studentId: selectedStudentId,
+        notes: notes?.trim() ? notes.trim() : undefined,
+        transactionDate,
+        items: validItems.map(it => ({ itemId: it.itemId, qtyOut: it.qtyOut })),
+      })
       toast({
         title: "Success",
-        description: "Collections added successfully",
+        description: "Collection batch added successfully",
       });
-      // Only clear the form data on successful API response
-      setNewCollections([]);
+      setNewItems([])
+      setNotes("")
     } catch (err) {
       toast({
         title: "Error",
-        description: "Failed to add collections: " + (err as any).message,
+        description: "Failed to add collection batch: " + (err as any).message,
         variant: "destructive",
       });
-      // Keep the form data when API call fails so user doesn't lose their work
-      // setNewCollections([]) is NOT called here
     }
-  }
-
-  const startEdit = (collection: StudentCollection) => {
-    setEditingId(collection.id)
-    setEditForm(collection)
-  }
-
-  const saveEdit = async () => {
-    if (editingId && editForm) {
-      toast({
-        title: "Updating...",
-        description: "Please wait while we update the collection",
-      });
-      
-      try {
-        await updateCollection(editingId, editForm);
-        toast({
-          title: "Success",
-          description: "Collection updated successfully",
-        });
-        setEditingId(null);
-        setEditForm({});
-      } catch (err) {
-        toast({
-          title: "Error",
-          description: "Failed to update collection",
-          variant: "destructive",
-        });
-      }
-    }
-  }
-
-  const cancelEdit = () => {
-    setEditingId(null)
-    setEditForm({})
   }
 
   const handleDelete = (id: string) => {
@@ -214,6 +171,36 @@ export default function StudentItemCollections() {
       }
     }
   };
+
+  const studentById = new Map(
+    classStudents.map(s => [s.id, `${s.firstName} ${s.lastName}`] as const)
+  )
+
+  const groupedBatches = collections.reduce((acc, row) => {
+    const studentId = row.studentId ?? "unknown-student"
+    const ref = row.referenceNo ?? row.id
+    const key = `${studentId}::${ref}`
+
+    if (!acc.has(key)) {
+      acc.set(key, {
+        studentId,
+        studentName: studentById.get(studentId) ?? "Unknown Student",
+        referenceNo: row.referenceNo,
+        notes: row.notes,
+        transactionDate: row.transactionDate,
+        rows: [] as StudentCollection[],
+      })
+    }
+    acc.get(key)!.rows.push(row)
+    return acc
+  }, new Map<string, {
+    studentId: string
+    studentName: string
+    referenceNo: string | null
+    notes: string | null
+    transactionDate: string
+    rows: StudentCollection[]
+  }>());
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -262,54 +249,75 @@ export default function StudentItemCollections() {
         </CardContent>
       </Card>
 
-      {selectedClassId && selectedSessionTermId && (
+      {selectedClassId && (
         <>
-          {/* Add New Collections */}
+          {/* Add New Collection Batch */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Add New Collections for {selectedClass?.name} - {selectedSession?.name}</CardTitle>
+              <CardTitle>
+                Add New Collections for {selectedClass?.name}
+                {selectedSession ? ` - ${selectedSession.name}` : ""}
+              </CardTitle>
               <div className="space-x-2">
-                <Button onClick={addNewCollectionRow} variant="outline" size="sm">
+                <Button onClick={addNewItemRow} variant="outline" size="sm">
                   <Plus className="mr-2 h-4 w-4" />
-                  Add Row
+                  Add Item
                 </Button>
-                {newCollections.length > 0 && (
-                  <Button onClick={saveNewCollections} size="sm">
+                {newItems.length > 0 && (
+                  <Button onClick={saveBatch} size="sm">
                     <Save className="mr-2 h-4 w-4" />
-                    Save All
+                    Save Batch
                   </Button>
                 )}
               </div>
             </CardHeader>
             <CardContent>
-              {newCollections.length === 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div>
+                  <Label>Student</Label>
+                  <Combobox
+                    value={selectedStudentId}
+                    onValueChange={setSelectedStudentId}
+                    options={studentsLoading ? [] : classStudents.map((student) => ({
+                      value: student.id,
+                      label: `${student.firstName} ${student.lastName} - ${student.admissionNumber}`
+                    }))}
+                    placeholder={studentsLoading ? "Loading students..." : "Select student..."}
+                    searchPlaceholder="Search students..."
+                    disabled={studentsLoading}
+                  />
+                </div>
+                <div>
+                  <Label>Transaction Date</Label>
+                  <Input
+                    type="date"
+                    value={transactionDate}
+                    onChange={(e) => setTransactionDate(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label>Notes</Label>
+                  <Input
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Optional notes..."
+                  />
+                </div>
+              </div>
+
+              {newItems.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-muted-foreground">Click "Add Row" to start adding student collections</p>
+                  <p className="text-muted-foreground">Click "Add Item" to start building a batch for the selected student</p>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {newCollections.map((item, index) => (
-                    <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 border rounded-lg">
-                      <div>
-                        <Label>Student</Label>
-                        <Combobox
-                          value={item.student_id}
-                          onValueChange={(value) => updateNewCollection(index, 'student_id', value)}
-                          options={studentsLoading ? [] : classStudents.map((student) => ({
-                            value: student.id,
-                            label: `${student.firstName} ${student.lastName} - ${student.admissionNumber}`
-                          }))}
-                          placeholder={studentsLoading ? "Loading students..." : "Select student..."}
-                          searchPlaceholder="Search students..."
-                          disabled={studentsLoading}
-                        />
-                      </div>
-                      
-                      <div>
+                  {newItems.map((row, index) => (
+                    <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg">
+                      <div className="md:col-span-2">
                         <Label>Item</Label>
                         <Combobox
-                          value={item.inventory_item_id}
-                          onValueChange={(value) => updateNewCollection(index, 'inventory_item_id', value)}
+                          value={row.itemId}
+                          onValueChange={(value) => updateNewItem(index, 'itemId', value)}
                           options={items.map((inventoryItem) => ({
                             value: inventoryItem.id,
                             label: `${inventoryItem.name} - ${inventoryItem.category}`
@@ -324,30 +332,14 @@ export default function StudentItemCollections() {
                         <Input
                           type="number"
                           min="1"
-                          value={item.qty}
-                          onChange={(e) => updateNewCollection(index, 'qty', parseInt(e.target.value) || 1)}
+                          value={row.qtyOut}
+                          onChange={(e) => updateNewItem(index, 'qtyOut', parseInt(e.target.value) || 1)}
                         />
                       </div>
-                      
-                      <div>
-                        <Label>Received</Label>
-                        <Select 
-                          value={item.received.toString()} 
-                          onValueChange={(value) => updateNewCollection(index, 'received', value === 'true')}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="true">Yes</SelectItem>
-                            <SelectItem value="false">No</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="flex items-end">
+
+                      <div className="flex items-end justify-end">
                         <Button 
-                          onClick={() => removeNewCollection(index)} 
+                          onClick={() => removeNewItem(index)} 
                           variant="destructive" 
                           size="sm"
                         >
@@ -382,165 +374,59 @@ export default function StudentItemCollections() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Student</TableHead>
-                      <TableHead>Item</TableHead>
-                      <TableHead>Session/Term</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Eligible</TableHead>
-                      <TableHead>Received</TableHead>
+                      <TableHead>Reference</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Items</TableHead>
+                      <TableHead>Notes</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {collections.map((collection) => (
-                      <TableRow key={collection.id}>
+                    {Array.from(groupedBatches.entries()).map(([key, batch]) => (
+                      <TableRow key={key}>
                         <TableCell>
-                          {editingId === collection.id ? (
-                            <Select 
-                              value={editForm.student_id} 
-                              onValueChange={(value) => setEditForm(prev => ({ ...prev, student_id: value }))}
-                              disabled={studentsLoading}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder={studentsLoading ? "Loading students..." : "Select student..."} />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {classStudents.map(student => (
-                                  <SelectItem key={student.id} value={student.id}>
-                                    {student.firstName} {student.lastName}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <div>
-                              <div className="font-medium">{collection.studentName}</div>
-                              <Badge variant="secondary" className="text-xs">
-                                {collection.students?.admission_number || "N/A"}
-                              </Badge>
-                            </div>
-                          )}
+                          <div className="font-medium">{batch.studentName}</div>
+                          <Badge variant="secondary" className="text-xs">
+                            {batch.studentId}
+                          </Badge>
                         </TableCell>
                         <TableCell>
-                          {editingId === collection.id ? (
-                            <Select 
-                              value={editForm.inventory_item_id} 
-                              onValueChange={(value) => setEditForm(prev => ({ ...prev, inventory_item_id: value }))}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {items.map(item => (
-                                  <SelectItem key={item.id} value={item.id}>
-                                    {item.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <div>
-                              <div className="font-medium">{collection.itemName}</div>
-                              <Badge variant="secondary" className="text-xs">
-                                {collection.inventory_items?.categories?.name || "Unknown Category"}
-                              </Badge>
-                            </div>
-                          )}
+                          <Badge variant="outline">
+                            {batch.referenceNo ?? "—"}
+                          </Badge>
                         </TableCell>
                         <TableCell>
-                          {editingId === collection.id ? (
-                            <Select 
-                              value={editForm.session_term_id} 
-                              onValueChange={(value) => setEditForm(prev => ({ ...prev, session_term_id: value }))}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {sessions.map(session => (
-                                  <SelectItem key={session.id} value={session.id}>
-                                    {session.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            collection.sessionName
-                          )}
+                          {batch.transactionDate
+                            ? new Date(batch.transactionDate).toLocaleDateString()
+                            : "—"}
                         </TableCell>
                         <TableCell>
-                          {editingId === collection.id ? (
-                            <Input
-                              type="number"
-                              min="1"
-                              value={editForm.qty || ''}
-                              onChange={(e) => setEditForm(prev => ({ ...prev, qty: parseInt(e.target.value) || 1 }))}
-                              className="w-20"
-                            />
-                          ) : (
-                            <Badge variant="outline">{collection.qty}</Badge>
-                          )}
+                          <div className="space-y-1">
+                            {batch.rows.map(r => (
+                              <div key={r.id} className="flex items-center justify-between gap-3">
+                                <span className="text-sm">{r.itemName}</span>
+                                <Badge variant="outline" className="shrink-0">
+                                  {r.qtyOut}
+                                </Badge>
+                              </div>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-[320px] truncate">
+                          {batch.notes || "—"}
                         </TableCell>
                         <TableCell>
-                          {editingId === collection.id ? (
-                            <Select 
-                              value={editForm.eligible?.toString() || 'true'} 
-                              onValueChange={(value) => setEditForm(prev => ({ ...prev, eligible: value === 'true' }))}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="true">Yes</SelectItem>
-                                <SelectItem value="false">No</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <Badge variant={collection.eligible ? "default" : "secondary"}>
-                              {collection.eligible ? "Yes" : "No"}
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {editingId === collection.id ? (
-                            <Select 
-                              value={editForm.received?.toString() || 'true'} 
-                              onValueChange={(value) => setEditForm(prev => ({ ...prev, received: value === 'true' }))}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="true">Yes</SelectItem>
-                                <SelectItem value="false">No</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <Badge variant={collection.received ? "default" : "secondary"}>
-                              {collection.received ? "Yes" : "No"}
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            {editingId === collection.id ? (
-                              <>
-                                <Button onClick={saveEdit} size="sm" variant="default">
-                                  <Save className="h-4 w-4" />
-                                </Button>
-                                <Button onClick={cancelEdit} size="sm" variant="outline">
-                                  Cancel
-                                </Button>
-                              </>
-                            ) : (
-                              <>
-                                <Button onClick={() => startEdit(collection)} size="sm" variant="outline">
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button onClick={() => handleDelete(collection.id)} size="sm" variant="destructive">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
+                          <div className="flex flex-wrap gap-2">
+                            {batch.rows.map(r => (
+                              <Button
+                                key={r.id}
+                                onClick={() => handleDelete(r.id)}
+                                size="sm"
+                                variant="destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            ))}
                           </div>
                         </TableCell>
                       </TableRow>

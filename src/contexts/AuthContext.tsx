@@ -16,7 +16,7 @@ interface AuthContextType {
   isLoading: boolean;
 }
 
-const baseUrl = "http://localhost:5000";
+const baseUrl = "http://localhost:5001";
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {

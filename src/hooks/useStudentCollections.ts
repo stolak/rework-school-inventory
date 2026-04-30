@@ -4,56 +4,66 @@ import { useToast } from "@/hooks/use-toast";
 
 export interface StudentCollection {
   id: string;
-  student_id: string;
-  class_id: string;
-  session_term_id: string;
-  inventory_item_id: string;
-  qty: number;
-  eligible: boolean;
-  received: boolean;
-  received_date?: string;
-  given_by?: string;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
+  itemId: string;
+  qtyOut: number;
+  referenceNo: string | null;
+  notes: string | null;
+  studentId: string | null;
+  classId: string | null;
+  sessionId: string | null;
+  termId: string | null;
+  subclassId: string | null;
+  transactionDate: string;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
   // Populated fields for display
   studentName?: string;
   itemName?: string;
+  createdByName?: string;
+
+  /**
+   * Backward-compatible aliases used by older pages/components.
+   * These allow existing report screens to compile while the UI is migrated.
+   */
+  student_id?: string;
+  class_id?: string;
+  session_term_id?: string;
+  inventory_item_id?: string;
+  qty?: number;
+  eligible?: boolean;
+  received?: boolean;
+  created_at?: string;
+  updated_at?: string;
+
+  // Legacy nested objects referenced by older report pages
+  students?: any;
+  inventory_items?: any;
+  academic_session_terms?: any;
+  school_classes?: any;
   sessionName?: string;
-  // Nested objects from API response
-  students?: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    admission_number: string;
-  };
-  inventory_items?: {
-    id: string;
-    name: string;
-    categories?: {
-      id: string;
-      name: string;
-    };
-  };
-  academic_session_terms?: {
-    id: string;
-    name: string;
-  };
-  school_classes?: {
-    id: string;
-    name: string;
-  };
 }
 
 export function useStudentCollections(params?: {
+  page?: number;
+  limit?: number;
+  studentId?: string;
+  classId?: string;
+  itemId?: string;
+  referenceNo?: string;
+  transactionDateFrom?: string;
+  transactionDateTo?: string;
+  // Backward-compatible aliases used by older callers/pages
+  student_id?: string;
   class_id?: string;
   session_term_id?: string;
+  inventory_item_id?: string;
 }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const {
-    data: rawCollections = [],
+    data: raw = null,
     isLoading,
     error,
   } = useQuery({
@@ -61,67 +71,64 @@ export function useStudentCollections(params?: {
     queryFn: () => studentCollectionsApi.list(params),
   });
 
+  const rawCollections = raw?.data?.studentCollections ?? [];
+
   // Transform backend data to frontend format
   const collections: StudentCollection[] = rawCollections.map(
     (collection: any) => ({
       id: collection.id,
-      student_id: collection.student_id,
-      class_id: collection.class_id,
-      session_term_id: collection.session_term_id,
-      inventory_item_id: collection.inventory_item_id,
-      qty: collection.qty,
-      eligible: collection.eligible,
-      received: collection.received,
-      received_date: collection.received_date,
-      given_by: collection.given_by,
-      created_by: collection.created_by,
-      created_at: collection.created_at,
-      updated_at: collection.updated_at,
-      // Populate display names from nested objects
-      studentName: collection.students
-        ? `${collection.students.first_name} ${collection.students.last_name}`
-        : "Unknown Student",
-      itemName: collection.inventory_items?.name || "Unknown Item",
-      sessionName: collection.academic_session_terms?.name || "No Session",
-      // Include nested objects for additional data access
-      students: collection.students,
-      inventory_items: collection.inventory_items,
-      academic_session_terms: collection.academic_session_terms,
-      school_classes: collection.school_classes,
+      itemId: collection.itemId,
+      qtyOut: Number(collection.qtyOut ?? 0),
+      referenceNo: collection.referenceNo ?? null,
+      notes: collection.notes ?? null,
+      studentId: collection.studentId ?? null,
+      classId: collection.classId ?? null,
+      sessionId: collection.sessionId ?? null,
+      termId: collection.termId ?? null,
+      subclassId: collection.subclassId ?? null,
+      transactionDate: collection.transactionDate,
+      createdById: collection.createdById,
+      createdAt: collection.createdAt,
+      updatedAt: collection.updatedAt,
+      studentName: "Unknown Student",
+      itemName: collection.item?.name || "Unknown Item",
+      createdByName: collection.createdBy
+        ? `${collection.createdBy.firstName ?? ""} ${collection.createdBy.lastName ?? ""}`.trim()
+        : undefined,
+      sessionName: undefined,
+
+      // Backward-compatible aliases
+      student_id: collection.studentId ?? undefined,
+      class_id: collection.classId ?? undefined,
+      session_term_id: (collection.sessionId ?? collection.termId) ?? undefined,
+      inventory_item_id: collection.itemId ?? undefined,
+      qty: Number(collection.qtyOut ?? 0),
+      eligible: true,
+      received: true,
+      created_at: collection.createdAt ?? undefined,
+      updated_at: collection.updatedAt ?? undefined,
+
+      // Legacy nested objects (not provided by new API)
+      students: undefined,
+      inventory_items: undefined,
+      academic_session_terms: undefined,
+      school_classes: undefined,
     })
   );
 
-  const addMutation = useMutation({
-    mutationFn: studentCollectionsApi.create,
+  const bulkCreateMutation = useMutation({
+    mutationFn: studentCollectionsApi.bulkCreate,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["student-collections"] });
       toast({
         title: "Success",
-        description: "Collection added successfully",
+        description: "Student collection created successfully",
       });
     },
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to add collection",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const bulkUpsertMutation = useMutation({
-    mutationFn: studentCollectionsApi.bulkUpsert,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["student-collections"] });
-      toast({
-        title: "Success",
-        description: "Collections updated successfully",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update collections",
+        description: error.message || "Failed to create student collection",
         variant: "destructive",
       });
     },
@@ -169,30 +176,13 @@ export function useStudentCollections(params?: {
     },
   });
 
-  const addCollection = (collection: {
-    student_id: string;
-    class_id: string;
-    session_term_id: string;
-    inventory_item_id: string;
-    qty: number;
-    eligible: boolean;
-    received: boolean;
+  const createBulkCollection = async (payload: {
+    studentId: string;
+    notes?: string;
+    transactionDate: string;
+    items: { itemId: string; qtyOut: number }[];
   }) => {
-    addMutation.mutate(collection);
-  };
-
-  const addMultipleCollections = async (
-    newCollections: {
-      student_id: string;
-      class_id: string;
-      session_term_id: string;
-      inventory_item_id: string;
-      qty: number;
-      eligible: boolean;
-      received: boolean;
-    }[]
-  ) => {
-    return bulkUpsertMutation.mutateAsync(newCollections);
+    return bulkCreateMutation.mutateAsync(payload);
   };
 
   const updateCollection = async (
@@ -210,9 +200,9 @@ export function useStudentCollections(params?: {
     collections,
     isLoading,
     error,
-    addCollection,
-    addMultipleCollections,
+    createBulkCollection,
     updateCollection,
     deleteCollection,
+    pagination: raw?.data?.pagination,
   };
 }

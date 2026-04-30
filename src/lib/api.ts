@@ -1,4 +1,4 @@
-const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
 
 export type ApiResponse<T> = {
   success: boolean;
@@ -510,76 +510,92 @@ export const classEntitlementsApi = {
   remove: deleteClassEntitlement,
 };
 
-// Student Collections-specific helpers
-export const fetchStudentCollections = (params?: {
-  student_id?: string;
-  class_id?: string;
-  session_term_id?: string;
-  inventory_item_id?: string;
-  eligible?: boolean;
-  received?: boolean;
-}) => {
-  const queryParams = new URLSearchParams();
-  if (params?.student_id) queryParams.append("student_id", params.student_id);
-  if (params?.class_id) queryParams.append("class_id", params.class_id);
-  if (params?.session_term_id)
-    queryParams.append("session_term_id", params.session_term_id);
-  if (params?.inventory_item_id)
-    queryParams.append("inventory_item_id", params.inventory_item_id);
-  if (params?.eligible !== undefined)
-    queryParams.append("eligible", params.eligible.toString());
-  if (params?.received !== undefined)
-    queryParams.append("received", params.received.toString());
-  const queryString = queryParams.toString();
-  return get<any[]>(
-    `/api/v1/student_inventory_collection${
-      queryString ? `?${queryString}` : ""
-    }`
-  );
+// Student Collections (new API)
+export type StudentCollectionRow = {
+  id: string;
+  itemId: string;
+  transactionType: "student_collection" | string;
+  qtyOut: string;
+  referenceNo: string | null;
+  notes: string | null;
+  studentId: string | null;
+  classId: string | null;
+  sessionId: string | null;
+  termId: string | null;
+  subclassId: string | null;
+  transactionDate: string;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+  item?: { name?: string } | null;
+  createdBy?: { firstName?: string; lastName?: string } | null;
 };
 
-export const createStudentCollection = (body: {
-  student_id: string;
-  class_id: string;
-  session_term_id: string;
-  inventory_item_id: string;
-  qty: number;
-  eligible: boolean;
-  received: boolean;
-}) => post<any>("/api/v1/student_inventory_collection", body);
+export const fetchStudentCollections = (params?: {
+  page?: number;
+  limit?: number;
+  studentId?: string;
+  classId?: string;
+  itemId?: string;
+  referenceNo?: string;
+  transactionDateFrom?: string;
+  transactionDateTo?: string;
+  // Backward-compatible aliases used by older callers/pages
+  student_id?: string;
+  class_id?: string;
+  inventory_item_id?: string;
+}) => {
+  const queryParams = new URLSearchParams();
+  queryParams.append("page", String(params?.page ?? 1));
+  queryParams.append("limit", String(params?.limit ?? 50));
+  const studentId = params?.studentId ?? params?.student_id;
+  const classId = params?.classId ?? params?.class_id;
+  const itemId = params?.itemId ?? params?.inventory_item_id;
+  if (studentId) queryParams.append("studentId", studentId);
+  if (classId) queryParams.append("classId", classId);
+  if (itemId) queryParams.append("itemId", itemId);
+  if (params?.referenceNo) queryParams.append("referenceNo", params.referenceNo);
+  if (params?.transactionDateFrom)
+    queryParams.append("transactionDateFrom", params.transactionDateFrom);
+  if (params?.transactionDateTo)
+    queryParams.append("transactionDateTo", params.transactionDateTo);
 
-export const bulkUpsertStudentCollections = (
-  body: {
-    student_id: string;
-    class_id: string;
-    session_term_id: string;
-    inventory_item_id: string;
-    qty: number;
-    eligible: boolean;
-    received: boolean;
-  }[]
-) => post<any>("/api/v1/student_inventory_collection/bulk_upsert", body);
+  return get<
+    ApiResponse<{
+      studentCollections: StudentCollectionRow[];
+      pagination: Pagination;
+    }>
+  >(`/api/v1/student-collections?${queryParams.toString()}`);
+};
+
+export const createStudentCollectionsBulk = (body: {
+  studentId: string;
+  notes?: string;
+  transactionDate: string;
+  items: { itemId: string; qtyOut: number }[];
+}) => post<ApiResponse<StudentCollectionRow[]>, typeof body>(
+  "/api/v1/student-collections/bulk",
+  body
+);
 
 export const updateStudentCollection = (
   id: string,
-  body: {
-    student_id?: string;
-    class_id?: string;
-    session_term_id?: string;
-    inventory_item_id?: string;
-    qty?: number;
-    eligible?: boolean;
-    received?: boolean;
-  }
-) => put<any>(`/api/v1/student_inventory_collection/${id}`, body);
+  body: Partial<{
+    notes: string | null;
+    transactionDate: string;
+    qtyOut: string | number;
+  }>
+) => put<ApiResponse<StudentCollectionRow>, typeof body>(
+  `/api/v1/student-collections/${id}`,
+  body
+);
 
 export const deleteStudentCollection = (id: string) =>
-  del<any>(`/api/v1/student_inventory_collection/${id}`);
+  del<ApiResponse<unknown>>(`/api/v1/student-collections/${id}`);
 
 export const studentCollectionsApi = {
   list: fetchStudentCollections,
-  create: createStudentCollection,
-  bulkUpsert: bulkUpsertStudentCollections,
+  bulkCreate: createStudentCollectionsBulk,
   update: updateStudentCollection,
   remove: deleteStudentCollection,
 };
