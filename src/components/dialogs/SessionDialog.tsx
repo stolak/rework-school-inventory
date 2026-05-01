@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SessionForm } from "@/components/forms/SessionForm";
-import { Session } from "@/hooks/useSessions";
+import type { Session } from "@/components/forms/SessionForm";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { BookOpen } from "lucide-react";

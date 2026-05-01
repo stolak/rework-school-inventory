@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useClassDistributions } from "@/hooks/useClassDistributions"
 import { useClasses } from "@/hooks/useClasses"
 import { useInventory } from "@/hooks/useInventory"
-import { useSessions } from "@/hooks/useSessions"
+import { useSchoolSessions } from "@/hooks/useSchoolSessions"
 import { useClassTeachers } from "@/hooks/useClassTeachers"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
@@ -53,7 +53,7 @@ export default function ClassInventoryDistributions() {
   })
   const { classes } = useClasses()
   const { items } = useInventory()
-  const { sessions } = useSessions({ status: 'active' })
+  const { sessions } = useSchoolSessions({ status: "Active", page: 1, limit: 500 })
   const { classTeachers } = useClassTeachers()
 
   const toggleCombobox = (rowId: string) => {
@@ -193,7 +193,7 @@ export default function ClassInventoryDistributions() {
                 onValueChange={setSelectedSessionTermId}
                 options={sessions.map((session) => ({
                   value: session.id,
-                  label: `${session.name} - ${session.session}`
+                  label: session.name
                 }))}
                 placeholder="Select session/term"
                 searchPlaceholder="Search sessions..."

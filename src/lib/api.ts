@@ -537,6 +537,111 @@ export type StudentCollectionRow = {
   createdBy?: { firstName?: string; lastName?: string } | null;
 };
 
+// Staff (new API)
+export type Staff = {
+  id: string;
+  StaffNumber?: string | null;
+  email?: string | null;
+  name?: string | null;
+  role?: string | null;
+  status?: string | null;
+  profileImageUrl?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  userId?: string | null;
+  user?: { id: string; email?: string | null; firstName?: string | null; lastName?: string | null } | null;
+};
+
+export const fetchStaff = (params?: { page?: number; limit?: number }) => {
+  const queryParams = new URLSearchParams();
+  queryParams.append("page", String(params?.page ?? 1));
+  queryParams.append("limit", String(params?.limit ?? 100));
+  const qs = queryParams.toString();
+  return get<ApiResponse<{ staff: Staff[]; pagination: Pagination }>>(
+    `/api/v1/staff${qs ? `?${qs}` : ""}`
+  );
+};
+
+export const staffApi = {
+  list: fetchStaff,
+};
+
+// Staff Collections (new API)
+export type StaffCollectionRow = {
+  id: string;
+  itemId: string;
+  transactionType: "staff_collection" | string;
+  qtyOut: string;
+  referenceNo: string | null;
+  notes: string | null;
+  staffId: string | null;
+  sessionId: string | null;
+  termId: string | null;
+  transactionDate: string;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+  item?: { name?: string } | null;
+  staff?: {
+    id: string;
+    StaffNumber?: string | null;
+    name?: string | null;
+    email?: string | null;
+  } | null;
+  createdBy?: { firstName?: string; lastName?: string } | null;
+};
+
+export const fetchStaffCollections = (params?: {
+  page?: number;
+  limit?: number;
+  staffId?: string;
+  sessionId?: string;
+  termId?: string;
+  itemId?: string;
+  referenceNo?: string;
+  transactionDateFrom?: string;
+  transactionDateTo?: string;
+}) => {
+  const queryParams = new URLSearchParams();
+  queryParams.append("page", String(params?.page ?? 1));
+  queryParams.append("limit", String(params?.limit ?? 20));
+  if (params?.staffId) queryParams.append("staffId", params.staffId);
+  if (params?.sessionId) queryParams.append("sessionId", params.sessionId);
+  if (params?.termId) queryParams.append("termId", params.termId);
+  if (params?.itemId) queryParams.append("itemId", params.itemId);
+  if (params?.referenceNo) queryParams.append("referenceNo", params.referenceNo);
+  if (params?.transactionDateFrom)
+    queryParams.append("transactionDateFrom", params.transactionDateFrom);
+  if (params?.transactionDateTo)
+    queryParams.append("transactionDateTo", params.transactionDateTo);
+
+  return get<
+    ApiResponse<{
+      staffCollections: StaffCollectionRow[];
+      pagination: Pagination;
+    }>
+  >(`/api/v1/staff-collections?${queryParams.toString()}`);
+};
+
+export const createStaffCollectionsBulk = (body: {
+  staffId: string;
+  notes?: string;
+  transactionDate: string;
+  items: { itemId: string; qtyOut: number }[];
+}) => post<ApiResponse<StaffCollectionRow[]>, typeof body>(
+  "/api/v1/staff-collections/bulk",
+  body
+);
+
+export const deleteStaffCollection = (id: string) =>
+  del<ApiResponse<unknown>>(`/api/v1/staff-collections/${id}`);
+
+export const staffCollectionsApi = {
+  list: fetchStaffCollections,
+  bulkCreate: createStaffCollectionsBulk,
+  remove: deleteStaffCollection,
+};
+
 export const fetchStudentCollections = (params?: {
   page?: number;
   limit?: number;

@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { useEntitlements, type ClassEntitlement } from "@/hooks/useEntitlements"
 import { useClasses } from "@/hooks/useClasses"
 import { useInventory } from "@/hooks/useInventory"
-import { useSessions } from "@/hooks/useSessions"
+import { useSchoolSessions } from "@/hooks/useSchoolSessions"
 import { useToast } from "@/hooks/use-toast"
 import {
   AlertDialog,
@@ -47,7 +47,7 @@ export default function ClassEntitlements() {
   })
   const { classes } = useClasses()
   const { items } = useInventory()
-  const { sessions } = useSessions({ status: 'active' })
+  const { sessions } = useSchoolSessions({ status: "Active", page: 1, limit: 500 })
   const { toast } = useToast()
 
   const selectedClass = classes.find(c => c.id === selectedClassId)
@@ -235,7 +235,7 @@ export default function ClassEntitlements() {
                 onValueChange={setSelectedSessionTermId}
                 options={sessions.map((session) => ({
                   value: session.id,
-                  label: session.name + " - " + session.session
+                  label: session.name
                 }))}
                 placeholder="Choose a session/term..."
                 searchPlaceholder="Search sessions..."
@@ -280,7 +280,7 @@ export default function ClassEntitlements() {
                           onValueChange={(value) => updateNewEntitlement(index, 'inventory_item_id', value)}
                           options={items.map((inventoryItem) => ({
                             value: inventoryItem.id,
-                            label: `${inventoryItem.name} - ${inventoryItem.category}`
+                            label: `${inventoryItem.name} - ${inventoryItem.category?.name}`
                           }))}
                           placeholder="Select item..."
                           searchPlaceholder="Search items..."

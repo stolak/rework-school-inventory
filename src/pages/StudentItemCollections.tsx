@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { useStudentCollections, type StudentCollection } from "@/hooks/useStudentCollections"
 import { useClasses } from "@/hooks/useClasses"
 import { useInventory } from "@/hooks/useInventory"
-import { useSessions } from "@/hooks/useSessions"
+import { useSchoolSessions } from "@/hooks/useSchoolSessions"
 import { useStudents } from "@/hooks/useStudents"
 import { useSubClasses } from "@/hooks/useSubClasses"
 import { useTerms } from "@/hooks/useTerms"
@@ -62,7 +62,7 @@ export default function StudentItemCollections() {
   })
   const { classes } = useClasses()
   const { items } = useInventory()
-  const { sessions } = useSessions({ status: 'active' })
+  const { sessions } = useSchoolSessions({ status: "Active", page: 1, limit: 500 })
   const { subClasses } = useSubClasses({ page: 1, limit: 500 })
   const { terms } = useTerms({ page: 1, limit: 200, status: "Active" })
   const { students: classStudents, isLoading: studentsLoading } = useStudents({
@@ -294,7 +294,7 @@ export default function StudentItemCollections() {
                   { value: "", label: "All sessions" },
                   ...sessions.map((session) => ({
                     value: session.id,
-                    label: `${session.name} - ${session.session}`,
+                    label: session.name,
                   })),
                 ]}
                 placeholder="All sessions"
@@ -436,7 +436,7 @@ export default function StudentItemCollections() {
                           onValueChange={(value) => updateNewItem(index, 'itemId', value)}
                           options={items.map((inventoryItem) => ({
                             value: inventoryItem.id,
-                            label: `${inventoryItem.name} - ${inventoryItem.category}`
+                            label: `${inventoryItem.name} - ${inventoryItem.category?.name}`
                           }))}
                           placeholder="Select item..."
                           searchPlaceholder="Search items..."

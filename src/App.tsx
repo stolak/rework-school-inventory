@@ -21,10 +21,10 @@ import Terms from "./pages/Terms";
 import ClassEntitlements from "./pages/ClassEntitlements";
 import ClassInventoryDistributions from "./pages/ClassInventoryDistributions";
 import StudentItemCollections from "./pages/StudentItemCollections";
+import StaffItemCollections from "./pages/StaffItemCollections";
 import StudentInventoryReport from "./pages/StudentInventoryReport";
 import InventoryCollectionsReport from "./pages/InventoryCollectionsReport";
 import DistributionCollectionReport from "./pages/DistributionCollectionReport";
-import ClassTeachers from "./pages/ClassTeachers";
 import SubClasses from "./pages/SubClasses";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
@@ -54,7 +54,6 @@ const AppContent = () => {
         <Route path="/students" element={<Students />} />
         <Route path="/classes" element={<Classes />} />
         <Route path="/sub-classes" element={<SubClasses />} />
-        <Route path="/class-teachers" element={<ClassTeachers />} />
           <Route path="/purchases" element={<Purchases />} />
           <Route path="/sales" element={<Sales />} />
           <Route path="/suppliers" element={<Suppliers />} />
@@ -67,6 +66,7 @@ const AppContent = () => {
           <Route path="/class-entitlements" element={<ClassEntitlements />} />
           <Route path="/class-distributions" element={<ClassInventoryDistributions />} />
           <Route path="/student-collections" element={<StudentItemCollections />} />
+          <Route path="/staff-collections" element={<StaffItemCollections />} />
           <Route path="/reports/student-inventory" element={<StudentInventoryReport />} />
           <Route path="/reports/inventory-collections" element={<InventoryCollectionsReport />} />
           <Route path="/reports/distribution-collection" element={<DistributionCollectionReport />} />

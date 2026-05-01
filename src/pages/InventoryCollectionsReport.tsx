@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { useStudentCollections } from "@/hooks/useStudentCollections"
 import { useClasses } from "@/hooks/useClasses"
-import { useSessions } from "@/hooks/useSessions"
+import { useSchoolSessions } from "@/hooks/useSchoolSessions"
 import { useInventory } from "@/hooks/useInventory"
 import { useToast } from "@/hooks/use-toast"
 
@@ -19,7 +19,7 @@ export default function InventoryCollectionsReport() {
   const [hasSearched, setHasSearched] = useState(false)
 
   const { classes } = useClasses()
-  const { sessions } = useSessions({ status: 'active' })
+  const { sessions } = useSchoolSessions({ status: "Active", page: 1, limit: 500 })
   const { items } = useInventory()
   const { toast } = useToast()
 
@@ -149,7 +149,7 @@ export default function InventoryCollectionsReport() {
                 onValueChange={setSelectedSessionTermIds}
                 options={sessions.map((session) => ({
                   value: session.id,
-                  label: `${session.name} - ${session.session}`
+                  label: session.name
                 }))}
                 placeholder="Select sessions/terms..."
                 searchPlaceholder="Search sessions..."
@@ -180,7 +180,7 @@ export default function InventoryCollectionsReport() {
                   { value: "", label: "All Items" },
                   ...items.map((item) => ({
                     value: item.id,
-                    label: `${item.name} - ${item.categories?.name}`
+                    label: `${item.name} - ${item.category?.name}`
                   }))
                 ]}
                 placeholder="Select item..."

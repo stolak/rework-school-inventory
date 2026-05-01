@@ -50,12 +50,12 @@ const schoolMenuItems = [
   { title: "Classes", url: "/classes", icon: GraduationCap },
   { title: "Sub Classes", url: "/sub-classes", icon: Layers },
   { title: "Students", url: "/students", icon: Users },
-  { title: "Class Teachers", url: "/class-teachers", icon: UserCheck },
   { title: "Sessions/Terms", url: "/sessions", icon: BookOpen },
   { title: "Terms", url: "/terms", icon: BookOpen },
   { title: "Class Entitlements", url: "/class-entitlements", icon: ClipboardList },
   { title: "Class Distributions", url: "/class-distributions", icon: Package },
   { title: "Student Collections", url: "/student-collections", icon: UserCheck },
+  { title: "Staff Collections", url: "/staff-collections", icon: UserCheck },
 ]
 
 const reportsMenuItems = [

@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Combobox } from "@/components/ui/combobox"
 import { useClasses } from "@/hooks/useClasses"
 import { useInventory } from "@/hooks/useInventory"
-import { useSessions } from "@/hooks/useSessions"
+import { useSchoolSessions } from "@/hooks/useSchoolSessions"
 import { CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { Calendar } from "@/components/ui/calendar"
@@ -36,7 +36,7 @@ interface ClassDistributionFormProps {
 export function ClassDistributionForm({ initialData, onSubmit, onCancel }: ClassDistributionFormProps) {
   const { classes } = useClasses()
   const { items } = useInventory()
-  const { sessions } = useSessions()
+  const { sessions } = useSchoolSessions({ page: 1, limit: 500, status: "Active" })
 
   const form = useForm<DistributionFormData>({
     resolver: zodResolver(distributionSchema),

@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useDistributionCollection } from "@/hooks/useDistributionCollection";
 import { useClasses } from "@/hooks/useClasses";
-import { useSessions } from "@/hooks/useSessions";
+import { useSchoolSessions } from "@/hooks/useSchoolSessions";
 import { useInventory } from "@/hooks/useInventory";
 import { useClassTeachers } from "@/hooks/useClassTeachers";
 import { useToast } from "@/hooks/use-toast";
@@ -20,7 +20,7 @@ export default function DistributionCollectionReport() {
   const [hasSearched, setHasSearched] = useState(false);
 
   const { classes } = useClasses();
-  const { sessions } = useSessions({ status: "active" });
+  const { sessions } = useSchoolSessions({ status: "Active", page: 1, limit: 500 });
   const { items: inventory } = useInventory();
   const { classTeachers } = useClassTeachers({ status: "active" });
   const { toast } = useToast();
@@ -158,7 +158,7 @@ export default function DistributionCollectionReport() {
                   { value: "", label: "All Sessions/Terms" },
                   ...sessions.map((session) => ({
                     value: session.id,
-                    label: `${session.name} - ${session.session}`,
+                    label: session.name,
                   })),
                 ]}
                 placeholder="Select session/term..."

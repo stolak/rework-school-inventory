@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useClasses } from "@/hooks/useClasses"
-import { useSessions } from "@/hooks/useSessions"
+import { useSchoolSessions } from "@/hooks/useSchoolSessions"
 import { useStudents } from "@/hooks/useStudents"
 import { useSubClasses } from "@/hooks/useSubClasses"
 import { useTerms } from "@/hooks/useTerms"
@@ -46,7 +46,7 @@ export default function StudentInventoryReport() {
   const [detailsItemId, setDetailsItemId] = useState<string | null>(null)
 
   const { classes } = useClasses()
-  const { sessions } = useSessions({ status: 'active' })
+  const { sessions } = useSchoolSessions({ status: "Active", page: 1, limit: 500 })
   const { items } = useInventory()
   const { subClasses } = useSubClasses({ page: 1, limit: 500 })
   const { terms } = useTerms({ page: 1, limit: 200, status: "Active" })
@@ -219,7 +219,7 @@ export default function StudentInventoryReport() {
                   { value: "", label: "All Items" },
                   ...items.map((item) => ({
                     value: item.id,
-                    label: item.name,
+                    label: `${item.name} - ${item.category?.name}`,
                   })),
                 ]}
                 placeholder="All items"
@@ -289,7 +289,7 @@ export default function StudentInventoryReport() {
                   { value: "", label: "All Sessions" },
                   ...sessions.map((session) => ({
                     value: session.id,
-                    label: `${session.name} - ${session.session}`,
+                    label: session.name,
                   })),
                 ]}
                 placeholder="All sessions"

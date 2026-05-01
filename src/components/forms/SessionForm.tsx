@@ -5,7 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Session } from "@/hooks/useSessions";
+/** Legacy academic session/term row used by SessionDialog (not the school-sessions list API). */
+export type Session = {
+  id: string;
+  session: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  status: "active" | "inactive" | "archived";
+};
 
 const sessionSchema = z.object({
   session: z.string().min(1, "Academic session is required (e.g., 2025/2026)"),
