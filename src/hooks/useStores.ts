@@ -1,11 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { storeApi, type StoreRow } from "@/lib/api";
+import { storeApi, type StoreAccessibleUser, type StoreRow } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+
+export type StoreAccessibleUserView = StoreAccessibleUser & {
+  displayName: string;
+  id: string;
+};
 
 export type StoreListItem = StoreRow & {
   managerDisplayName?: string;
   transactionCount?: number;
+  accessibleUsersView: StoreAccessibleUserView[];
 };
+
+function mapAccessibleUser(u: StoreAccessibleUser): StoreAccessibleUserView {
+  return {
+    ...u,
+    displayName:
+      `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || u.email,
+  };
+}
 
 function normalizeStore(s: StoreRow): StoreListItem {
   const m = s.manager;
@@ -13,11 +27,13 @@ function normalizeStore(s: StoreRow): StoreListItem {
     ? `${m.firstName ?? ""} ${m.lastName ?? ""}`.trim() || m.email || undefined
     : undefined;
   const transactionCount = s._count?.inventoryTransactions;
+  const raw = s.accessibleUsers ?? [];
 
   return {
     ...s,
     managerDisplayName,
     transactionCount,
+    accessibleUsersView: raw.map(mapAccessibleUser),
   };
 }
 
@@ -82,6 +98,54 @@ export function useStores(params?: { page?: number; limit?: number }) {
     },
   });
 
+  const addUserMutation = useMutation({
+    mutationFn: ({
+      storeId,
+      userId,
+    }: {
+      storeId: string;
+      userId: string;
+    }) => storeApi.addUser(storeId, { userId }),
+    onSuccess: (res: any) => {
+      queryClient.invalidateQueries({ queryKey: ["stores"] });
+      toast({
+        title: "Success",
+        description: res?.message || "User added to store",
+      });
+    },
+    onError: (e: any) => {
+      toast({
+        title: "Error",
+        description: e?.message || "Failed to add user to store",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeUserMutation = useMutation({
+    mutationFn: ({
+      storeId,
+      userId,
+    }: {
+      storeId: string;
+      userId: string;
+    }) => storeApi.removeUser(storeId, userId),
+    onSuccess: (res: any) => {
+      queryClient.invalidateQueries({ queryKey: ["stores"] });
+      toast({
+        title: "Success",
+        description: res?.message || "User removed from store",
+      });
+    },
+    onError: (e: any) => {
+      toast({
+        title: "Error",
+        description: e?.message || "Failed to remove user from store",
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     stores,
     pagination,
@@ -90,5 +154,11 @@ export function useStores(params?: { page?: number; limit?: number }) {
     createStore: createMutation.mutateAsync,
     updateStore: (id: string, data: Parameters<typeof storeApi.update>[1]) =>
       updateMutation.mutateAsync({ id, data }),
+    addUserToStore: (storeId: string, userId: string) =>
+      addUserMutation.mutateAsync({ storeId, userId }),
+    removeUserFromStore: (storeId: string, userId: string) =>
+      removeUserMutation.mutateAsync({ storeId, userId }),
+    isStoreAccessPending:
+      addUserMutation.isPending || removeUserMutation.isPending,
   };
 }

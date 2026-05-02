@@ -1322,6 +1322,14 @@ export const usersApi = {
 };
 
 // Stores API
+export type StoreAccessibleUser = {
+  id: string;
+  email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  accessGrantedAt?: string;
+};
+
 export type StoreRow = {
   id: string;
   name: string;
@@ -1337,6 +1345,7 @@ export type StoreRow = {
     email?: string;
   } | null;
   _count?: { inventoryTransactions?: number };
+  accessibleUsers?: StoreAccessibleUser[];
 };
 
 export const fetchStores = (params?: { page?: number; limit?: number }) => {
@@ -1365,10 +1374,21 @@ export const updateStore = (
   }>
 ) => put<ApiResponse<StoreRow>, typeof body>(`/api/v1/stores/${id}`, body);
 
+export const addUserToStore = (storeId: string, body: { userId: string }) =>
+  post<ApiResponse<unknown>, typeof body>(
+    `/api/v1/stores/${storeId}/users`,
+    body
+  );
+
+export const removeUserFromStore = (storeId: string, userId: string) =>
+  del<ApiResponse<unknown>>(`/api/v1/stores/${storeId}/users/${userId}`);
+
 export const storeApi = {
   list: fetchStores,
   create: createStore,
   update: updateStore,
+  addUser: addUserToStore,
+  removeUser: removeUserFromStore,
 };
 
 // Class Teachers API
