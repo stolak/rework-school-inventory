@@ -121,14 +121,14 @@ export default function StudentItemCollections() {
   }
 
   const saveBatch = async () => {
-    if (!selectedClassId) {
-      toast({
-        title: "Error",
-        description: "Please select a class first",
-        variant: "destructive"
-      })
-      return
-    }
+    // if (!selectedClassId) {
+    //   toast({
+    //     title: "Error",
+    //     description: "Please select a class first",
+    //     variant: "destructive"
+    //   })
+    //   return
+    // }
 
     if (!selectedStudentId) {
       toast({

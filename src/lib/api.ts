@@ -1288,10 +1288,87 @@ export const subClassApi = {
 };
 
 // Users API
-export const fetchUsers = () => get<any[]>("/api/v1/users");
+export type UserRow = {
+  id: string;
+  email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  phoneNumber?: string | null;
+  userType?: string;
+  role?: string;
+  status?: string;
+  isActive?: boolean;
+  isVerified?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export const fetchUsers = (params?: {
+  userType?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const queryParams = new URLSearchParams();
+  queryParams.append("page", String(params?.page ?? 1));
+  queryParams.append("limit", String(params?.limit ?? 100));
+  if (params?.userType) queryParams.append("userType", params.userType);
+  return get<ApiResponse<{ users: UserRow[]; pagination: Pagination }>>(
+    `/api/v1/users?${queryParams.toString()}`
+  );
+};
 
 export const usersApi = {
   list: fetchUsers,
+};
+
+// Stores API
+export type StoreRow = {
+  id: string;
+  name: string;
+  description: string | null;
+  status: string;
+  managerId: string;
+  createdAt?: string;
+  updatedAt?: string;
+  manager?: {
+    id: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string;
+  } | null;
+  _count?: { inventoryTransactions?: number };
+};
+
+export const fetchStores = (params?: { page?: number; limit?: number }) => {
+  const queryParams = new URLSearchParams();
+  queryParams.append("page", String(params?.page ?? 1));
+  queryParams.append("limit", String(params?.limit ?? 100));
+  return get<ApiResponse<{ stores: StoreRow[]; pagination: Pagination }>>(
+    `/api/v1/stores?${queryParams.toString()}`
+  );
+};
+
+export const createStore = (body: {
+  name: string;
+  description?: string;
+  status: "Active" | "Inactive" | string;
+  managerId: string;
+}) => post<ApiResponse<StoreRow>, typeof body>("/api/v1/stores", body);
+
+export const updateStore = (
+  id: string,
+  body: Partial<{
+    name: string;
+    description: string | null | undefined;
+    status: string;
+    managerId: string;
+  }>
+) => put<ApiResponse<StoreRow>, typeof body>(`/api/v1/stores/${id}`, body);
+
+export const storeApi = {
+  list: fetchStores,
+  create: createStore,
+  update: updateStore,
 };
 
 // Class Teachers API

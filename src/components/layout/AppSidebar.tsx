@@ -21,6 +21,7 @@ import {
   Gift,
   FolderKanban,
   PackageMinus,
+  Store,
 } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 
@@ -50,13 +51,14 @@ const mainMenuItems = [
   { title: "Brands", url: "/brands", icon: Tag },
   { title: "Units", url: "/uoms", icon: Ruler },
   { title: "Projects", url: "/projects", icon: FolderKanban },
+  { title: "Store setup", url: "/store-setup", icon: Store },
 ]
 
 const schoolMenuItems = [
   { title: "Classes", url: "/classes", icon: GraduationCap },
   { title: "Sub Classes", url: "/sub-classes", icon: Layers },
   { title: "Students", url: "/students", icon: Users },
-  { title: "Sessions/Terms", url: "/sessions", icon: BookOpen },
+  { title: "Sessions", url: "/sessions", icon: BookOpen },
   { title: "Terms", url: "/terms", icon: BookOpen },
   { title: "Class Entitlements", url: "/class-entitlements", icon: ClipboardList },
   { title: "Class Distributions", url: "/class-distributions", icon: Package },

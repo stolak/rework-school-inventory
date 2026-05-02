@@ -1,39 +1,35 @@
 import { useQuery } from "@tanstack/react-query";
-import { usersApi } from "@/lib/api";
+import { usersApi, type UserRow } from "@/lib/api";
 
-export interface User {
-  id: string;
-  email: string;
-  name?: string;
-  first_name?: string;
-  last_name?: string;
-  role?: string;
-  status?: string;
-  created_at: string;
-  updated_at: string;
-}
+export type UserWithDisplay = UserRow & {
+  displayName: string;
+};
 
-export function useUsers() {
-  const {
-    data: users = [],
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["users"],
-    queryFn: usersApi.list,
+export function useUsers(params?: {
+  userType?: string;
+  page?: number;
+  limit?: number;
+}) {
+  const page = params?.page ?? 1;
+  const limit = params?.limit ?? 100;
+
+  const { data: response, isLoading, error } = useQuery({
+    queryKey: ["users", params?.userType ?? "all", page, limit],
+    queryFn: () => usersApi.list(params),
   });
 
-  // Transform the data to include a display name
-  const transformedUsers = users.map((user: any) => ({
-    ...user,
+  const rawUsers: UserRow[] = (response as any)?.data?.users ?? [];
+  const pagination = (response as any)?.data?.pagination;
+
+  const users: UserWithDisplay[] = rawUsers.map((u) => ({
+    ...u,
     displayName:
-      user.name ||
-      `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
-      user.email,
+      `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || u.email,
   }));
 
   return {
-    users: transformedUsers,
+    users,
+    pagination,
     isLoading,
     error,
   };
