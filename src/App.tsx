@@ -18,11 +18,13 @@ import Brands from "./pages/Brands";
 import Uoms from "./pages/Uoms";
 import Sessions from "./pages/Sessions";
 import Terms from "./pages/Terms";
+import ProjectSetup from "./pages/ProjectSetup";
 import ClassEntitlements from "./pages/ClassEntitlements";
 import ClassInventoryDistributions from "./pages/ClassInventoryDistributions";
 import StudentItemCollections from "./pages/StudentItemCollections";
 import StaffItemCollections from "./pages/StaffItemCollections";
 import ItemInventoryDonations from "./pages/ItemInventoryDonations";
+import ProjectDisbursement from "./pages/ProjectDisbursement";
 import StudentInventoryReport from "./pages/StudentInventoryReport";
 import InventoryCollectionsReport from "./pages/InventoryCollectionsReport";
 import DistributionCollectionReport from "./pages/DistributionCollectionReport";
@@ -64,11 +66,13 @@ const AppContent = () => {
           <Route path="/uoms" element={<Uoms />} />
           <Route path="/sessions" element={<Sessions />} />
           <Route path="/terms" element={<Terms />} />
+          <Route path="/projects" element={<ProjectSetup />} />
           <Route path="/class-entitlements" element={<ClassEntitlements />} />
           <Route path="/class-distributions" element={<ClassInventoryDistributions />} />
           <Route path="/student-collections" element={<StudentItemCollections />} />
           <Route path="/staff-collections" element={<StaffItemCollections />} />
           <Route path="/donations" element={<ItemInventoryDonations />} />
+          <Route path="/project-disbursement" element={<ProjectDisbursement />} />
           <Route path="/reports/student-inventory" element={<StudentInventoryReport />} />
           <Route path="/reports/inventory-collections" element={<InventoryCollectionsReport />} />
           <Route path="/reports/distribution-collection" element={<DistributionCollectionReport />} />

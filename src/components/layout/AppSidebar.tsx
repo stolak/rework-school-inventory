@@ -18,7 +18,9 @@ import {
   UserCheck,
   FileBarChart,
   BarChart,
-  Gift
+  Gift,
+  FolderKanban,
+  PackageMinus,
 } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 
@@ -40,12 +42,14 @@ const mainMenuItems = [
   { title: "Inventory", url: "/inventory", icon: Package },
   { title: "Purchases", url: "/purchases", icon: ShoppingCart },
   { title: "Donations", url: "/donations", icon: Gift },
+  { title: "Project disbursement", url: "/project-disbursement", icon: PackageMinus },
   { title: "Sales", url: "/sales", icon: ShoppingBag },
   { title: "Suppliers", url: "/suppliers", icon: Users },
   { title: "Categories", url: "/categories", icon: Package2 },
   { title: "Sub-Categories", url: "/sub-categories", icon: Layers },
   { title: "Brands", url: "/brands", icon: Tag },
   { title: "Units", url: "/uoms", icon: Ruler },
+  { title: "Projects", url: "/projects", icon: FolderKanban },
 ]
 
 const schoolMenuItems = [

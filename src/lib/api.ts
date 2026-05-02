@@ -706,6 +706,141 @@ export const donationsApi = {
   remove: deleteDonation,
 };
 
+// Projects
+export type Project = {
+  id: string;
+  name: string;
+  description: string | null;
+  status: "Active" | "Inactive" | string;
+  createdAt?: string;
+  updatedAt?: string;
+  createdById?: string;
+  /** API may return PascalCase */
+  CreatedBy?: {
+    id?: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string | null;
+  } | null;
+  createdBy?: {
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string | null;
+  } | null;
+  inventoryTransactions?: unknown[];
+  _count?: { inventoryTransactions?: number };
+};
+
+export const fetchProjects = (params?: { page?: number; limit?: number }) => {
+  const queryParams = new URLSearchParams();
+  queryParams.append("page", String(params?.page ?? 1));
+  queryParams.append("limit", String(params?.limit ?? 20));
+  return get<ApiResponse<{ projects: Project[]; pagination: Pagination }>>(
+    `/api/v1/projects?${queryParams.toString()}`
+  );
+};
+
+export const createProject = (body: {
+  name: string;
+  description?: string;
+  status?: "Active" | "Inactive" | string;
+}) => post<ApiResponse<Project>, typeof body>("/api/v1/projects", body);
+
+export const updateProject = (
+  id: string,
+  body: Partial<{ name: string; description: string | null; status: string }>
+) => put<ApiResponse<Project>, typeof body>(`/api/v1/projects/${id}`, body);
+
+export const deleteProject = (id: string) =>
+  del<ApiResponse<unknown>>(`/api/v1/projects/${id}`);
+
+export const projectApi = {
+  list: fetchProjects,
+  create: createProject,
+  update: updateProject,
+  remove: deleteProject,
+};
+
+// Project collections (disburse inventory to projects / staff receiver)
+export type ProjectCollectionRow = {
+  id: string;
+  itemId: string;
+  transactionType: "project_collection" | string;
+  qtyOut: string;
+  referenceNo: string | null;
+  notes: string | null;
+  projectId: string | null;
+  staffId: string | null;
+  sessionId: string | null;
+  termId: string | null;
+  transactionDate: string;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+  item?: { name?: string } | null;
+  project?: { id: string; name?: string } | null;
+  staff?: {
+    id: string;
+    StaffNumber?: string | null;
+    name?: string | null;
+    email?: string | null;
+  } | null;
+  createdBy?: { firstName?: string; lastName?: string } | null;
+};
+
+export const fetchProjectCollections = (params?: {
+  page?: number;
+  limit?: number;
+  itemId?: string;
+  projectId?: string;
+  staffId?: string;
+  sessionId?: string;
+  termId?: string;
+  transactionDateFrom?: string;
+  transactionDateTo?: string;
+}) => {
+  const queryParams = new URLSearchParams();
+  queryParams.append("page", String(params?.page ?? 1));
+  queryParams.append("limit", String(params?.limit ?? 20));
+  if (params?.itemId) queryParams.append("itemId", params.itemId);
+  if (params?.projectId) queryParams.append("projectId", params.projectId);
+  if (params?.staffId) queryParams.append("staffId", params.staffId);
+  if (params?.sessionId) queryParams.append("sessionId", params.sessionId);
+  if (params?.termId) queryParams.append("termId", params.termId);
+  if (params?.transactionDateFrom)
+    queryParams.append("transactionDateFrom", params.transactionDateFrom);
+  if (params?.transactionDateTo)
+    queryParams.append("transactionDateTo", params.transactionDateTo);
+
+  return get<
+    ApiResponse<{
+      projectCollections: ProjectCollectionRow[];
+      pagination: Pagination;
+    }>
+  >(`/api/v1/project-collections?${queryParams.toString()}`);
+};
+
+export const createProjectCollectionsBulk = (body: {
+  notes?: string;
+  projectId: string;
+  staffId: string;
+  transactionDate: string;
+  items: { itemId: string; qtyOut: number }[];
+}) =>
+  post<ApiResponse<ProjectCollectionRow[]>, typeof body>(
+    "/api/v1/project-collections/bulk",
+    body
+  );
+
+export const deleteProjectCollection = (id: string) =>
+  del<ApiResponse<unknown>>(`/api/v1/project-collections/${id}`);
+
+export const projectCollectionsApi = {
+  list: fetchProjectCollections,
+  bulkCreate: createProjectCollectionsBulk,
+  remove: deleteProjectCollection,
+};
+
 export const fetchStudentCollections = (params?: {
   page?: number;
   limit?: number;
