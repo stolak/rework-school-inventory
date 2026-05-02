@@ -1020,11 +1020,85 @@ export const updateInventoryItem = (id: string, body: UpdateInventoryItemBody) =
 export const deleteInventoryItem = (id: string) =>
   del<ApiResponse<InventoryItem>>(`/api/v1/inventory-items/${id}`);
 
+export type ItemBalanceRow = {
+  itemId: string;
+  name: string;
+  sku: string | null;
+  category?: { id: string; name?: string } | null;
+  subCategory?: { id: string; name?: string } | null;
+  balance: string;
+};
+
+export const fetchInventoryItemBalances = (params?: {
+  categoryId?: string;
+  subCategoryId?: string;
+  storeId?: string;
+}) => {
+  const queryParams = new URLSearchParams();
+  if (params?.categoryId) queryParams.append("categoryId", params.categoryId);
+  if (params?.subCategoryId)
+    queryParams.append("subCategoryId", params.subCategoryId);
+  if (params?.storeId) queryParams.append("storeId", params.storeId);
+  const qs = queryParams.toString();
+  return get<ApiResponse<{ balances: ItemBalanceRow[] }>>(
+    `/api/v1/inventory-items/balances${qs ? `?${qs}` : ""}`
+  );
+};
+
+export type InventoryTxnLogRow = {
+  id: string;
+  transactionType: string;
+  qtyIn: string;
+  qtyOut: string;
+  inCost: string;
+  outCost: string;
+  amountPaid: string;
+  status: string;
+  referenceNo: string | null;
+  notes: string | null;
+  transactionDate: string;
+  store?: { id: string; name?: string } | null;
+  createdBy?: {
+    id?: string;
+    firstName?: string | null;
+    lastName?: string | null;
+  } | null;
+};
+
+export type InventoryTransactionLogData = {
+  item: { id: string; name?: string; sku?: string | null };
+  transactionDateFrom?: string;
+  transactionDateTo?: string;
+  storeId?: string | null;
+  balanceBeforeFromDate: string;
+  transactions: InventoryTxnLogRow[];
+};
+
+export const fetchInventoryItemTransactionLog = (params: {
+  itemId: string;
+  storeId?: string;
+  transactionDateFrom?: string;
+  transactionDateTo?: string;
+}) => {
+  const queryParams = new URLSearchParams();
+  queryParams.append("itemId", params.itemId);
+  if (params.storeId) queryParams.append("storeId", params.storeId);
+  if (params.transactionDateFrom)
+    queryParams.append("transactionDateFrom", params.transactionDateFrom);
+  if (params.transactionDateTo)
+    queryParams.append("transactionDateTo", params.transactionDateTo);
+  return get<ApiResponse<InventoryTransactionLogData>>(
+    `/api/v1/inventory-items/transaction-log?${queryParams.toString()}`
+  );
+};
+
 export const inventoryApi = {
   list: fetchInventoryItems,
   create: createInventoryItem,
   update: updateInventoryItem,
   remove: deleteInventoryItem,
+  balances: fetchInventoryItemBalances,
+  transactionLog: fetchInventoryItemTransactionLog,
 };
 
 // Purchase Transaction-specific helpers

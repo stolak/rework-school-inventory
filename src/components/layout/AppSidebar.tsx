@@ -23,6 +23,8 @@ import {
   PackageMinus,
   Store,
   ArrowLeftRight,
+  Scale,
+  History,
 } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 
@@ -72,6 +74,8 @@ const reportsMenuItems = [
   { title: "Student collections summary", url: "/reports/student-inventory", icon: FileBarChart },
   { title: "Inventory Collections Report", url: "/reports/inventory-collections", icon: BarChart },
   { title: "Distribution & Collection Report", url: "/reports/distribution-collection", icon: BarChart3 },
+  { title: "Item balance report", url: "/reports/item-balances", icon: Scale },
+  { title: "Item transaction log", url: "/reports/item-transaction-log", icon: History },
 ]
 
 export function AppSidebar() {
