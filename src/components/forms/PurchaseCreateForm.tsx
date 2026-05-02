@@ -20,8 +20,10 @@ import {
 } from "@/components/ui/form";
 import { useInventory } from "@/hooks/useInventory";
 import { useSuppliers } from "@/hooks/useSuppliers";
+import { useStores } from "@/hooks/useStores";
 
 const schema = z.object({
+  storeId: z.string().min(1, "Please select a store"),
   supplierId: z.string().min(1, "Please select a supplier"),
   referenceNo: z.string().optional(),
   notes: z.string().optional(),
@@ -49,10 +51,16 @@ export function PurchaseCreateForm({
 }) {
   const { items: inventoryItems } = useInventory({ page: 1, limit: 100 });
   const { suppliers } = useSuppliers({ status: "Active", page: 1, limit: 100 });
+  const { stores, isLoading: storesLoading } = useStores({
+    status: "Active",
+    page: 1,
+    limit: 100,
+  });
 
   const form = useForm<PurchaseCreateFormData>({
     resolver: zodResolver(schema),
     defaultValues: {
+      storeId: "",
       supplierId: "",
       referenceNo: "",
       notes: "",
@@ -73,6 +81,35 @@ export function PurchaseCreateForm({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
+            name="storeId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Store</FormLabel>
+                <FormControl>
+                  {storesLoading ? (
+                    <p className="text-sm text-muted-foreground">Loading stores…</p>
+                  ) : stores.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No active stores found.</p>
+                  ) : (
+                    <Combobox
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      options={stores.map((s) => ({
+                        value: s.id,
+                        label: s.name,
+                      }))}
+                      placeholder="Select store"
+                      searchPlaceholder="Search stores…"
+                    />
+                  )}
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
             name="supplierId"
             render={({ field }) => (
               <FormItem>
@@ -90,7 +127,9 @@ export function PurchaseCreateForm({
               </FormItem>
             )}
           />
+        </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="transactionDate"
@@ -283,7 +322,9 @@ export function PurchaseCreateForm({
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button type="submit">Create Purchases</Button>
+          <Button type="submit" disabled={storesLoading || stores.length === 0}>
+            Create Purchases
+          </Button>
         </div>
       </form>
     </Form>

@@ -14,6 +14,8 @@ export interface Donation {
   createdById: string;
   createdAt: string;
   updatedAt: string;
+  storeId?: string | null;
+  storeName?: string;
   itemName?: string;
   createdByName?: string;
 }
@@ -22,6 +24,7 @@ export function useDonations(params?: {
   page?: number;
   limit?: number;
   itemId?: string;
+  storeId?: string;
   sessionId?: string;
   termId?: string;
   referenceNo?: string;
@@ -50,6 +53,8 @@ export function useDonations(params?: {
     createdById: d.createdById,
     createdAt: d.createdAt,
     updatedAt: d.updatedAt,
+    storeId: d.storeId ?? null,
+    storeName: d.store?.name,
     itemName: d.item?.name || "Unknown Item",
     createdByName: d.createdBy
       ? `${d.createdBy.firstName ?? ""} ${d.createdBy.lastName ?? ""}`.trim()
@@ -89,6 +94,7 @@ export function useDonations(params?: {
   });
 
   const createBulkDonations = async (payload: {
+    storeId: string;
     notes?: string;
     transactionDate: string;
     items: { itemId: string; qtyIn: number }[];

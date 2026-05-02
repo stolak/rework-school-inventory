@@ -117,8 +117,10 @@ export type Purchase = {
   createdAt: string;
   updatedAt: string;
   classInventoryDistributionId: string | null;
+  storeId?: string | null;
   item?: { name?: string } | null;
   supplier?: { name?: string } | null;
+  store?: { id: string; name?: string } | null;
   createdBy?: { firstName?: string; lastName?: string } | null;
 };
 
@@ -656,7 +658,9 @@ export type DonationRow = {
   createdById: string;
   createdAt: string;
   updatedAt: string;
+  storeId?: string | null;
   item?: { name?: string } | null;
+  store?: { id: string; name?: string } | null;
   createdBy?: { firstName?: string; lastName?: string } | null;
 };
 
@@ -664,6 +668,7 @@ export const fetchDonations = (params?: {
   page?: number;
   limit?: number;
   itemId?: string;
+  storeId?: string;
   sessionId?: string;
   termId?: string;
   referenceNo?: string;
@@ -674,6 +679,7 @@ export const fetchDonations = (params?: {
   queryParams.append("page", String(params?.page ?? 1));
   queryParams.append("limit", String(params?.limit ?? 20));
   if (params?.itemId) queryParams.append("itemId", params.itemId);
+  if (params?.storeId) queryParams.append("storeId", params.storeId);
   if (params?.sessionId) queryParams.append("sessionId", params.sessionId);
   if (params?.termId) queryParams.append("termId", params.termId);
   if (params?.referenceNo) queryParams.append("referenceNo", params.referenceNo);
@@ -691,6 +697,7 @@ export const fetchDonations = (params?: {
 };
 
 export const createDonationsBulk = (body: {
+  storeId: string;
   notes?: string;
   transactionDate: string;
   items: { itemId: string; qtyIn: number }[];
@@ -1089,6 +1096,7 @@ export const purchaseTransactionApi = {
 export const fetchPurchases = (params?: {
   itemId?: string;
   supplierId?: string;
+  storeId?: string;
   status?: string;
   transactionDateFrom?: string;
   transactionDateTo?: string;
@@ -1098,6 +1106,7 @@ export const fetchPurchases = (params?: {
   const searchParams = new URLSearchParams();
   if (params?.itemId) searchParams.append("itemId", params.itemId);
   if (params?.supplierId) searchParams.append("supplierId", params.supplierId);
+  if (params?.storeId) searchParams.append("storeId", params.storeId);
   if (params?.status) searchParams.append("status", params.status);
   if (params?.transactionDateFrom)
     searchParams.append("transactionDateFrom", params.transactionDateFrom);
@@ -1124,6 +1133,7 @@ export const createPurchase = (body: {
 }) => post<ApiResponse<Purchase>, typeof body>("/api/v1/purchases", body);
 
 export const createPurchasesBulk = (body: {
+  storeId: string;
   supplierId: string;
   referenceNo?: string;
   notes?: string;
@@ -1135,6 +1145,7 @@ export const createPurchasesBulk = (body: {
 export const updatePurchase = (id: string, body: Partial<{
   itemId: string;
   supplierId: string | null;
+  storeId: string | null;
   qtyIn: string | number;
   inCost: string | number;
   amountPaid: string | number;
@@ -1348,12 +1359,33 @@ export type StoreRow = {
   accessibleUsers?: StoreAccessibleUser[];
 };
 
-export const fetchStores = (params?: { page?: number; limit?: number }) => {
+/** Stores the current user may operate from (manager / granted access) — `GET /stores/me` */
+export type MyStoreRow = StoreRow & {
+  isStoreManager?: boolean;
+  hasUserStoreAccess?: boolean;
+  userStoreAccessGrantedAt?: string | null;
+};
+
+export const fetchStores = (params?: {
+  page?: number;
+  limit?: number;
+  status?: string;
+}) => {
   const queryParams = new URLSearchParams();
   queryParams.append("page", String(params?.page ?? 1));
   queryParams.append("limit", String(params?.limit ?? 100));
+  if (params?.status) queryParams.append("status", params.status);
   return get<ApiResponse<{ stores: StoreRow[]; pagination: Pagination }>>(
     `/api/v1/stores?${queryParams.toString()}`
+  );
+};
+
+export const fetchMyStores = (params?: { page?: number; limit?: number }) => {
+  const queryParams = new URLSearchParams();
+  queryParams.append("page", String(params?.page ?? 1));
+  queryParams.append("limit", String(params?.limit ?? 100));
+  return get<ApiResponse<{ stores: MyStoreRow[]; pagination: Pagination }>>(
+    `/api/v1/stores/me?${queryParams.toString()}`
   );
 };
 
@@ -1385,10 +1417,71 @@ export const removeUserFromStore = (storeId: string, userId: string) =>
 
 export const storeApi = {
   list: fetchStores,
+  listMine: fetchMyStores,
   create: createStore,
   update: updateStore,
   addUser: addUserToStore,
   removeUser: removeUserFromStore,
+};
+
+// Store transfers (inventory between stores)
+export type StoreTransferListRow = {
+  status: string;
+  referenceNo: string;
+  notes: string | null;
+  quantity: string;
+  transactionDate: string;
+  item: { id: string; name?: string };
+  sourceStore: { id: string; name?: string };
+  destStore: { id: string; name?: string };
+  createdBy?: { firstName?: string; lastName?: string };
+  outTransactionId?: string;
+  inTransactionId?: string;
+};
+
+export const fetchStoreTransfers = (params?: {
+  status?: string;
+  sourceStoreId?: string;
+  destStoreId?: string;
+  itemId?: string;
+  transactionDateFrom?: string;
+  transactionDateTo?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const queryParams = new URLSearchParams();
+  queryParams.append("page", String(params?.page ?? 1));
+  queryParams.append("limit", String(params?.limit ?? 20));
+  if (params?.status) queryParams.append("status", params.status);
+  if (params?.sourceStoreId)
+    queryParams.append("sourceStoreId", params.sourceStoreId);
+  if (params?.destStoreId) queryParams.append("destStoreId", params.destStoreId);
+  if (params?.itemId) queryParams.append("itemId", params.itemId);
+  if (params?.transactionDateFrom)
+    queryParams.append("transactionDateFrom", params.transactionDateFrom);
+  if (params?.transactionDateTo)
+    queryParams.append("transactionDateTo", params.transactionDateTo);
+
+  return get<
+    ApiResponse<{ transfers: StoreTransferListRow[]; pagination: Pagination }>
+  >(`/api/v1/store-transfers?${queryParams.toString()}`);
+};
+
+export const createStoreTransfer = (body: {
+  sourceStoreId: string;
+  destStoreId: string;
+  items: { itemId: string; qty: number }[];
+  notes?: string;
+  transactionDate: string;
+}) =>
+  post<
+    ApiResponse<{ referenceNo: string; transactions: unknown[] }>,
+    typeof body
+  >("/api/v1/store-transfers", body);
+
+export const storeTransferApi = {
+  list: fetchStoreTransfers,
+  create: createStoreTransfer,
 };
 
 // Class Teachers API

@@ -37,7 +37,11 @@ function normalizeStore(s: StoreRow): StoreListItem {
   };
 }
 
-export function useStores(params?: { page?: number; limit?: number }) {
+export function useStores(params?: {
+  page?: number;
+  limit?: number;
+  status?: string;
+}) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -45,8 +49,13 @@ export function useStores(params?: { page?: number; limit?: number }) {
   const limit = params?.limit ?? 100;
 
   const { data: response, isLoading, error } = useQuery({
-    queryKey: ["stores", page, limit],
-    queryFn: () => storeApi.list({ page, limit }),
+    queryKey: ["stores", page, limit, params?.status ?? null],
+    queryFn: () =>
+      storeApi.list({
+        page,
+        limit,
+        status: params?.status,
+      }),
   });
 
   const rawStores = (response as any)?.data?.stores ?? [];

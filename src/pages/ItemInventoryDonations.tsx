@@ -11,6 +11,7 @@ import { useDonations, type Donation } from "@/hooks/useDonations"
 import { useInventory } from "@/hooks/useInventory"
 import { useSchoolSessions } from "@/hooks/useSchoolSessions"
 import { useTerms } from "@/hooks/useTerms"
+import { useStores } from "@/hooks/useStores"
 import { useToast } from "@/hooks/use-toast"
 import {
   AlertDialog,
@@ -41,6 +42,7 @@ export default function ItemInventoryDonations() {
     .slice(0, 10)
 
   const [filterItemId, setFilterItemId] = useState<string>("")
+  const [filterStoreId, setFilterStoreId] = useState<string>("")
   const [selectedSessionId, setSelectedSessionId] = useState<string>("")
   const [selectedTermId, setSelectedTermId] = useState<string>("")
   const [transactionDateFrom, setTransactionDateFrom] = useState<string>(defaultFrom)
@@ -48,6 +50,7 @@ export default function ItemInventoryDonations() {
   const [page, setPage] = useState<number>(1)
   const [limit, setLimit] = useState<number>(20)
 
+  const [batchStoreId, setBatchStoreId] = useState<string>("")
   const [transactionDate, setTransactionDate] = useState<string>(
     new Date().toISOString().slice(0, 10)
   )
@@ -60,10 +63,12 @@ export default function ItemInventoryDonations() {
   const { items } = useInventory()
   const { sessions } = useSchoolSessions({ status: "Active", page: 1, limit: 500 })
   const { terms } = useTerms({ page: 1, limit: 200, status: "Active" })
+  const { stores: activeStores } = useStores({ status: "Active", page: 1, limit: 100 })
   const { toast } = useToast()
 
   const { donations, createBulkDonations, deleteDonation, isLoading } = useDonations({
     itemId: filterItemId || undefined,
+    storeId: filterStoreId || undefined,
     sessionId: selectedSessionId || undefined,
     termId: selectedTermId || undefined,
     transactionDateFrom: transactionDateFrom || undefined,
@@ -74,6 +79,7 @@ export default function ItemInventoryDonations() {
 
   const selectedSession = sessions.find((s) => s.id === selectedSessionId)
   const selectedTerm = terms.find((t) => t.id === selectedTermId)
+  const batchStore = activeStores.find((s) => s.id === batchStoreId)
 
   const addNewItemRow = () => {
     setNewItems((prev) => [
@@ -117,6 +123,14 @@ export default function ItemInventoryDonations() {
       })
       return
     }
+    if (!batchStoreId) {
+      toast({
+        title: "Error",
+        description: "Please select a store for this donation batch",
+        variant: "destructive",
+      })
+      return
+    }
 
     toast({
       title: "Saving...",
@@ -125,6 +139,7 @@ export default function ItemInventoryDonations() {
 
     try {
       await createBulkDonations({
+        storeId: batchStoreId,
         notes: notes?.trim() ? notes.trim() : undefined,
         transactionDate,
         items: validItems.map((it) => ({ itemId: it.itemId, qtyIn: it.qtyIn })),
@@ -171,6 +186,7 @@ export default function ItemInventoryDonations() {
         notes: row.notes,
         transactionDate: row.transactionDate,
         createdByName: row.createdByName,
+        storeName: row.storeName,
         rows: [] as Donation[],
       })
     }
@@ -181,6 +197,7 @@ export default function ItemInventoryDonations() {
     notes: string | null
     transactionDate: string
     createdByName?: string
+    storeName?: string
     rows: Donation[]
   }>())
 
@@ -202,6 +219,25 @@ export default function ItemInventoryDonations() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label>Store</Label>
+              <Combobox
+                value={filterStoreId}
+                onValueChange={(v) => {
+                  setFilterStoreId(v)
+                  setPage(1)
+                }}
+                options={[
+                  { value: "", label: "All stores" },
+                  ...activeStores.map((s) => ({
+                    value: s.id,
+                    label: s.name,
+                  })),
+                ]}
+                placeholder="All stores"
+                searchPlaceholder="Search stores..."
+              />
+            </div>
             <div>
               <Label>Item</Label>
               <Combobox
@@ -309,6 +345,7 @@ export default function ItemInventoryDonations() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>
             Record donation batch
+            {batchStore ? ` — ${batchStore.name}` : ""}
             {selectedSession ? ` — ${selectedSession.name}` : ""}
             {selectedTerm ? ` — ${selectedTerm.name}` : ""}
           </CardTitle>
@@ -318,7 +355,11 @@ export default function ItemInventoryDonations() {
               Add Item
             </Button>
             {newItems.length > 0 && (
-              <Button onClick={saveBatch} size="sm">
+              <Button
+                onClick={saveBatch}
+                size="sm"
+                disabled={!batchStoreId || activeStores.length === 0}
+              >
                 <Save className="mr-2 h-4 w-4" />
                 Save Batch
               </Button>
@@ -326,7 +367,23 @@ export default function ItemInventoryDonations() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div>
+              <Label>Store</Label>
+              <Combobox
+                value={batchStoreId}
+                onValueChange={setBatchStoreId}
+                options={activeStores.map((s) => ({
+                  value: s.id,
+                  label: s.name,
+                }))}
+                placeholder="Select store..."
+                searchPlaceholder="Search stores..."
+              />
+              {activeStores.length === 0 && (
+                <p className="text-xs text-muted-foreground mt-1">No active stores available.</p>
+              )}
+            </div>
             <div>
               <Label>Transaction Date</Label>
               <Input
@@ -423,6 +480,7 @@ export default function ItemInventoryDonations() {
                 <TableRow>
                   <TableHead>Reference</TableHead>
                   <TableHead>Date</TableHead>
+                  <TableHead>Store</TableHead>
                   <TableHead>Items</TableHead>
                   <TableHead>Notes</TableHead>
                   <TableHead>Recorded By</TableHead>
@@ -439,6 +497,9 @@ export default function ItemInventoryDonations() {
                       {batch.transactionDate
                         ? new Date(batch.transactionDate).toLocaleDateString()
                         : "—"}
+                    </TableCell>
+                    <TableCell className="max-w-[160px] truncate">
+                      {batch.storeName ?? "—"}
                     </TableCell>
                     <TableCell>
                       <div className="space-y-1">

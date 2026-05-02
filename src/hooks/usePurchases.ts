@@ -15,14 +15,17 @@ export interface Purchase {
   transactionDate: string;
   createdAt: string;
   updatedAt: string;
+  storeId?: string | null;
   item?: { name?: string } | null;
   supplier?: { name?: string } | null;
+  store?: { id: string; name?: string } | null;
   createdBy?: { firstName?: string; lastName?: string } | null;
 }
 
 export function usePurchases(params?: {
   itemId?: string;
   supplierId?: string;
+  storeId?: string;
   status?: string;
   transactionDateFrom?: string;
   transactionDateTo?: string;
@@ -37,6 +40,7 @@ export function usePurchases(params?: {
       "purchases",
       params?.itemId ?? null,
       params?.supplierId ?? null,
+      params?.storeId ?? null,
       params?.status ?? null,
       params?.transactionDateFrom ?? null,
       params?.transactionDateTo ?? null,
@@ -47,6 +51,7 @@ export function usePurchases(params?: {
       const res = await purchaseApi.list({
         itemId: params?.itemId,
         supplierId: params?.supplierId,
+        storeId: params?.storeId,
         status: params?.status,
         transactionDateFrom: params?.transactionDateFrom,
         transactionDateTo: params?.transactionDateTo,

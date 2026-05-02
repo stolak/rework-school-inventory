@@ -22,6 +22,7 @@ import {
   FolderKanban,
   PackageMinus,
   Store,
+  ArrowLeftRight,
 } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 
@@ -52,6 +53,7 @@ const mainMenuItems = [
   { title: "Units", url: "/uoms", icon: Ruler },
   { title: "Projects", url: "/projects", icon: FolderKanban },
   { title: "Store setup", url: "/store-setup", icon: Store },
+  { title: "Store transfers", url: "/store-transfers", icon: ArrowLeftRight },
 ]
 
 const schoolMenuItems = [

@@ -68,6 +68,10 @@ export function PurchaseDialog({
                 <p className="text-sm text-muted-foreground">{purchase.supplier?.name || "N/A"}</p>
               </div>
               <div>
+                <label className="text-sm font-medium">Store</label>
+                <p className="text-sm text-muted-foreground">{purchase.store?.name || "N/A"}</p>
+              </div>
+              <div>
                 <label className="text-sm font-medium">Quantity</label>
                 <p className="text-sm text-muted-foreground">{purchase.qtyIn}</p>
               </div>

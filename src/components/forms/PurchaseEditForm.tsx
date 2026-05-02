@@ -21,9 +21,11 @@ import {
 } from "@/components/ui/form";
 import { useInventory } from "@/hooks/useInventory";
 import { useSuppliers } from "@/hooks/useSuppliers";
+import { useStores } from "@/hooks/useStores";
 import type { Purchase } from "@/hooks/usePurchases";
 
 const schema = z.object({
+  storeId: z.string().min(1, "Please select a store"),
   itemId: z.string().min(1, "Please select an item"),
   supplierId: z.string().optional(),
   qtyIn: z.string().min(1, "Quantity must be at least 1"),
@@ -48,10 +50,16 @@ export function PurchaseEditForm({
 }) {
   const { items: inventoryItems } = useInventory({ page: 1, limit: 100 });
   const { suppliers } = useSuppliers({ page: 1, limit: 100 });
+  const { stores, isLoading: storesLoading } = useStores({
+    status: "Active",
+    page: 1,
+    limit: 100,
+  });
 
   const form = useForm<PurchaseEditFormData>({
     resolver: zodResolver(schema),
     defaultValues: {
+      storeId: purchase?.storeId || "",
       itemId: purchase?.itemId || "",
       supplierId: purchase?.supplierId || "",
       qtyIn: purchase?.qtyIn || "1",
@@ -68,6 +76,35 @@ export function PurchaseEditForm({
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="storeId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Store</FormLabel>
+                <FormControl>
+                  {storesLoading ? (
+                    <p className="text-sm text-muted-foreground">Loading stores…</p>
+                  ) : stores.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No active stores found.</p>
+                  ) : (
+                    <Combobox
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      options={stores.map((s) => ({
+                        value: s.id,
+                        label: s.name,
+                      }))}
+                      placeholder="Select store"
+                      searchPlaceholder="Search stores…"
+                    />
+                  )}
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
           <FormField
             control={form.control}
             name="itemId"
@@ -252,7 +289,9 @@ export function PurchaseEditForm({
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button type="submit">Update Purchase</Button>
+          <Button type="submit" disabled={storesLoading || stores.length === 0}>
+            Update Purchase
+          </Button>
         </div>
       </form>
     </Form>

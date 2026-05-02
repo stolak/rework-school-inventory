@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils"
 import { Combobox } from "@/components/ui/combobox"
 import { useInventory } from "@/hooks/useInventory"
 import { useSuppliers } from "@/hooks/useSuppliers"
+import { useStores } from "@/hooks/useStores"
 import { PurchaseDialog } from "@/components/dialogs/PurchaseDialog"
 import { usePurchases, type Purchase } from "@/hooks/usePurchases"
 import { useToast } from "@/hooks/use-toast"
@@ -39,6 +40,7 @@ export default function Purchases() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [itemId, setItemId] = useState("")
   const [supplierId, setSupplierId] = useState("")
+  const [storeId, setStoreId] = useState("")
   const [startDate, setStartDate] = useState<Date | undefined>()
   const [endDate, setEndDate] = useState<Date | undefined>()
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -52,17 +54,19 @@ export default function Purchases() {
     () => ({
       itemId: itemId || undefined,
       supplierId: supplierId || undefined,
+      storeId: storeId || undefined,
       status: statusFilter === "all" ? undefined : statusFilter,
       transactionDateFrom: startDate ? format(startDate, "yyyy-MM-dd") : undefined,
       transactionDateTo: endDate ? format(endDate, "yyyy-MM-dd") : undefined,
       page: 1,
       limit: 20,
     }),
-    [itemId, supplierId, statusFilter, startDate, endDate]
+    [itemId, supplierId, storeId, statusFilter, startDate, endDate]
   )
 
   const { items: inventoryItems } = useInventory({ page: 1, limit: 100 })
   const { suppliers } = useSuppliers({ status: "Active", page: 1, limit: 100 })
+  const { stores: activeStores } = useStores({ status: "Active", page: 1, limit: 100 })
 
   const { purchases, bulkCreatePurchases, updatePurchase, deletePurchase } =
     usePurchases(listQuery)
@@ -77,6 +81,7 @@ export default function Purchases() {
         return (
           (purchase.item?.name || "").toLowerCase().includes(q) ||
           (purchase.supplier?.name || "").toLowerCase().includes(q) ||
+          (purchase.store?.name || "").toLowerCase().includes(q) ||
           (purchase.referenceNo || "").toLowerCase().includes(q)
         )
       }),
@@ -128,10 +133,11 @@ export default function Purchases() {
       });
       
       const purchaseData = {
+        storeId: data.storeId,
         supplierId: data.supplierId,
         referenceNo: data.referenceNo || undefined,
         notes: data.notes || undefined,
-        transactionDate: data.transactionDate.toISOString(),
+        transactionDate: format(data.transactionDate, "yyyy-MM-dd"),
         amountPaid: data.amountPaid ?? undefined,
         items: (data.items || []).map((it: any) => ({
           itemId: it.itemId,
@@ -161,6 +167,7 @@ export default function Purchases() {
       });
       
       const updateData = {
+        storeId: data.storeId || null,
         itemId: data.itemId,
         supplierId: data.supplierId,
         qtyIn: data.qtyIn,
@@ -169,7 +176,7 @@ export default function Purchases() {
         status: data.status,
         referenceNo: data.referenceNo || undefined,
         notes: data.notes || undefined,
-        transactionDate: data.transactionDate.toISOString(),
+        transactionDate: format(data.transactionDate, "yyyy-MM-dd"),
       }
       
       try {
@@ -266,7 +273,7 @@ export default function Purchases() {
       <div className="relative max-w-xl">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
         <Input
-          placeholder="Search by item, supplier, or reference number..."
+          placeholder="Search by item, supplier, store, or reference..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10"
@@ -300,6 +307,18 @@ export default function Purchases() {
               ]}
               placeholder="Supplier"
               searchPlaceholder="Search suppliers..."
+            />
+          </div>
+          <div className="w-full sm:w-[220px]">
+            <Combobox
+              value={storeId}
+              onValueChange={setStoreId}
+              options={[
+                { value: "", label: "All stores" },
+                ...activeStores.map((s) => ({ value: s.id, label: s.name })),
+              ]}
+              placeholder="Store"
+              searchPlaceholder="Search stores..."
             />
           </div>
 
@@ -395,6 +414,9 @@ export default function Purchases() {
                     <p className="text-sm text-muted-foreground">
                       {purchase.supplier?.name || "No Supplier"}
                     </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {purchase.store?.name ? `Store: ${purchase.store.name}` : "Store: —"}
+                    </p>
                   </div>
                   {getStatusBadge(purchase.status)}
                 </div>
@@ -463,6 +485,7 @@ export default function Purchases() {
               <TableRow>
                 <TableHead>Item</TableHead>
                 <TableHead>Supplier</TableHead>
+                <TableHead>Store</TableHead>
                 <TableHead className="text-right">Qty</TableHead>
                 <TableHead className="text-right">Total cost</TableHead>
                 <TableHead>Reference</TableHead>
@@ -476,6 +499,9 @@ export default function Purchases() {
                 <TableRow key={purchase.id}>
                   <TableCell className="font-medium">{purchase.item?.name || "N/A"}</TableCell>
                   <TableCell>{purchase.supplier?.name || "No Supplier"}</TableCell>
+                  <TableCell className="max-w-[140px] truncate">
+                    {purchase.store?.name ?? "—"}
+                  </TableCell>
                   <TableCell className="text-right">{purchase.qtyIn}</TableCell>
                   <TableCell className="text-right">
                     ₦{Number(purchase.inCost || 0).toLocaleString()}
@@ -520,6 +546,7 @@ export default function Purchases() {
             {searchTerm ||
             itemId ||
             supplierId ||
+            storeId ||
             statusFilter !== "all" ||
             startDate ||
             endDate
@@ -529,6 +556,7 @@ export default function Purchases() {
           {!searchTerm &&
             !itemId &&
             !supplierId &&
+            !storeId &&
             statusFilter === "all" &&
             !startDate &&
             !endDate && (
