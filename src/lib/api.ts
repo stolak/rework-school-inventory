@@ -642,6 +642,70 @@ export const staffCollectionsApi = {
   remove: deleteStaffCollection,
 };
 
+// Donations (inventory donations)
+export type DonationRow = {
+  id: string;
+  itemId: string;
+  transactionType: "donation" | string;
+  qtyIn: string;
+  referenceNo: string | null;
+  notes: string | null;
+  sessionId: string | null;
+  termId: string | null;
+  transactionDate: string;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+  item?: { name?: string } | null;
+  createdBy?: { firstName?: string; lastName?: string } | null;
+};
+
+export const fetchDonations = (params?: {
+  page?: number;
+  limit?: number;
+  itemId?: string;
+  sessionId?: string;
+  termId?: string;
+  referenceNo?: string;
+  transactionDateFrom?: string;
+  transactionDateTo?: string;
+}) => {
+  const queryParams = new URLSearchParams();
+  queryParams.append("page", String(params?.page ?? 1));
+  queryParams.append("limit", String(params?.limit ?? 20));
+  if (params?.itemId) queryParams.append("itemId", params.itemId);
+  if (params?.sessionId) queryParams.append("sessionId", params.sessionId);
+  if (params?.termId) queryParams.append("termId", params.termId);
+  if (params?.referenceNo) queryParams.append("referenceNo", params.referenceNo);
+  if (params?.transactionDateFrom)
+    queryParams.append("transactionDateFrom", params.transactionDateFrom);
+  if (params?.transactionDateTo)
+    queryParams.append("transactionDateTo", params.transactionDateTo);
+
+  return get<
+    ApiResponse<{
+      donations: DonationRow[];
+      pagination: Pagination;
+    }>
+  >(`/api/v1/donations?${queryParams.toString()}`);
+};
+
+export const createDonationsBulk = (body: {
+  notes?: string;
+  transactionDate: string;
+  items: { itemId: string; qtyIn: number }[];
+}) =>
+  post<ApiResponse<DonationRow[]>, typeof body>("/api/v1/donations/bulk", body);
+
+export const deleteDonation = (id: string) =>
+  del<ApiResponse<unknown>>(`/api/v1/donations/${id}`);
+
+export const donationsApi = {
+  list: fetchDonations,
+  bulkCreate: createDonationsBulk,
+  remove: deleteDonation,
+};
+
 export const fetchStudentCollections = (params?: {
   page?: number;
   limit?: number;

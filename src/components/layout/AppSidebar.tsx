@@ -17,7 +17,8 @@ import {
   Ruler,
   UserCheck,
   FileBarChart,
-  BarChart
+  BarChart,
+  Gift
 } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 
@@ -38,6 +39,7 @@ const mainMenuItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Inventory", url: "/inventory", icon: Package },
   { title: "Purchases", url: "/purchases", icon: ShoppingCart },
+  { title: "Donations", url: "/donations", icon: Gift },
   { title: "Sales", url: "/sales", icon: ShoppingBag },
   { title: "Suppliers", url: "/suppliers", icon: Users },
   { title: "Categories", url: "/categories", icon: Package2 },

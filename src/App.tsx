@@ -22,6 +22,7 @@ import ClassEntitlements from "./pages/ClassEntitlements";
 import ClassInventoryDistributions from "./pages/ClassInventoryDistributions";
 import StudentItemCollections from "./pages/StudentItemCollections";
 import StaffItemCollections from "./pages/StaffItemCollections";
+import ItemInventoryDonations from "./pages/ItemInventoryDonations";
 import StudentInventoryReport from "./pages/StudentInventoryReport";
 import InventoryCollectionsReport from "./pages/InventoryCollectionsReport";
 import DistributionCollectionReport from "./pages/DistributionCollectionReport";
@@ -67,6 +68,7 @@ const AppContent = () => {
           <Route path="/class-distributions" element={<ClassInventoryDistributions />} />
           <Route path="/student-collections" element={<StudentItemCollections />} />
           <Route path="/staff-collections" element={<StaffItemCollections />} />
+          <Route path="/donations" element={<ItemInventoryDonations />} />
           <Route path="/reports/student-inventory" element={<StudentInventoryReport />} />
           <Route path="/reports/inventory-collections" element={<InventoryCollectionsReport />} />
           <Route path="/reports/distribution-collection" element={<DistributionCollectionReport />} />
