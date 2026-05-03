@@ -1,15 +1,13 @@
-import { useState } from "react"
-import { 
-  Package, 
-  Users, 
-  BookOpen, 
-  ShoppingCart, 
+import { useEffect, useState } from "react"
+import {
+  Package,
+  Users,
+  BookOpen,
+  ShoppingCart,
   ShoppingBag,
-  Settings,
   Home,
   Package2,
   GraduationCap,
-  FileText,
   Tag,
   Layers,
   Ruler,
@@ -23,73 +21,160 @@ import {
   ArrowLeftRight,
   Scale,
   History,
+  ChevronRight,
+  LayoutDashboard,
+  School,
+  PieChart,
 } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { cn } from "@/lib/utils"
 
-const mainMenuItems = [
-  { title: "Dashboard", url: "/", icon: Home },
-  { title: "Inventory", url: "/inventory", icon: Package },
-  { title: "Purchases", url: "/purchases", icon: ShoppingCart },
-  { title: "Donations", url: "/donations", icon: Gift },
-  { title: "Project disbursement", url: "/project-disbursement", icon: PackageMinus },
-  { title: "Sales", url: "/sales", icon: ShoppingBag },
-  { title: "Suppliers", url: "/suppliers", icon: Users },
-  { title: "Categories", url: "/categories", icon: Package2 },
-  { title: "Sub-Categories", url: "/sub-categories", icon: Layers },
-  { title: "Brands", url: "/brands", icon: Tag },
-  { title: "Units", url: "/uoms", icon: Ruler },
-  { title: "Projects", url: "/projects", icon: FolderKanban },
-  { title: "Store setup", url: "/store-setup", icon: Store },
-  { title: "Store transfers", url: "/store-transfers", icon: ArrowLeftRight },
+type NavMenuItem = {
+  title: string
+  url: string
+  icon: LucideIcon
+}
+
+type SidebarNavSection = {
+  title: string
+  tooltip: string
+  sectionIcon: LucideIcon
+  items: NavMenuItem[]
+}
+
+const sidebarNavSections: SidebarNavSection[] = [
+  {
+    title: "Main",
+    tooltip: "Main",
+    sectionIcon: LayoutDashboard,
+    items: [
+      { title: "Dashboard", url: "/", icon: Home },
+      { title: "Inventory", url: "/inventory", icon: Package },
+      { title: "Purchases", url: "/purchases", icon: ShoppingCart },
+      { title: "Donations", url: "/donations", icon: Gift },
+      { title: "Project disbursement", url: "/project-disbursement", icon: PackageMinus },
+      { title: "Sales", url: "/sales", icon: ShoppingBag },
+      { title: "Suppliers", url: "/suppliers", icon: Users },
+      { title: "Categories", url: "/categories", icon: Package2 },
+      { title: "Sub-Categories", url: "/sub-categories", icon: Layers },
+      { title: "Brands", url: "/brands", icon: Tag },
+      { title: "Units", url: "/uoms", icon: Ruler },
+      { title: "Projects", url: "/projects", icon: FolderKanban },
+      { title: "Store setup", url: "/store-setup", icon: Store },
+      { title: "Store transfers", url: "/store-transfers", icon: ArrowLeftRight },
+    ],
+  },
+  {
+    title: "School Management",
+    tooltip: "School Management",
+    sectionIcon: School,
+    items: [
+      { title: "Classes", url: "/classes", icon: GraduationCap },
+      { title: "Sub Classes", url: "/sub-classes", icon: Layers },
+      { title: "Students", url: "/students", icon: Users },
+      { title: "Sessions", url: "/sessions", icon: BookOpen },
+      { title: "Terms", url: "/terms", icon: BookOpen },
+      { title: "Student Collections", url: "/student-collections", icon: UserCheck },
+      { title: "Staff Collections", url: "/staff-collections", icon: UserCheck },
+    ],
+  },
+  {
+    title: "Analytics",
+    tooltip: "Analytics",
+    sectionIcon: PieChart,
+    items: [
+      { title: "Student collections summary", url: "/reports/student-inventory", icon: FileBarChart },
+      { title: "Inventory Collections Report", url: "/reports/inventory-collections", icon: BarChart },
+      { title: "Item balance report", url: "/reports/item-balances", icon: Scale },
+      { title: "Item transaction log", url: "/reports/item-transaction-log", icon: History },
+    ],
+  },
 ]
 
-const schoolMenuItems = [
-  { title: "Classes", url: "/classes", icon: GraduationCap },
-  { title: "Sub Classes", url: "/sub-classes", icon: Layers },
-  { title: "Students", url: "/students", icon: Users },
-  { title: "Sessions", url: "/sessions", icon: BookOpen },
-  { title: "Terms", url: "/terms", icon: BookOpen },
-  { title: "Student Collections", url: "/student-collections", icon: UserCheck },
-  { title: "Staff Collections", url: "/staff-collections", icon: UserCheck },
-]
+function pathMatches(currentPath: string, url: string) {
+  if (url === "/") return currentPath === "/"
+  return currentPath === url || currentPath.startsWith(`${url}/`)
+}
 
-const reportsMenuItems = [
-  { title: "Student collections summary", url: "/reports/student-inventory", icon: FileBarChart },
-  { title: "Inventory Collections Report", url: "/reports/inventory-collections", icon: BarChart },
-  { title: "Item balance report", url: "/reports/item-balances", icon: Scale },
-  { title: "Item transaction log", url: "/reports/item-transaction-log", icon: History },
-]
+function NavCollapsibleSection({
+  title,
+  sectionIcon: SectionIcon,
+  tooltip,
+  items,
+}: {
+  title: string
+  sectionIcon: LucideIcon
+  tooltip: string
+  items: NavMenuItem[]
+}) {
+  const location = useLocation()
+  const currentPath = location.pathname
+  const { state } = useSidebar()
+  const isSidebarCollapsed = state === "collapsed"
+
+  const hasActiveChild = items.some((item) => pathMatches(currentPath, item.url))
+  const [open, setOpen] = useState(hasActiveChild)
+
+  useEffect(() => {
+    if (hasActiveChild) setOpen(true)
+  }, [hasActiveChild])
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="group/collapsible">
+      <SidebarMenuItem>
+        <CollapsibleTrigger asChild>
+          <SidebarMenuButton tooltip={isSidebarCollapsed ? tooltip : undefined}>
+            <SectionIcon className="h-4 w-4 shrink-0" />
+            <span className="truncate">{title}</span>
+            <ChevronRight
+              className={cn(
+                "ml-auto h-4 w-4 shrink-0 transition-transform duration-200",
+                "group-data-[state=open]/collapsible:rotate-90",
+              )}
+            />
+          </SidebarMenuButton>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <SidebarMenuSub>
+            {items.map((item) => (
+              <SidebarMenuSubItem key={item.title}>
+                <SidebarMenuSubButton asChild isActive={pathMatches(currentPath, item.url)}>
+                  <NavLink to={item.url} end={item.url === "/"}>
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    <span>{item.title}</span>
+                  </NavLink>
+                </SidebarMenuSubButton>
+              </SidebarMenuSubItem>
+            ))}
+          </SidebarMenuSub>
+        </CollapsibleContent>
+      </SidebarMenuItem>
+    </Collapsible>
+  )
+}
 
 export function AppSidebar() {
   const { state } = useSidebar()
-  const location = useLocation()
-  const currentPath = location.pathname
   const isCollapsed = state === "collapsed"
 
-  const isActive = (path: string) => currentPath === path
-  const getNavCls = ({ isActive }: { isActive: boolean }) =>
-    isActive 
-      ? "bg-primary/10 text-primary font-medium border-r-2 border-primary" 
-      : "hover:bg-muted/50 text-foreground"
-
   return (
-    <Sidebar
-      className={isCollapsed ? "w-14" : "w-64"}
-      collapsible="icon"
-    >
+    <Sidebar className={isCollapsed ? "w-14" : "w-64"} collapsible="icon">
       <SidebarContent className="bg-gradient-subtle">
         <div className="p-4">
           {!isCollapsed && (
@@ -105,59 +190,15 @@ export function AppSidebar() {
           )}
         </div>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Main</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {mainMenuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} end className={getNavCls}>
-                      <item.icon className="h-4 w-4" />
-                      {!isCollapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>School Management</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {schoolMenuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} end className={getNavCls}>
-                      <item.icon className="h-4 w-4" />
-                      {!isCollapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Analytics</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {reportsMenuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} end className={getNavCls}>
-                      <item.icon className="h-4 w-4" />
-                      {!isCollapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {sidebarNavSections.map((section) => (
+          <SidebarGroup key={section.title}>
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-0">
+                <NavCollapsibleSection {...section} />
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
     </Sidebar>
   )
