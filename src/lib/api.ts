@@ -327,42 +327,6 @@ export const uomApi = {
   remove: deleteUom,
 };
 
-// Class Distribution-specific helpers
-export const fetchClassDistributions = (params?: {
-  class_id?: string;
-  session_term_id?: string;
-  page?: number;
-  limit?: number;
-}) => {
-  let url = "/api/v1/inventory_transactions/distributions/query";
-  if (params) {
-    const searchParams = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined) {
-        searchParams.append(key, value.toString());
-      }
-    });
-    const queryString = searchParams.toString();
-    if (queryString) {
-      url += `?${queryString}`;
-    }
-  }
-  return get<any>(url);
-};
-export const createClassDistribution = (body: any) =>
-  post<any>("/api/v1/inventory_transactions/distributions", body);
-export const updateClassDistribution = (id: string, body: any) =>
-  put<any>(`/api/v1/inventory_transactions/distributions/${id}`, body);
-export const deleteClassDistribution = (id: string) =>
-  del<any>(`/api/v1/inventory_transactions/distributions/${id}`);
-
-export const classDistributionApi = {
-  list: fetchClassDistributions,
-  create: createClassDistribution,
-  update: updateClassDistribution,
-  remove: deleteClassDistribution,
-};
-
 // Session-specific helpers
 export const fetchSessions = (params?: {
   status?: "active" | "inactive" | "archived";
@@ -453,63 +417,6 @@ export const termApi = {
   create: createTerm,
   update: updateTerm,
   remove: deleteTerm,
-};
-
-// Class Entitlements-specific helpers
-export const fetchClassEntitlements = (params?: {
-  class_id?: string;
-  session_term_id?: string;
-}) => {
-  const queryParams = new URLSearchParams();
-  if (params?.class_id) queryParams.append("class_id", params.class_id);
-  if (params?.session_term_id)
-    queryParams.append("session_term_id", params.session_term_id);
-  const queryString = queryParams.toString();
-  return get<any[]>(
-    `/api/v1/class_inventory_entitlements${
-      queryString ? `?${queryString}` : ""
-    }`
-  );
-};
-
-export const createClassEntitlement = (body: {
-  class_id: string;
-  inventory_item_id: string;
-  session_term_id: string;
-  quantity: number;
-  notes?: string;
-}) => post<any>("/api/v1/class_inventory_entitlements", body);
-
-export const bulkUpsertClassEntitlements = (
-  body: {
-    class_id: string;
-    inventory_item_id: string;
-    session_term_id: string;
-    quantity: number;
-    notes?: string;
-  }[]
-) => post<any>("/api/v1/class_inventory_entitlements/bulk_upsert", body);
-
-export const updateClassEntitlement = (
-  id: string,
-  body: {
-    class_id?: string;
-    inventory_item_id?: string;
-    session_term_id?: string;
-    quantity?: number;
-    notes?: string;
-  }
-) => put<any>(`/api/v1/class_inventory_entitlements/${id}`, body);
-
-export const deleteClassEntitlement = (id: string) =>
-  del<any>(`/api/v1/class_inventory_entitlements/${id}`);
-
-export const classEntitlementsApi = {
-  list: fetchClassEntitlements,
-  create: createClassEntitlement,
-  bulkUpsert: bulkUpsertClassEntitlements,
-  update: updateClassEntitlement,
-  remove: deleteClassEntitlement,
 };
 
 // Student Collections (new API)
@@ -1605,28 +1512,6 @@ export const updateClassTeacher = (
 
 export const deleteClassTeacher = (id: string) =>
   del<any>(`/api/v1/class_teachers/${id}`);
-
-export const distributionCollectionApi = {
-  query: async (params?: {
-    inventory_item_id?: string;
-    class_id?: string;
-    session_term_id?: string;
-    teacher_id?: string;
-  }) => {
-    const queryParams = new URLSearchParams();
-    if (params?.inventory_item_id)
-      queryParams.append("inventory_item_id", params.inventory_item_id);
-    if (params?.class_id) queryParams.append("class_id", params.class_id);
-    if (params?.session_term_id)
-      queryParams.append("session_term_id", params.session_term_id);
-    if (params?.teacher_id) queryParams.append("teacher_id", params.teacher_id);
-
-    const response = await get<any>(
-      `/api/v1/inventory_summary/distribution-collection/query?${queryParams.toString()}`
-    );
-    return response;
-  },
-};
 
 export const classTeachersApi = {
   list: fetchClassTeachers,

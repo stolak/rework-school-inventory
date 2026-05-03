@@ -5,13 +5,11 @@ import {
   BookOpen, 
   ShoppingCart, 
   ShoppingBag,
-  BarChart3, 
   Settings,
   Home,
   Package2,
   GraduationCap,
   FileText,
-  ClipboardList,
   Tag,
   Layers,
   Ruler,
@@ -64,8 +62,6 @@ const schoolMenuItems = [
   { title: "Students", url: "/students", icon: Users },
   { title: "Sessions", url: "/sessions", icon: BookOpen },
   { title: "Terms", url: "/terms", icon: BookOpen },
-  { title: "Class Entitlements", url: "/class-entitlements", icon: ClipboardList },
-  { title: "Class Distributions", url: "/class-distributions", icon: Package },
   { title: "Student Collections", url: "/student-collections", icon: UserCheck },
   { title: "Staff Collections", url: "/staff-collections", icon: UserCheck },
 ]
@@ -73,7 +69,6 @@ const schoolMenuItems = [
 const reportsMenuItems = [
   { title: "Student collections summary", url: "/reports/student-inventory", icon: FileBarChart },
   { title: "Inventory Collections Report", url: "/reports/inventory-collections", icon: BarChart },
-  { title: "Distribution & Collection Report", url: "/reports/distribution-collection", icon: BarChart3 },
   { title: "Item balance report", url: "/reports/item-balances", icon: Scale },
   { title: "Item transaction log", url: "/reports/item-transaction-log", icon: History },
 ]
