@@ -15,6 +15,7 @@ import Suppliers from "./pages/Suppliers";
 import Categories from "./pages/Categories";
 import SubCategories from "./pages/SubCategories";
 import Brands from "./pages/Brands";
+import AccountSubheads from "./pages/AccountSubheads";
 import Uoms from "./pages/Uoms";
 import Sessions from "./pages/Sessions";
 import Terms from "./pages/Terms";
@@ -64,6 +65,7 @@ const AppContent = () => {
           <Route path="/categories" element={<Categories />} />
           <Route path="/sub-categories" element={<SubCategories />} />
           <Route path="/brands" element={<Brands />} />
+          <Route path="/account-subheads" element={<AccountSubheads />} />
           <Route path="/uoms" element={<Uoms />} />
           <Route path="/sessions" element={<Sessions />} />
           <Route path="/terms" element={<Terms />} />

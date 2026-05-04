@@ -1520,6 +1520,95 @@ export const classTeachersApi = {
   remove: deleteClassTeacher,
 };
 
+/** Chart of accounts — account head (parent of subheads) */
+export type AccountHead = {
+  id: number;
+  groupId: number;
+  code: string;
+  name: string;
+  rank: number;
+};
+
+export type AccountSubhead = {
+  id: number;
+  groupId: number;
+  headId: number;
+  code: string;
+  name: string;
+  status: string;
+  rank: number;
+  afs: string | null;
+  paymentMethod: string;
+  group?: { id: number; name: string; rank: number };
+  head?: {
+    id: number;
+    groupId: number;
+    code: string;
+    name: string;
+    rank: number;
+  };
+};
+
+export const fetchAccountHeads = (params?: { groupId?: number }) => {
+  const sp = new URLSearchParams();
+  if (params?.groupId != null) sp.append("groupId", String(params.groupId));
+  const qs = sp.toString();
+  return get<ApiResponse<{ accountHeads: AccountHead[] }>>(
+    `/api/v1/account-heads${qs ? `?${qs}` : ""}`
+  );
+};
+
+export const fetchAccountSubheads = (params?: { headId?: number }) => {
+  const sp = new URLSearchParams();
+  if (params?.headId != null) sp.append("headId", String(params.headId));
+  const qs = sp.toString();
+  return get<ApiResponse<{ accountSubheads: AccountSubhead[]; count: number }>>(
+    `/api/v1/account-subheads${qs ? `?${qs}` : ""}`
+  );
+};
+
+export const createAccountSubhead = (body: {
+  headId: number;
+  code: string;
+  name: string;
+  status: string;
+  rank: number;
+  paymentMethod: string;
+}) =>
+  post<ApiResponse<AccountSubhead>, typeof body>(
+    "/api/v1/account-subheads",
+    body
+  );
+
+export const updateAccountSubhead = (
+  id: number,
+  body: {
+    code?: string;
+    name?: string;
+    status?: string;
+    rank?: number;
+    paymentMethod?: string;
+  }
+) =>
+  put<ApiResponse<AccountSubhead>, typeof body>(
+    `/api/v1/account-subheads/${id}`,
+    body
+  );
+
+export const deleteAccountSubhead = (id: number) =>
+  del<ApiResponse<AccountSubhead>>(`/api/v1/account-subheads/${id}`);
+
+export const accountHeadsApi = {
+  list: fetchAccountHeads,
+};
+
+export const accountSubheadsApi = {
+  list: fetchAccountSubheads,
+  create: createAccountSubhead,
+  update: updateAccountSubhead,
+  remove: deleteAccountSubhead,
+};
+
 export default {
   request,
   get,
