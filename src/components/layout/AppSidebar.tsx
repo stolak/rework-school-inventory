@@ -23,6 +23,7 @@ import {
   Scale,
   History,
   Landmark,
+  Receipt,
   ChevronRight,
   LayoutDashboard,
   School,
@@ -115,6 +116,7 @@ const sidebarNavSections: SidebarNavSection[] = [
     items: [
       { title: "Account subheads", url: "/account-subheads", icon: ListTree },
       { title: "Account chart setup", url: "/account-chart-setup", icon: Landmark },
+      { title: "Billing items", url: "/billing-items", icon: Receipt },
     ],
   },
 ]

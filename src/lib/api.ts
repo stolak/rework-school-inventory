@@ -1704,6 +1704,76 @@ export const accountChartsApi = {
   remove: deleteAccountChart,
 };
 
+export type BillingItem = {
+  id: number;
+  code: string;
+  name: string;
+  category: string;
+  optional: boolean;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  accountId: number;
+  account?: {
+    id: number;
+    accountDescription?: string;
+  };
+};
+
+export const fetchBillingItemCategories = () =>
+  get<ApiResponse<string[]>>("/api/v1/billing-items/categories");
+
+export const fetchBillingItems = (params?: {
+  category?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const sp = new URLSearchParams();
+  if (params?.category) sp.append("category", params.category);
+  if (params?.status) sp.append("status", params.status);
+  if (params?.page != null) sp.append("page", String(params.page));
+  if (params?.limit != null) sp.append("limit", String(params.limit));
+  const qs = sp.toString();
+  return get<
+    ApiResponse<{
+      billingItems: BillingItem[];
+      pagination: Pagination;
+    }>
+  >(`/api/v1/billing-items${qs ? `?${qs}` : ""}`);
+};
+
+export const createBillingItem = (body: {
+  code: string;
+  name: string;
+  category: string;
+  accountId: number;
+  optional: boolean;
+}) => post<ApiResponse<BillingItem>, typeof body>("/api/v1/billing-items", body);
+
+export const updateBillingItem = (
+  id: number,
+  body: {
+    code?: string;
+    name?: string;
+    category?: string;
+    accountId?: number;
+    optional?: boolean;
+    status?: string;
+  }
+) => put<ApiResponse<BillingItem>, typeof body>(`/api/v1/billing-items/${id}`, body);
+
+export const deleteBillingItem = (id: number) =>
+  del<ApiResponse<BillingItem>>(`/api/v1/billing-items/${id}`);
+
+export const billingItemsApi = {
+  categories: fetchBillingItemCategories,
+  list: fetchBillingItems,
+  create: createBillingItem,
+  update: updateBillingItem,
+  remove: deleteBillingItem,
+};
+
 export default {
   request,
   get,
