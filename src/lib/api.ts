@@ -1533,7 +1533,7 @@ export type AccountSubhead = {
   id: number;
   groupId: number;
   headId: number;
-  code: string;
+  code?: string | null;
   name: string;
   status: string;
   rank: number;
@@ -1569,7 +1569,7 @@ export const fetchAccountSubheads = (params?: { headId?: number }) => {
 
 export const createAccountSubhead = (body: {
   headId: number;
-  code: string;
+  code?: string;
   name: string;
   status: string;
   rank: number;
@@ -1607,6 +1607,101 @@ export const accountSubheadsApi = {
   create: createAccountSubhead,
   update: updateAccountSubhead,
   remove: deleteAccountSubhead,
+};
+
+export type AccountChart = {
+  id: number;
+  groupId: number;
+  headId: number;
+  subheadId: number;
+  accountNo?: string | null;
+  accountRef: string | null;
+  accountDescription: string;
+  status: string;
+  rank: number;
+  createdAt: string;
+  group?: { id: number; name: string; rank: number };
+  head?: {
+    id: number;
+    groupId: number;
+    code: string;
+    name: string;
+    rank: number;
+  };
+  subhead?: AccountSubhead;
+};
+
+/** Full chart-of-accounts tree: groups with heads, subheads, and nested chart rows. */
+export type AccountGroupTree = {
+  id: number;
+  name: string;
+  rank: number;
+  heads: AccountHead[];
+  subHeads: AccountSubhead[];
+  accountCharts?: AccountChart[];
+};
+
+export const fetchAccountGroups = () =>
+  get<ApiResponse<{ accountGroups: AccountGroupTree[]; count: number }>>(
+    "/api/v1/account-groups"
+  );
+
+export const fetchAccountCharts = (params?: {
+  groupId?: number;
+  headId?: number;
+  subheadId?: number;
+  status?: string;
+}) => {
+  const sp = new URLSearchParams();
+  if (params?.groupId != null) sp.append("groupId", String(params.groupId));
+  if (params?.headId != null) sp.append("headId", String(params.headId));
+  if (params?.subheadId != null) sp.append("subheadId", String(params.subheadId));
+  if (params?.status != null && params.status !== "")
+    sp.append("status", params.status);
+  const qs = sp.toString();
+  return get<ApiResponse<{ accountCharts: AccountChart[]; count: number }>>(
+    `/api/v1/account-charts${qs ? `?${qs}` : ""}`
+  );
+};
+
+export const createAccountChart = (body: {
+  subheadId: number;
+  accountDescription: string;
+  accountNo?: string;
+  rank: number;
+}) =>
+  post<ApiResponse<AccountChart>, typeof body>(
+    "/api/v1/account-charts",
+    body
+  );
+
+export const updateAccountChart = (
+  id: number,
+  body: {
+    subheadId?: number;
+    accountDescription?: string;
+    accountNo?: string;
+    status?: string;
+    rank?: number;
+  }
+) =>
+  put<ApiResponse<AccountChart>, typeof body>(
+    `/api/v1/account-charts/${id}`,
+    body
+  );
+
+export const deleteAccountChart = (id: number) =>
+  del<ApiResponse<AccountChart>>(`/api/v1/account-charts/${id}`);
+
+export const accountGroupsApi = {
+  list: fetchAccountGroups,
+};
+
+export const accountChartsApi = {
+  list: fetchAccountCharts,
+  create: createAccountChart,
+  update: updateAccountChart,
+  remove: deleteAccountChart,
 };
 
 export default {

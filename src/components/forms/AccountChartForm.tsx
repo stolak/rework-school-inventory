@@ -18,63 +18,64 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { AccountSubhead } from "@/hooks/useAccountSubheads";
+import { Combobox } from "@/components/ui/combobox";
+import type { AccountChart } from "@/hooks/useAccountCharts";
+import type { ComboboxOption } from "@/components/ui/combobox";
 
 const addSchema = z.object({
-  code: z.string(),
-  name: z.string().min(1, "Name is required"),
-  rank: z.coerce.number().int().min(0, "Rank must be 0 or greater"),
-  paymentMethod: z.string().min(1, "Payment method is required"),
+  subheadId: z.string().min(1, "Select a subhead"),
+  accountNo: z.string(),
+  accountDescription: z.string().min(1, "Description is required"),
+  rank: z.coerce.number().int().min(0),
 });
 
 const editSchema = z.object({
-  code: z.string(),
-  name: z.string().min(1, "Name is required"),
+  subheadId: z.string().min(1, "Select a subhead"),
+  accountNo: z.string(),
+  accountDescription: z.string().min(1, "Description is required"),
   status: z.enum(["Active", "Inactive"]),
-  rank: z.coerce.number().int().min(0, "Rank must be 0 or greater"),
-  paymentMethod: z.string().min(1, "Payment method is required"),
+  rank: z.coerce.number().int().min(0),
 });
 
-export type AccountSubheadAddFormData = z.infer<typeof addSchema>;
-export type AccountSubheadEditFormData = z.infer<typeof editSchema>;
+export type AccountChartAddFormData = z.infer<typeof addSchema>;
+export type AccountChartEditFormData = z.infer<typeof editSchema>;
 
-function normalizeStatus(s: string | undefined): "Active" | "Inactive" {
-  if (!s) return "Active";
-  const lower = s.toLowerCase();
-  return lower === "inactive" ? "Inactive" : "Active";
-}
-
-function AccountSubheadAddForm({
+function AccountChartAddForm({
+  subheadOptions,
   onSubmit,
   onCancel,
 }: {
-  onSubmit: (data: AccountSubheadAddFormData) => void;
+  subheadOptions: ComboboxOption[];
+  onSubmit: (data: AccountChartAddFormData) => void;
   onCancel: () => void;
 }) {
-  const form = useForm<AccountSubheadAddFormData>({
+  const form = useForm<AccountChartAddFormData>({
     resolver: zodResolver(addSchema),
     defaultValues: {
-      code: "",
-      name: "",
-      rank: 1,
-      paymentMethod: "cash",
+      subheadId: "",
+      accountNo: "",
+      accountDescription: "",
+      rank: 0,
     },
   });
 
   return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(onSubmit)}
-        className="space-y-4"
-      >
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
           control={form.control}
-          name="code"
+          name="subheadId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Code (optional)</FormLabel>
+              <FormLabel>Subhead</FormLabel>
               <FormControl>
-                <Input placeholder="e.g. 7888" {...field} />
+                <Combobox
+                  options={subheadOptions}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  placeholder="Select subhead…"
+                  searchPlaceholder="Search subheads…"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -82,12 +83,25 @@ function AccountSubheadAddForm({
         />
         <FormField
           control={form.control}
-          name="name"
+          name="accountNo"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Name</FormLabel>
+              <FormLabel>Account number (optional)</FormLabel>
               <FormControl>
-                <Input placeholder="Subhead name" {...field} />
+                <Input placeholder="e.g. 0001" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="accountDescription"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description</FormLabel>
+              <FormControl>
+                <Input placeholder="Account description" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -106,47 +120,41 @@ function AccountSubheadAddForm({
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="paymentMethod"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Payment method</FormLabel>
-              <FormControl>
-                <Input placeholder="e.g. cash" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
         <div className="flex justify-end gap-2 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button type="submit">Create subhead</Button>
+          <Button type="submit">Create</Button>
         </div>
       </form>
     </Form>
   );
 }
 
-function AccountSubheadEditForm({
+function normalizeChartStatus(s: string | undefined): "Active" | "Inactive" {
+  if (!s) return "Active";
+  return s.toLowerCase() === "inactive" ? "Inactive" : "Active";
+}
+
+function AccountChartEditForm({
+  subheadOptions,
   initialData,
   onSubmit,
   onCancel,
 }: {
-  initialData: AccountSubhead;
-  onSubmit: (data: AccountSubheadEditFormData) => void;
+  subheadOptions: ComboboxOption[];
+  initialData: AccountChart;
+  onSubmit: (data: AccountChartEditFormData) => void;
   onCancel: () => void;
 }) {
-  const form = useForm<AccountSubheadEditFormData>({
+  const form = useForm<AccountChartEditFormData>({
     resolver: zodResolver(editSchema),
     defaultValues: {
-      code: initialData.code ?? "",
-      name: initialData.name,
-      status: normalizeStatus(initialData.status),
+      subheadId: String(initialData.subheadId),
+      accountNo: initialData.accountNo ?? "",
+      accountDescription: initialData.accountDescription,
+      status: normalizeChartStatus(initialData.status),
       rank: initialData.rank,
-      paymentMethod: initialData.paymentMethod,
     },
   });
 
@@ -155,10 +163,29 @@ function AccountSubheadEditForm({
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
           control={form.control}
-          name="code"
+          name="subheadId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Code (optional)</FormLabel>
+              <FormLabel>Subhead</FormLabel>
+              <FormControl>
+                <Combobox
+                  options={subheadOptions}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  placeholder="Select subhead…"
+                  searchPlaceholder="Search subheads…"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="accountNo"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Account number (optional)</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
@@ -168,10 +195,10 @@ function AccountSubheadEditForm({
         />
         <FormField
           control={form.control}
-          name="name"
+          name="accountDescription"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Name</FormLabel>
+              <FormLabel>Description</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
@@ -188,7 +215,7 @@ function AccountSubheadEditForm({
               <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Status" />
+                    <SelectValue />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -213,19 +240,6 @@ function AccountSubheadEditForm({
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="paymentMethod"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Payment method</FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
         <div className="flex justify-end gap-2 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
@@ -237,32 +251,36 @@ function AccountSubheadEditForm({
   );
 }
 
-interface AccountSubheadFormProps {
+interface AccountChartFormProps {
   mode: "add" | "edit";
-  initialData?: AccountSubhead;
-  onSubmit: (data: AccountSubheadAddFormData | AccountSubheadEditFormData) => void;
+  subheadOptions: ComboboxOption[];
+  initialData?: AccountChart;
+  onSubmit: (data: AccountChartAddFormData | AccountChartEditFormData) => void;
   onCancel: () => void;
 }
 
-export function AccountSubheadForm({
+export function AccountChartForm({
   mode,
+  subheadOptions,
   initialData,
   onSubmit,
   onCancel,
-}: AccountSubheadFormProps) {
+}: AccountChartFormProps) {
   if (mode === "add") {
     return (
-      <AccountSubheadAddForm
-        onSubmit={onSubmit as (data: AccountSubheadAddFormData) => void}
+      <AccountChartAddForm
+        subheadOptions={subheadOptions}
+        onSubmit={onSubmit as (data: AccountChartAddFormData) => void}
         onCancel={onCancel}
       />
     );
   }
   if (!initialData) return null;
   return (
-    <AccountSubheadEditForm
+    <AccountChartEditForm
+      subheadOptions={subheadOptions}
       initialData={initialData}
-      onSubmit={onSubmit as (data: AccountSubheadEditFormData) => void}
+      onSubmit={onSubmit as (data: AccountChartEditFormData) => void}
       onCancel={onCancel}
     />
   );

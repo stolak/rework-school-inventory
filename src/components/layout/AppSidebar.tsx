@@ -22,6 +22,7 @@ import {
   ArrowLeftRight,
   Scale,
   History,
+  Landmark,
   ChevronRight,
   LayoutDashboard,
   School,
@@ -75,7 +76,7 @@ const sidebarNavSections: SidebarNavSection[] = [
       { title: "Categories", url: "/categories", icon: Package2 },
       { title: "Sub-Categories", url: "/sub-categories", icon: Layers },
       { title: "Brands", url: "/brands", icon: Tag },
-      { title: "Account subheads", url: "/account-subheads", icon: ListTree },
+      
       { title: "Units", url: "/uoms", icon: Ruler },
       { title: "Projects", url: "/projects", icon: FolderKanban },
       { title: "Store setup", url: "/store-setup", icon: Store },
@@ -105,6 +106,15 @@ const sidebarNavSections: SidebarNavSection[] = [
       { title: "Inventory Collections Report", url: "/reports/inventory-collections", icon: BarChart },
       { title: "Item balance report", url: "/reports/item-balances", icon: Scale },
       { title: "Item transaction log", url: "/reports/item-transaction-log", icon: History },
+    ],
+  },
+  {
+    title: "Accounting",
+    tooltip: "Accounting",
+    sectionIcon: Landmark,
+    items: [
+      { title: "Account subheads", url: "/account-subheads", icon: ListTree },
+      { title: "Account chart setup", url: "/account-chart-setup", icon: Landmark },
     ],
   },
 ]

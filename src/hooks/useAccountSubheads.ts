@@ -40,7 +40,7 @@ export function useAccountHeads() {
 
 export type CreateAccountSubheadInput = {
   headId: number;
-  code: string;
+  code?: string;
   name: string;
   status: string;
   rank: number;

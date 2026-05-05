@@ -98,7 +98,7 @@ export default function AccountSubheads() {
     return subheads.filter(
       (s) =>
         s.name.toLowerCase().includes(q) ||
-        s.code.toLowerCase().includes(q) ||
+        (s.code ?? "").toLowerCase().includes(q) ||
         s.paymentMethod.toLowerCase().includes(q)
     );
   }, [subheads, searchTerm]);
@@ -138,9 +138,10 @@ export default function AccountSubheads() {
   ) => {
     if (dialogMode === "add" && selectedHeadId) {
       const d = data as AccountSubheadAddFormData;
+      const codeTrimmed = d.code.trim();
       await createSubhead({
         headId: selectedHeadId,
-        code: d.code,
+        ...(codeTrimmed !== "" ? { code: codeTrimmed } : {}),
         name: d.name,
         status: "Active",
         rank: d.rank,
@@ -151,7 +152,7 @@ export default function AccountSubheads() {
       await updateSubhead({
         id: selectedSubhead.id,
         data: {
-          code: d.code,
+          code: d.code.trim(),
           name: d.name,
           status: d.status,
           rank: d.rank,
@@ -279,7 +280,9 @@ export default function AccountSubheads() {
                   <TableBody>
                     {filtered.map((row) => (
                       <TableRow key={row.id}>
-                        <TableCell className="font-medium">{row.code}</TableCell>
+                        <TableCell className="font-medium">
+                          {row.code?.trim() ? row.code : "—"}
+                        </TableCell>
                         <TableCell>{row.name}</TableCell>
                         <TableCell>
                           <Badge
@@ -354,7 +357,8 @@ export default function AccountSubheads() {
             <AlertDialogTitle>Delete this subhead?</AlertDialogTitle>
             <AlertDialogDescription>
               This cannot be undone. Subhead{" "}
-              <strong>{toDelete?.code}</strong> will be removed.
+              <strong>{toDelete?.code?.trim() || toDelete?.name}</strong> will be
+              removed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
