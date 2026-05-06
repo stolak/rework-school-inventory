@@ -117,6 +117,7 @@ const sidebarNavSections: SidebarNavSection[] = [
       { title: "Account subheads", url: "/account-subheads", icon: ListTree },
       { title: "Account chart setup", url: "/account-chart-setup", icon: Landmark },
       { title: "Billing items", url: "/billing-items", icon: Receipt },
+      { title: "Concession discounts", url: "/concession-discounts", icon: Gift },
     ],
   },
 ]

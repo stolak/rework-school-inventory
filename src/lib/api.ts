@@ -1774,6 +1774,91 @@ export const billingItemsApi = {
   remove: deleteBillingItem,
 };
 
+export type ConcessionDiscountType = "CONCESSION" | "DISCOUNT";
+
+export type ConcessionDiscountCalculationType =
+  | "PERCENTAGE"
+  | "FIXED_AMOUNT";
+
+export type ConcessionDiscount = {
+  id: number;
+  code: string;
+  name: string;
+  type: ConcessionDiscountType;
+  calculationType: ConcessionDiscountCalculationType;
+  value: string | number;
+  accountId: number;
+  appliesTo: BillingItem[];
+  maxLimit: string | number;
+  status: string;
+  account?: {
+    id: number;
+    accountDescription?: string;
+  };
+};
+
+export const fetchConcessionDiscounts = (params?: {
+  status?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const sp = new URLSearchParams();
+  if (params?.status) sp.append("status", params.status);
+  if (params?.page != null) sp.append("page", String(params.page));
+  if (params?.limit != null) sp.append("limit", String(params.limit));
+  const qs = sp.toString();
+  return get<ApiResponse<{ concessionDiscounts: ConcessionDiscount[]; pagination: Pagination }>>(
+    `/api/v1/concession-discounts${qs ? `?${qs}` : ""}`
+  );
+};
+
+export const createConcessionDiscount = (body: {
+  code: string;
+  name: string;
+  type: ConcessionDiscountType;
+  calculationType: ConcessionDiscountCalculationType;
+  value: number;
+  accountId: number;
+  appliesToIds: number[];
+  maxLimit: number;
+  status: string;
+}) =>
+  post<ApiResponse<ConcessionDiscount>, typeof body>(
+    "/api/v1/concession-discounts",
+    body
+  );
+
+export const updateConcessionDiscount = (
+  id: number,
+  body: {
+    code?: string;
+    name?: string;
+    type?: ConcessionDiscountType;
+    calculationType?: ConcessionDiscountCalculationType;
+    value?: number;
+    accountId?: number;
+    appliesToIds?: number[];
+    maxLimit?: number;
+    status?: string;
+  }
+) =>
+  put<ApiResponse<ConcessionDiscount>, typeof body>(
+    `/api/v1/concession-discounts/${id}`,
+    body
+  );
+
+export const deleteConcessionDiscount = (id: number) =>
+  del<ApiResponse<ConcessionDiscount>>(
+    `/api/v1/concession-discounts/${id}`
+  );
+
+export const concessionDiscountsApi = {
+  list: fetchConcessionDiscounts,
+  create: createConcessionDiscount,
+  update: updateConcessionDiscount,
+  remove: deleteConcessionDiscount,
+};
+
 export default {
   request,
   get,
