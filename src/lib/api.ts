@@ -172,6 +172,12 @@ export const put = <T = any, B = any>(path: string, body?: B) =>
     body: body ? JSON.stringify(body) : undefined,
     headers: { "Content-Type": "application/json" },
   });
+export const patch = <T = any, B = any>(path: string, body?: B) =>
+  request<T>(path, {
+    method: "PATCH",
+    body: body ? JSON.stringify(body) : undefined,
+    headers: { "Content-Type": "application/json" },
+  });
 export const del = <T = any>(path: string) =>
   request<T>(path, { method: "DELETE" });
 
@@ -1558,13 +1564,44 @@ export const fetchAccountHeads = (params?: { groupId?: number }) => {
   );
 };
 
-export const fetchAccountSubheads = (params?: { headId?: number }) => {
+export const fetchAccountSubheads = (params?: {
+  headId?: number;
+  status?: string;
+}) => {
   const sp = new URLSearchParams();
   if (params?.headId != null) sp.append("headId", String(params.headId));
+  if (params?.status != null && params.status !== "") {
+    sp.append("status", params.status);
+  }
   const qs = sp.toString();
   return get<ApiResponse<{ accountSubheads: AccountSubhead[]; count: number }>>(
     `/api/v1/account-subheads${qs ? `?${qs}` : ""}`
   );
+};
+
+/** System-wide default account subhead per posting context (e.g. student, collection). */
+export type DefaultSubheadSetting = {
+  settingsId: string;
+  settings: string;
+  subheadId: number | null;
+  subhead?: { id: number; name: string } | null;
+};
+
+export const fetchDefaultSubheadSettings = () =>
+  get<ApiResponse<DefaultSubheadSetting[]>>("/api/v1/default-subhead-settings");
+
+export const updateDefaultSubheadSetting = (
+  settingsId: string,
+  body: { subheadId: number }
+) =>
+  patch<ApiResponse<DefaultSubheadSetting>, typeof body>(
+    `/api/v1/default-subhead-settings/${encodeURIComponent(settingsId)}`,
+    body
+  );
+
+export const defaultSubheadSettingsApi = {
+  list: fetchDefaultSubheadSettings,
+  update: updateDefaultSubheadSetting,
 };
 
 export const createAccountSubhead = (body: {

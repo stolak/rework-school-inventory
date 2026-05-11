@@ -24,6 +24,7 @@ import {
   History,
   Landmark,
   Receipt,
+  SlidersHorizontal,
   ChevronRight,
   LayoutDashboard,
   School,
@@ -115,6 +116,7 @@ const sidebarNavSections: SidebarNavSection[] = [
     sectionIcon: Landmark,
     items: [
       { title: "Account subheads", url: "/account-subheads", icon: ListTree },
+      { title: "Default subhead settings", url: "/default-subhead-settings", icon: SlidersHorizontal },
       { title: "Account chart setup", url: "/account-chart-setup", icon: Landmark },
       { title: "Billing items", url: "/billing-items", icon: Receipt },
       { title: "Concession discounts", url: "/concession-discounts", icon: Gift },
