@@ -19,6 +19,7 @@ import AccountSubheads from "./pages/AccountSubheads";
 import AccountChartSetup from "./pages/AccountChartSetup";
 import BillingItems from "./pages/BillingItems";
 import ConcessionDiscounts from "./pages/ConcessionDiscounts";
+import JournalTransfers from "./pages/JournalTransfers";
 import Uoms from "./pages/Uoms";
 import Sessions from "./pages/Sessions";
 import Terms from "./pages/Terms";
@@ -72,6 +73,7 @@ const AppContent = () => {
           <Route path="/account-chart-setup" element={<AccountChartSetup />} />
           <Route path="/billing-items" element={<BillingItems />} />
           <Route path="/concession-discounts" element={<ConcessionDiscounts />} />
+          <Route path="/journal-transfers" element={<JournalTransfers />} />
           <Route path="/uoms" element={<Uoms />} />
           <Route path="/sessions" element={<Sessions />} />
           <Route path="/terms" element={<Terms />} />

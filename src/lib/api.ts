@@ -1859,6 +1859,103 @@ export const concessionDiscountsApi = {
   remove: deleteConcessionDiscount,
 };
 
+export type JournalTransferType = "Debit" | "Credit";
+export type BatchStatus = "Pending" | "Processed" | "Failed";
+
+export type TempJournalTransferRow = {
+  id: number;
+  transType: JournalTransferType;
+  accountId: number;
+  debit: string | number | null;
+  credit: string | number | null;
+  status: string;
+  batchStatus: BatchStatus;
+  referenceNo: string;
+  manualReferenceNo: string | null;
+  transactionDate: string;
+  postedAt: string | null;
+  postedBy: string | null;
+  remarks: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdById: string;
+  finalPostedAt?: string | null;
+  finalPostedBy?: string | null;
+  projectId?: string | null;
+  account?: {
+    id: number;
+    accountDescription?: string;
+    accountNo?: string | null;
+  } | null;
+  project?: any;
+};
+
+export type TempJournalTransferGrouped = {
+  referenceNo: string;
+  batchStatus: BatchStatus;
+  totalDebit: string | number;
+  totalCredit: string | number;
+  count: number;
+  latestTransactionDate: string;
+  manualReferenceNos: string[];
+  postedBy: { id: string; name: string }[];
+};
+
+export const createTempJournalTransfersBulk = (body: {
+  entries: {
+    transType: JournalTransferType;
+    accountId: number;
+    debit: number | null;
+    credit: number | null;
+    manualReferenceNo?: string;
+    transactionDate: string;
+    batchStatus: BatchStatus;
+    remarks?: string;
+  }[];
+}) =>
+  post<
+    ApiResponse<{
+      referenceNo: string;
+      rows: TempJournalTransferRow[];
+    }>,
+    typeof body
+  >("/api/v1/temp-journal-transfers/bulk", body);
+
+export const fetchTempJournalTransfersGroupedByReferenceNo = (params?: {
+  batchStatus?: BatchStatus;
+}) => {
+  const sp = new URLSearchParams();
+  if (params?.batchStatus) sp.append("batchStatus", params.batchStatus);
+  const qs = sp.toString();
+  return get<ApiResponse<TempJournalTransferGrouped[]>>(
+    `/api/v1/temp-journal-transfers/grouped/reference-no${qs ? `?${qs}` : ""}`
+  );
+};
+
+export const fetchTempJournalTransfers = (params?: {
+  referenceNo?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const sp = new URLSearchParams();
+  if (params?.referenceNo) sp.append("referenceNo", params.referenceNo);
+  if (params?.page != null) sp.append("page", String(params.page));
+  if (params?.limit != null) sp.append("limit", String(params.limit));
+  const qs = sp.toString();
+  return get<
+    ApiResponse<{
+      tempJournalTransfers: TempJournalTransferRow[];
+      pagination: Pagination;
+    }>
+  >(`/api/v1/temp-journal-transfers${qs ? `?${qs}` : ""}`);
+};
+
+export const tempJournalTransfersApi = {
+  bulkCreate: createTempJournalTransfersBulk,
+  groupedByReferenceNo: fetchTempJournalTransfersGroupedByReferenceNo,
+  list: fetchTempJournalTransfers,
+};
+
 export default {
   request,
   get,

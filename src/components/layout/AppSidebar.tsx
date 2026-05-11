@@ -118,6 +118,7 @@ const sidebarNavSections: SidebarNavSection[] = [
       { title: "Account chart setup", url: "/account-chart-setup", icon: Landmark },
       { title: "Billing items", url: "/billing-items", icon: Receipt },
       { title: "Concession discounts", url: "/concession-discounts", icon: Gift },
+      { title: "Journal transfers", url: "/journal-transfers", icon: ArrowLeftRight },
     ],
   },
 ]
