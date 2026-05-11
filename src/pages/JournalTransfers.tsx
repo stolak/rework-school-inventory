@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
-import { Plus, Trash2, ArrowLeftRight, Search, Eye } from "lucide-react";
+import { format } from "date-fns";
+import { Plus, Trash2, ArrowLeftRight, Search, Eye, CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -41,6 +44,7 @@ import {
   useTempJournalTransfersList,
   type JournalTransferEntryInput,
 } from "@/hooks/useJournalTransfers";
+import { cn } from "@/lib/utils";
 
 type EntryDraft = {
   id: string;
@@ -51,13 +55,49 @@ type EntryDraft = {
   remarks: string;
 };
 
+const amountFormatter = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 2,
+  minimumFractionDigits: 0,
+});
+
+/** Allow typing; strip commas and invalid chars, keep one decimal point */
+function sanitizeAmountInput(raw: string): string {
+  let t = raw.replace(/,/g, "").replace(/[^\d.]/g, "");
+  const firstDot = t.indexOf(".");
+  if (firstDot !== -1) {
+    t =
+      t.slice(0, firstDot + 1) +
+      t.slice(firstDot + 1).replace(/\./g, "");
+  }
+  return t;
+}
+
 function moneyToNumber(s: string): number {
-  const n = parseFloat((s ?? "").toString());
+  const cleaned = sanitizeAmountInput((s ?? "").toString());
+  if (cleaned === "" || cleaned === ".") return 0;
+  const n = parseFloat(cleaned);
   return Number.isFinite(n) ? n : 0;
 }
 
-function isoNowLocal(): string {
-  return new Date().toISOString();
+function formatAmountDisplay(n: number): string {
+  return amountFormatter.format(Number.isFinite(n) ? n : 0);
+}
+
+function formatAmountOnBlur(s: string): string {
+  const cleaned = sanitizeAmountInput((s ?? "").toString());
+  if (cleaned === "" || cleaned === ".") return "";
+  const n = parseFloat(cleaned);
+  if (!Number.isFinite(n)) return "";
+  return amountFormatter.format(n);
+}
+
+function formatAmountFromApi(v: string | number | null | undefined): string {
+  if (v == null) return amountFormatter.format(0);
+  const s = String(v).replace(/,/g, "").trim();
+  if (s === "") return amountFormatter.format(0);
+  const n = parseFloat(s);
+  if (!Number.isFinite(n)) return String(v);
+  return amountFormatter.format(n);
 }
 
 export default function JournalTransfers() {
@@ -74,7 +114,7 @@ export default function JournalTransfers() {
   }, [accountCharts]);
 
   const [commonManualRef, setCommonManualRef] = useState("");
-  const [commonDate, setCommonDate] = useState(isoNowLocal());
+  const [commonTransactionDate, setCommonTransactionDate] = useState(() => new Date());
   const commonBatchStatus = "Processed" as const;
 
   const [entries, setEntries] = useState<EntryDraft[]>([
@@ -184,7 +224,7 @@ export default function JournalTransfers() {
         debit,
         credit,
         manualReferenceNo: commonManualRef || undefined,
-        transactionDate: commonDate || isoNowLocal(),
+        transactionDate: commonTransactionDate.toISOString(),
         batchStatus: commonBatchStatus,
         remarks: e.remarks || undefined,
       };
@@ -292,12 +332,40 @@ export default function JournalTransfers() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Transaction date (ISO)</Label>
-                <Input
-                  value={commonDate}
-                  onChange={(e) => setCommonDate(e.target.value)}
-                  placeholder={isoNowLocal()}
-                />
+                <Label>Transaction date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !commonTransactionDate && "text-muted-foreground",
+                      )}
+                    >
+                      {commonTransactionDate ? (
+                        format(commonTransactionDate, "PPP")
+                      ) : (
+                        <span>Pick a date</span>
+                      )}
+                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-auto p-0 bg-background border shadow-md"
+                    align="start"
+                  >
+                    <Calendar
+                      mode="single"
+                      selected={commonTransactionDate}
+                      onSelect={(d) => {
+                        if (d) setCommonTransactionDate(d);
+                      }}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="space-y-2">
                 <Label>Batch status</Label>
@@ -321,10 +389,10 @@ export default function JournalTransfers() {
             </div>
             <div className="flex items-center gap-2">
               <Badge variant={isBalanced ? "default" : "secondary"}>
-                Debit: {totalDebit}
+                Debit: {formatAmountDisplay(totalDebit)}
               </Badge>
               <Badge variant={isBalanced ? "default" : "secondary"}>
-                Credit: {totalCredit}
+                Credit: {formatAmountDisplay(totalCredit)}
               </Badge>
               {!isBalanced && (
                 <span className="text-sm text-muted-foreground">
@@ -378,23 +446,49 @@ export default function JournalTransfers() {
                       </TableCell>
                       <TableCell className="text-right min-w-[130px]">
                         <Input
-                          type="number"
-                          min={0}
+                          type="text"
+                          inputMode="decimal"
+                          className="text-right tabular-nums"
                           value={e.debit}
                           disabled={e.transType !== "Debit"}
+                          onFocus={() =>
+                            updateRow(e.id, {
+                              debit: e.debit.replace(/,/g, ""),
+                            })
+                          }
                           onChange={(ev) =>
-                            updateRow(e.id, { debit: ev.target.value })
+                            updateRow(e.id, {
+                              debit: sanitizeAmountInput(ev.target.value),
+                            })
+                          }
+                          onBlur={() =>
+                            updateRow(e.id, {
+                              debit: formatAmountOnBlur(e.debit),
+                            })
                           }
                         />
                       </TableCell>
                       <TableCell className="text-right min-w-[130px]">
                         <Input
-                          type="number"
-                          min={0}
+                          type="text"
+                          inputMode="decimal"
+                          className="text-right tabular-nums"
                           value={e.credit}
                           disabled={e.transType !== "Credit"}
+                          onFocus={() =>
+                            updateRow(e.id, {
+                              credit: e.credit.replace(/,/g, ""),
+                            })
+                          }
                           onChange={(ev) =>
-                            updateRow(e.id, { credit: ev.target.value })
+                            updateRow(e.id, {
+                              credit: sanitizeAmountInput(ev.target.value),
+                            })
+                          }
+                          onBlur={() =>
+                            updateRow(e.id, {
+                              credit: formatAmountOnBlur(e.credit),
+                            })
                           }
                         />
                       </TableCell>
@@ -527,8 +621,12 @@ export default function JournalTransfers() {
                         <TableCell>
                           <Badge variant="secondary">{g.batchStatus}</Badge>
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">{g.totalDebit}</TableCell>
-                        <TableCell className="text-right tabular-nums">{g.totalCredit}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {formatAmountFromApi(g.totalDebit)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {formatAmountFromApi(g.totalCredit)}
+                        </TableCell>
                         <TableCell className="text-right tabular-nums">{g.count}</TableCell>
                         <TableCell className="text-sm">
                           {new Date(g.latestTransactionDate).toLocaleString()}
@@ -613,10 +711,10 @@ export default function JournalTransfers() {
                               ) : null}
                             </TableCell>
                             <TableCell className="text-right tabular-nums">
-                              {r.debit ?? "0"}
+                              {formatAmountFromApi(r.debit)}
                             </TableCell>
                             <TableCell className="text-right tabular-nums">
-                              {r.credit ?? "0"}
+                              {formatAmountFromApi(r.credit)}
                             </TableCell>
                             <TableCell>{r.manualReferenceNo ?? "—"}</TableCell>
                             <TableCell className="text-sm">
