@@ -89,8 +89,7 @@ const sidebarNavSections: SidebarNavSection[] = [
     tooltip: "School Management",
     sectionIcon: School,
     items: [
-      { title: "Classes", url: "/classes", icon: GraduationCap },
-      { title: "Sub Classes", url: "/sub-classes", icon: Layers },
+      { title: "Classes & sub-classes", url: "/classes", icon: GraduationCap },
       { title: "Students", url: "/students", icon: Users },
       { title: "Sessions", url: "/sessions", icon: BookOpen },
       { title: "Terms", url: "/terms", icon: BookOpen },

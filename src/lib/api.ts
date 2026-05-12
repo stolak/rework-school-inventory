@@ -1257,10 +1257,16 @@ export const classApi = {
 };
 
 // SubClass-specific helpers
-export const fetchSubClasses = (params?: { page?: number; limit?: number }) => {
+export const fetchSubClasses = (params?: {
+  page?: number;
+  limit?: number;
+  /** When supported by the API, limits results to one school class */
+  classId?: string;
+}) => {
   const queryParams = new URLSearchParams();
   queryParams.append("page", String(params?.page ?? 1));
   queryParams.append("limit", String(params?.limit ?? 20));
+  if (params?.classId) queryParams.append("classId", params.classId);
   const qs = queryParams.toString();
   return get<any>(`/api/v1/sub-classes${qs ? `?${qs}` : ""}`);
 };

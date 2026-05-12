@@ -8,6 +8,7 @@ interface SubClassDialogProps {
   onOpenChange: (open: boolean) => void;
   mode: "add" | "edit" | "view";
   subClass?: SubClass;
+  defaultClassId?: string;
   onSubmit?: (data: SubClassFormData) => void;
 }
 
@@ -16,6 +17,7 @@ export function SubClassDialog({
   onOpenChange,
   mode,
   subClass,
+  defaultClassId,
   onSubmit,
 }: SubClassDialogProps) {
   const handleSubmit = (data: SubClassFormData) => {
@@ -88,6 +90,7 @@ export function SubClassDialog({
         <SubClassForm
           initialData={subClass}
           mode={mode}
+          defaultClassId={defaultClassId}
           onSubmit={handleSubmit}
           onCancel={handleCancel}
         />

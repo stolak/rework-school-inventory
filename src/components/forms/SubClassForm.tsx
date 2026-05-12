@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -32,6 +33,8 @@ export type SubClassFormData = z.infer<typeof schema>;
 interface SubClassFormProps {
   initialData?: Partial<SubClass>;
   mode?: "add" | "edit" | "view";
+  /** Pre-select school class when adding from the Classes page */
+  defaultClassId?: string;
   onSubmit: (data: SubClassFormData) => void;
   onCancel: () => void;
 }
@@ -39,6 +42,7 @@ interface SubClassFormProps {
 export function SubClassForm({
   initialData,
   mode,
+  defaultClassId,
   onSubmit,
   onCancel,
 }: SubClassFormProps) {
@@ -48,10 +52,27 @@ export function SubClassForm({
     resolver: zodResolver(schema),
     defaultValues: {
       name: initialData?.name || "",
-      classId: initialData?.classId || "",
-      status: (initialData?.status as any) || "Active",
+      classId: initialData?.classId || defaultClassId || "",
+      status: (initialData?.status as SubClassFormData["status"]) || "Active",
     },
   });
+
+  useEffect(() => {
+    form.reset({
+      name: initialData?.name ?? "",
+      classId: initialData?.classId ?? defaultClassId ?? "",
+      status:
+        (initialData?.status as SubClassFormData["status"]) ||
+        ("Active" as SubClassFormData["status"]),
+    });
+  }, [
+    form,
+    initialData?.id,
+    initialData?.name,
+    initialData?.classId,
+    initialData?.status,
+    defaultClassId,
+  ]);
 
   const disabled = mode === "view";
 
@@ -78,7 +99,11 @@ export function SubClassForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Class</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={disabled}>
+              <Select
+                onValueChange={field.onChange}
+                value={field.value}
+                disabled={disabled}
+              >
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select class" />
@@ -103,7 +128,11 @@ export function SubClassForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Status</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={disabled}>
+              <Select
+                onValueChange={field.onChange}
+                value={field.value}
+                disabled={disabled}
+              >
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
