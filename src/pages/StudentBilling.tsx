@@ -93,6 +93,10 @@ function isDraftStatus(status: string) {
   return String(status).toUpperCase() === "DRAFT";
 }
 
+function isApprovedStatus(status: string) {
+  return String(status).toUpperCase() === "APPROVED";
+}
+
 function billingLineLabel(
   row: StudentBillingRow,
   fallbackById: Map<number, string>
@@ -117,6 +121,34 @@ function discountLineLabel(
   return (
     fallbackById.get(row.concessionDiscountId) ??
     `Concession/discount #${row.concessionDiscountId}`
+  );
+}
+
+function PostedStatusCell({
+  isPosted,
+  postedAt,
+}: {
+  isPosted: boolean;
+  postedAt: string | null;
+}) {
+  if (isPosted) {
+    return (
+      <div className="space-y-0.5">
+        <Badge variant="outline" className="border-green-600/40 text-green-800 bg-green-500/10">
+          Posted
+        </Badge>
+        {postedAt ? (
+          <div className="text-xs text-muted-foreground whitespace-nowrap">
+            {new Date(postedAt).toLocaleString()}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+  return (
+    <Badge variant="secondary" className="font-normal">
+      Not posted
+    </Badge>
   );
 }
 
@@ -362,15 +394,37 @@ export default function StudentBilling() {
   const discountRows = discountsQuery.data?.rows ?? [];
   const discountPagination = discountsQuery.data?.pagination ?? null;
 
+  useEffect(() => {
+    const byId = new Map(billingRows.map((r) => [r.id, r]));
+    setBillingSelectedIds((prev) =>
+      prev.filter((id) => {
+        const r = byId.get(id);
+        return Boolean(r) && !r.isPosted;
+      })
+    );
+  }, [billingRows]);
+
+  useEffect(() => {
+    const byId = new Map(discountRows.map((r) => [r.id, r]));
+    setDiscountSelectedIds((prev) =>
+      prev.filter((id) => {
+        const r = byId.get(id);
+        return Boolean(r) && !r.isPosted;
+      })
+    );
+  }, [discountRows]);
+
   const {
     bulkCreate,
     updateAmount,
     remove,
     bulkPatchStatuses: bulkPatchBillingStatuses,
+    bulkPost: bulkPostBilling,
     isBulkCreating,
     isUpdating: isBillingUpdating,
     isDeleting: isBillingDeleting,
     isBulkPatchingStatus: isBillingBulkPatchingStatus,
+    isBulkPosting: isBillingBulkPosting,
   } = useStudentBillingsMutations();
 
   const {
@@ -378,30 +432,123 @@ export default function StudentBilling() {
     updateAmount: updateDiscountAmount,
     remove: removeDiscount,
     bulkPatchStatuses: bulkPatchDiscountStatuses,
+    bulkPost: bulkPostDiscountLines,
     isBulkCreating: isBulkDiscountCreating,
     isUpdating: isDiscountUpdating,
     isDeleting: isDiscountDeleting,
     isBulkPatchingStatus: isDiscountBulkPatchingStatus,
+    isBulkPosting: isDiscountBulkPosting,
   } = useStudentConcessionDiscountsMutations();
 
-  const billingPageIds = useMemo(() => billingRows.map((r) => r.id), [billingRows]);
-  const discountPageIds = useMemo(() => discountRows.map((r) => r.id), [discountRows]);
+  const billingSelectablePageIds = useMemo(
+    () => billingRows.filter((r) => !r.isPosted).map((r) => r.id),
+    [billingRows]
+  );
+  const discountSelectablePageIds = useMemo(
+    () => discountRows.filter((r) => !r.isPosted).map((r) => r.id),
+    [discountRows]
+  );
 
   const billingHeaderCheckboxState = useMemo((): boolean | "indeterminate" => {
-    if (billingPageIds.length === 0) return false;
-    const onPage = billingSelectedIds.filter((id) => billingPageIds.includes(id)).length;
+    if (billingSelectablePageIds.length === 0) return false;
+    const onPage = billingSelectedIds.filter((id) =>
+      billingSelectablePageIds.includes(id)
+    ).length;
     if (onPage === 0) return false;
-    if (onPage === billingPageIds.length) return true;
+    if (onPage === billingSelectablePageIds.length) return true;
     return "indeterminate";
-  }, [billingPageIds, billingSelectedIds]);
+  }, [billingSelectablePageIds, billingSelectedIds]);
 
   const discountHeaderCheckboxState = useMemo((): boolean | "indeterminate" => {
-    if (discountPageIds.length === 0) return false;
-    const onPage = discountSelectedIds.filter((id) => discountPageIds.includes(id)).length;
+    if (discountSelectablePageIds.length === 0) return false;
+    const onPage = discountSelectedIds.filter((id) =>
+      discountSelectablePageIds.includes(id)
+    ).length;
     if (onPage === 0) return false;
-    if (onPage === discountPageIds.length) return true;
+    if (onPage === discountSelectablePageIds.length) return true;
     return "indeterminate";
-  }, [discountPageIds, discountSelectedIds]);
+  }, [discountSelectablePageIds, discountSelectedIds]);
+
+  /** Post only when every selected row is APPROVED and not yet posted (no draft or posted rows). */
+  const billingPostSelectedEnabled = useMemo(() => {
+    if (billingSelectedIds.length === 0) return false;
+    const byId = new Map(billingRows.map((r) => [r.id, r]));
+    for (const id of billingSelectedIds) {
+      const r = byId.get(id);
+      if (!r) return false;
+      if (!isApprovedStatus(r.status) || r.isPosted) return false;
+    }
+    return true;
+  }, [billingSelectedIds, billingRows]);
+
+  const discountPostSelectedEnabled = useMemo(() => {
+    if (discountSelectedIds.length === 0) return false;
+    const byId = new Map(discountRows.map((r) => [r.id, r]));
+    for (const id of discountSelectedIds) {
+      const r = byId.get(id);
+      if (!r) return false;
+      if (!isApprovedStatus(r.status) || r.isPosted) return false;
+    }
+    return true;
+  }, [discountSelectedIds, discountRows]);
+
+  /** Approve only when every selected row is DRAFT (no APPROVED in selection). */
+  const billingApproveEnabled = useMemo(() => {
+    if (billingSelectedIds.length === 0) return false;
+    const byId = new Map(billingRows.map((r) => [r.id, r]));
+    let hasApproved = false;
+    let hasDraft = false;
+    for (const id of billingSelectedIds) {
+      const r = byId.get(id);
+      if (!r) continue;
+      if (isApprovedStatus(r.status)) hasApproved = true;
+      if (isDraftStatus(r.status)) hasDraft = true;
+    }
+    return hasDraft && !hasApproved;
+  }, [billingSelectedIds, billingRows]);
+
+  /** Set to draft only when every selected row is APPROVED (no DRAFT in selection). */
+  const billingSetDraftEnabled = useMemo(() => {
+    if (billingSelectedIds.length === 0) return false;
+    const byId = new Map(billingRows.map((r) => [r.id, r]));
+    let hasApproved = false;
+    let hasDraft = false;
+    for (const id of billingSelectedIds) {
+      const r = byId.get(id);
+      if (!r) continue;
+      if (isApprovedStatus(r.status)) hasApproved = true;
+      if (isDraftStatus(r.status)) hasDraft = true;
+    }
+    return hasApproved && !hasDraft;
+  }, [billingSelectedIds, billingRows]);
+
+  const discountApproveEnabled = useMemo(() => {
+    if (discountSelectedIds.length === 0) return false;
+    const byId = new Map(discountRows.map((r) => [r.id, r]));
+    let hasApproved = false;
+    let hasDraft = false;
+    for (const id of discountSelectedIds) {
+      const r = byId.get(id);
+      if (!r) continue;
+      if (isApprovedStatus(r.status)) hasApproved = true;
+      if (isDraftStatus(r.status)) hasDraft = true;
+    }
+    return hasDraft && !hasApproved;
+  }, [discountSelectedIds, discountRows]);
+
+  const discountSetDraftEnabled = useMemo(() => {
+    if (discountSelectedIds.length === 0) return false;
+    const byId = new Map(discountRows.map((r) => [r.id, r]));
+    let hasApproved = false;
+    let hasDraft = false;
+    for (const id of discountSelectedIds) {
+      const r = byId.get(id);
+      if (!r) continue;
+      if (isApprovedStatus(r.status)) hasApproved = true;
+      if (isDraftStatus(r.status)) hasDraft = true;
+    }
+    return hasApproved && !hasDraft;
+  }, [discountSelectedIds, discountRows]);
 
   const totalBillingAll = useMemo(() => {
     const rows = billingSummaryQuery.data?.rows ?? [];
@@ -551,47 +698,107 @@ export default function StudentBilling() {
     setDeleteDiscountTarget(null);
   };
 
-  const toggleBillingRowSelect = (id: number) => {
+  const toggleBillingRowSelect = (row: StudentBillingRow) => {
+    if (row.isPosted) return;
     setBillingSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(row.id) ? prev.filter((x) => x !== row.id) : [...prev, row.id]
     );
   };
 
   const toggleBillingSelectPage = () => {
-    if (billingPageIds.length === 0) return;
-    const allOnPage = billingPageIds.every((id) => billingSelectedIds.includes(id));
+    if (billingSelectablePageIds.length === 0) return;
+    const allOnPage = billingSelectablePageIds.every((id) =>
+      billingSelectedIds.includes(id)
+    );
     if (allOnPage) {
-      setBillingSelectedIds((prev) => prev.filter((id) => !billingPageIds.includes(id)));
+      setBillingSelectedIds((prev) =>
+        prev.filter((id) => !billingSelectablePageIds.includes(id))
+      );
     } else {
-      setBillingSelectedIds((prev) => Array.from(new Set([...prev, ...billingPageIds])));
+      setBillingSelectedIds((prev) =>
+        Array.from(new Set([...prev, ...billingSelectablePageIds]))
+      );
     }
   };
 
   const handleBillingBulkStatus = async (status: "APPROVED" | "DRAFT") => {
-    if (billingSelectedIds.length === 0) return;
-    await bulkPatchBillingStatuses({ ids: billingSelectedIds, status });
+    const byId = new Map(billingRows.map((r) => [r.id, r]));
+    const ids =
+      status === "APPROVED"
+        ? billingSelectedIds.filter((id) => {
+            const r = byId.get(id);
+            return r && isDraftStatus(r.status);
+          })
+        : billingSelectedIds.filter((id) => {
+            const r = byId.get(id);
+            return r && isApprovedStatus(r.status);
+          });
+    if (ids.length === 0) return;
+    await bulkPatchBillingStatuses({ ids, status });
     setBillingSelectedIds([]);
   };
 
-  const toggleDiscountRowSelect = (id: number) => {
+  const toggleDiscountRowSelect = (row: StudentConcessionDiscountRow) => {
+    if (row.isPosted) return;
     setDiscountSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(row.id) ? prev.filter((x) => x !== row.id) : [...prev, row.id]
     );
   };
 
   const toggleDiscountSelectPage = () => {
-    if (discountPageIds.length === 0) return;
-    const allOnPage = discountPageIds.every((id) => discountSelectedIds.includes(id));
+    if (discountSelectablePageIds.length === 0) return;
+    const allOnPage = discountSelectablePageIds.every((id) =>
+      discountSelectedIds.includes(id)
+    );
     if (allOnPage) {
-      setDiscountSelectedIds((prev) => prev.filter((id) => !discountPageIds.includes(id)));
+      setDiscountSelectedIds((prev) =>
+        prev.filter((id) => !discountSelectablePageIds.includes(id))
+      );
     } else {
-      setDiscountSelectedIds((prev) => Array.from(new Set([...prev, ...discountPageIds])));
+      setDiscountSelectedIds((prev) =>
+        Array.from(new Set([...prev, ...discountSelectablePageIds]))
+      );
     }
   };
 
   const handleDiscountBulkStatus = async (status: "APPROVED" | "DRAFT") => {
-    if (discountSelectedIds.length === 0) return;
-    await bulkPatchDiscountStatuses({ ids: discountSelectedIds, status });
+    const byId = new Map(discountRows.map((r) => [r.id, r]));
+    const ids =
+      status === "APPROVED"
+        ? discountSelectedIds.filter((id) => {
+            const r = byId.get(id);
+            return r && isDraftStatus(r.status);
+          })
+        : discountSelectedIds.filter((id) => {
+            const r = byId.get(id);
+            return r && isApprovedStatus(r.status);
+          });
+    if (ids.length === 0) return;
+    await bulkPatchDiscountStatuses({ ids, status });
+    setDiscountSelectedIds([]);
+  };
+
+  const handleBillingBulkPost = async () => {
+    if (!billingPostSelectedEnabled) return;
+    const byId = new Map(billingRows.map((r) => [r.id, r]));
+    const ids = billingSelectedIds.filter((id) => {
+      const r = byId.get(id);
+      return r && isApprovedStatus(r.status) && !r.isPosted;
+    });
+    if (ids.length === 0) return;
+    await bulkPostBilling({ ids });
+    setBillingSelectedIds([]);
+  };
+
+  const handleDiscountBulkPost = async () => {
+    if (!discountPostSelectedEnabled) return;
+    const byId = new Map(discountRows.map((r) => [r.id, r]));
+    const ids = discountSelectedIds.filter((id) => {
+      const r = byId.get(id);
+      return r && isApprovedStatus(r.status) && !r.isPosted;
+    });
+    if (ids.length === 0) return;
+    await bulkPostDiscountLines({ ids });
     setDiscountSelectedIds([]);
   };
 
@@ -781,8 +988,8 @@ export default function StudentBilling() {
         <CardHeader>
           <CardTitle className="text-lg">Billing lines</CardTitle>
           <CardDescription>
-            Edit draft amounts or delete draft rows. Use checkboxes to approve selected lines or set them
-            back to draft in bulk.
+            Edit draft amounts or delete draft rows. Approve lines, then use Post selected to post only
+            approved records (draft lines cannot be posted).
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -816,8 +1023,11 @@ export default function StudentBilling() {
                   type="button"
                   size="sm"
                   onClick={() => handleBillingBulkStatus("APPROVED")}
-                  disabled={
-                    billingSelectedIds.length === 0 || isBillingBulkPatchingStatus
+                  disabled={!billingApproveEnabled || isBillingBulkPatchingStatus}
+                  title={
+                    billingApproveEnabled
+                      ? undefined
+                      : "Approve only when all selected lines are draft (no approved rows)."
                   }
                 >
                   Approve selected
@@ -827,11 +1037,27 @@ export default function StudentBilling() {
                   size="sm"
                   variant="secondary"
                   onClick={() => handleBillingBulkStatus("DRAFT")}
-                  disabled={
-                    billingSelectedIds.length === 0 || isBillingBulkPatchingStatus
+                  disabled={!billingSetDraftEnabled || isBillingBulkPatchingStatus}
+                  title={
+                    billingSetDraftEnabled
+                      ? undefined
+                      : "Set to draft only when all selected lines are approved (no draft rows)."
                   }
                 >
                   Set to draft
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => handleBillingBulkPost()}
+                  disabled={
+                    !billingPostSelectedEnabled ||
+                    isBillingBulkPosting ||
+                    isBillingBulkPatchingStatus
+                  }
+                  title="Post only when every selected line is approved and not yet posted. Posted lines cannot be selected."
+                >
+                  Post selected
                 </Button>
               </div>
               <Table>
@@ -841,12 +1067,14 @@ export default function StudentBilling() {
                       <Checkbox
                         checked={billingHeaderCheckboxState}
                         onCheckedChange={() => toggleBillingSelectPage()}
-                        aria-label="Select all billing lines on this page"
+                        disabled={billingSelectablePageIds.length === 0}
+                        aria-label="Select all unposted billing lines on this page"
                       />
                     </TableHead>
                     <TableHead>Billing item</TableHead>
                     <TableHead className="text-right min-w-[220px]">Amount</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Posting</TableHead>
                     <TableHead>Reference</TableHead>
                     <TableHead className="text-right w-[90px]"> </TableHead>
                   </TableRow>
@@ -857,8 +1085,13 @@ export default function StudentBilling() {
                       <TableCell className="align-middle">
                         <Checkbox
                           checked={billingSelectedIds.includes(r.id)}
-                          onCheckedChange={() => toggleBillingRowSelect(r.id)}
-                          aria-label={`Select billing line ${r.id}`}
+                          onCheckedChange={() => toggleBillingRowSelect(r)}
+                          disabled={r.isPosted}
+                          aria-label={
+                            r.isPosted
+                              ? `Billing line ${r.id} (posted, cannot select)`
+                              : `Select billing line ${r.id}`
+                          }
                         />
                       </TableCell>
                       <TableCell className="font-medium">
@@ -879,6 +1112,9 @@ export default function StudentBilling() {
                         <Badge variant={isDraftStatus(r.status) ? "secondary" : "default"}>
                           {r.status}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <PostedStatusCell isPosted={r.isPosted} postedAt={r.postedAt} />
                       </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {r.referentId}
@@ -1045,8 +1281,8 @@ export default function StudentBilling() {
             Concession / discount lines
           </CardTitle>
           <CardDescription>
-            Draft amounts can be changed; approved rows are locked. Bulk approve or set to draft using
-            checkboxes.
+            Draft amounts can be changed; approved rows are locked. Post selected sends only approved,
+            not-yet-posted lines.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -1080,8 +1316,11 @@ export default function StudentBilling() {
                   type="button"
                   size="sm"
                   onClick={() => handleDiscountBulkStatus("APPROVED")}
-                  disabled={
-                    discountSelectedIds.length === 0 || isDiscountBulkPatchingStatus
+                  disabled={!discountApproveEnabled || isDiscountBulkPatchingStatus}
+                  title={
+                    discountApproveEnabled
+                      ? undefined
+                      : "Approve only when all selected lines are draft (no approved rows)."
                   }
                 >
                   Approve selected
@@ -1091,11 +1330,28 @@ export default function StudentBilling() {
                   size="sm"
                   variant="secondary"
                   onClick={() => handleDiscountBulkStatus("DRAFT")}
-                  disabled={
-                    discountSelectedIds.length === 0 || isDiscountBulkPatchingStatus
+                  disabled={!discountSetDraftEnabled || isDiscountBulkPatchingStatus}
+                  title={
+                    discountSetDraftEnabled
+                      ? undefined
+                      : "Set to draft only when all selected lines are approved (no draft rows)."
                   }
                 >
                   Set to draft
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="default"
+                  onClick={() => handleDiscountBulkPost()}
+                  disabled={
+                    !discountPostSelectedEnabled ||
+                    isDiscountBulkPosting ||
+                    isDiscountBulkPatchingStatus
+                  }
+                  title="Post only when every selected line is approved and not yet posted. Posted lines cannot be selected."
+                >
+                  Post selected
                 </Button>
               </div>
               <Table>
@@ -1105,12 +1361,14 @@ export default function StudentBilling() {
                       <Checkbox
                         checked={discountHeaderCheckboxState}
                         onCheckedChange={() => toggleDiscountSelectPage()}
-                        aria-label="Select all concession/discount lines on this page"
+                        disabled={discountSelectablePageIds.length === 0}
+                        aria-label="Select all unposted concession/discount lines on this page"
                       />
                     </TableHead>
                     <TableHead>Item</TableHead>
                     <TableHead className="text-right min-w-[220px]">Amount</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Posting</TableHead>
                     <TableHead>Reference</TableHead>
                     <TableHead className="text-right w-[90px]"> </TableHead>
                   </TableRow>
@@ -1121,8 +1379,13 @@ export default function StudentBilling() {
                       <TableCell className="align-middle">
                         <Checkbox
                           checked={discountSelectedIds.includes(r.id)}
-                          onCheckedChange={() => toggleDiscountRowSelect(r.id)}
-                          aria-label={`Select line ${r.id}`}
+                          onCheckedChange={() => toggleDiscountRowSelect(r)}
+                          disabled={r.isPosted}
+                          aria-label={
+                            r.isPosted
+                              ? `Line ${r.id} (posted, cannot select)`
+                              : `Select line ${r.id}`
+                          }
                         />
                       </TableCell>
                       <TableCell className="font-medium">
@@ -1143,6 +1406,9 @@ export default function StudentBilling() {
                         <Badge variant={isDraftStatus(r.status) ? "secondary" : "default"}>
                           {r.status}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <PostedStatusCell isPosted={r.isPosted} postedAt={r.postedAt} />
                       </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {r.referentId}

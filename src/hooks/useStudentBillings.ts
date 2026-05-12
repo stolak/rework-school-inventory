@@ -142,14 +142,34 @@ export function useStudentBillingsMutations() {
     },
   });
 
+  const bulkPost = useMutation({
+    mutationFn: (body: { ids: number[] }) => studentBillingsApi.bulkPost(body),
+    onSuccess: (res) => {
+      toast({
+        title: "Success",
+        description: res.message || "Billings posted",
+      });
+      invalidate();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to post billings",
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     bulkCreate: bulkCreate.mutateAsync,
     updateAmount: updateAmount.mutateAsync,
     remove: remove.mutateAsync,
     bulkPatchStatuses: bulkPatchStatuses.mutateAsync,
+    bulkPost: bulkPost.mutateAsync,
     isBulkCreating: bulkCreate.isPending,
     isUpdating: updateAmount.isPending,
     isDeleting: remove.isPending,
     isBulkPatchingStatus: bulkPatchStatuses.isPending,
+    isBulkPosting: bulkPost.isPending,
   };
 }

@@ -1903,12 +1903,19 @@ export const bulkPatchStudentBillingStatuses = (body: {
     typeof body
   >("/api/v1/student-billings/status/bulk", body);
 
+export const bulkPostStudentBillings = (body: { ids: number[] }) =>
+  patch<
+    ApiResponse<{ postedCount: number }>,
+    typeof body
+  >("/api/v1/student-billings/post/bulk", body);
+
 export const studentBillingsApi = {
   bulkCreate: bulkCreateStudentBillings,
   list: fetchStudentBillings,
   update: updateStudentBilling,
   remove: deleteStudentBilling,
   bulkPatchStatuses: bulkPatchStudentBillingStatuses,
+  bulkPost: bulkPostStudentBillings,
 };
 
 /** Posted concession/discount amounts per student session/term */
@@ -2005,12 +2012,19 @@ export const bulkPatchStudentConcessionDiscountStatuses = (body: {
     typeof body
   >("/api/v1/student-concession-discounts/status/bulk", body);
 
+export const bulkPostStudentConcessionDiscounts = (body: { ids: number[] }) =>
+  patch<
+    ApiResponse<{ postedCount: number }>,
+    typeof body
+  >("/api/v1/student-concession-discounts/post/bulk", body);
+
 export const studentConcessionDiscountsApi = {
   bulkCreate: bulkCreateStudentConcessionDiscounts,
   list: fetchStudentConcessionDiscounts,
   update: updateStudentConcessionDiscount,
   remove: deleteStudentConcessionDiscount,
   bulkPatchStatuses: bulkPatchStudentConcessionDiscountStatuses,
+  bulkPost: bulkPostStudentConcessionDiscounts,
 };
 
 export type ConcessionDiscountType = "CONCESSION" | "DISCOUNT";
