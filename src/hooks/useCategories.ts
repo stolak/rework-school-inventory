@@ -16,6 +16,10 @@ function normalizeStatus(status: unknown): "active" | "inactive" {
   return status.toLowerCase() === "inactive" ? "inactive" : "active";
 }
 
+function toApiCategoryStatus(status: "active" | "inactive"): "Active" | "Inactive" {
+  return status === "inactive" ? "Inactive" : "Active";
+}
+
 export const useCategories = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const { toast } = useToast();
@@ -64,6 +68,7 @@ export const useCategories = () => {
       const res = await categoryApi.create({
         name: categoryData.name,
         description: categoryData.description,
+        status: toApiCategoryStatus(categoryData.status),
       });
       const data = res?.data;
       if (!data?.id) throw new Error(res?.message || "Failed to add category");
@@ -95,6 +100,9 @@ export const useCategories = () => {
       const res = await categoryApi.update(id, {
         name: updates.name,
         description: updates.description,
+        ...(updates.status !== undefined
+          ? { status: toApiCategoryStatus(updates.status) }
+          : {}),
       });
       const data = res?.data;
       if (!data?.id)
@@ -102,6 +110,7 @@ export const useCategories = () => {
       const updated: Partial<Category> = {
         name: data.name,
         description: data.description ?? "",
+        status: normalizeStatus(data.status),
       };
 
       setCategories((prev) =>

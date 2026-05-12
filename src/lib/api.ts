@@ -186,11 +186,15 @@ export const fetchCategories = () =>
   get<ApiResponse<{ categories: Category[]; pagination: Pagination }>>(
     "/api/v1/categories"
   );
-export const createCategory = (body: { name: string; description?: string }) =>
+export const createCategory = (body: {
+  name: string;
+  description?: string;
+  status?: "Active" | "Inactive";
+}) =>
   post<ApiResponse<Category>, typeof body>("/api/v1/categories", body);
 export const updateCategory = (
   id: string,
-  body: { name?: string; description?: string }
+  body: { name?: string; description?: string; status?: "Active" | "Inactive" }
 ) => put<ApiResponse<Category>, typeof body>(`/api/v1/categories/${id}`, body);
 export const deleteCategory = (id: string) =>
   del<any>(`/api/v1/categories/${id}`);
