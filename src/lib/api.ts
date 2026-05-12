@@ -1811,6 +1811,94 @@ export const billingItemsApi = {
   remove: deleteBillingItem,
 };
 
+/** Posted student fee lines for a session/term */
+export type StudentBillingRow = {
+  id: number;
+  studentId: string;
+  classId: string;
+  subclassId: string;
+  session: string;
+  term: string;
+  billingId: number;
+  amount: string | number;
+  referentId: string;
+  isPosted: boolean;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  approvedAt: string | null;
+  approvedBy: string | null;
+  createdBy: string;
+  postedAt: string | null;
+  postedBy: string | null;
+  /** Included on list/detail responses when the API embeds the billing item */
+  billing?: { id: number; name: string; code: string } | null;
+};
+
+export type StudentBillingBulkEntry = {
+  billingId: number;
+  amount: number;
+};
+
+export const bulkCreateStudentBillings = (body: {
+  studentId: string;
+  classId: string;
+  subclassId: string;
+  session: string;
+  term: string;
+  entries: StudentBillingBulkEntry[];
+}) =>
+  post<
+    ApiResponse<{
+      referentId: string;
+      count: number;
+      rows: StudentBillingRow[];
+    }>,
+    typeof body
+  >("/api/v1/student-billings/bulk", body);
+
+export const fetchStudentBillings = (params: {
+  studentId: string;
+  classId: string;
+  subclassId: string;
+  session: string;
+  term: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const sp = new URLSearchParams();
+  sp.append("studentId", params.studentId);
+  sp.append("classId", params.classId);
+  sp.append("subclassId", params.subclassId);
+  sp.append("session", params.session);
+  sp.append("term", params.term);
+  if (params.page != null) sp.append("page", String(params.page));
+  if (params.limit != null) sp.append("limit", String(params.limit));
+  const qs = sp.toString();
+  return get<
+    ApiResponse<{
+      studentBillings: StudentBillingRow[];
+      pagination?: Pagination;
+    }>
+  >(`/api/v1/student-billings?${qs}`);
+};
+
+export const updateStudentBilling = (id: number, body: { amount: number }) =>
+  put<ApiResponse<StudentBillingRow>, typeof body>(
+    `/api/v1/student-billings/${id}`,
+    body
+  );
+
+export const deleteStudentBilling = (id: number) =>
+  del<ApiResponse<unknown>>(`/api/v1/student-billings/${id}`);
+
+export const studentBillingsApi = {
+  bulkCreate: bulkCreateStudentBillings,
+  list: fetchStudentBillings,
+  update: updateStudentBilling,
+  remove: deleteStudentBilling,
+};
+
 export type ConcessionDiscountType = "CONCESSION" | "DISCOUNT";
 
 export type ConcessionDiscountCalculationType =

@@ -21,6 +21,7 @@ import BillingItems from "./pages/BillingItems";
 import ConcessionDiscounts from "./pages/ConcessionDiscounts";
 import JournalTransfers from "./pages/JournalTransfers";
 import DefaultSubheadSettings from "./pages/DefaultSubheadSettings";
+import StudentBilling from "./pages/StudentBilling";
 import Uoms from "./pages/Uoms";
 import Sessions from "./pages/Sessions";
 import Terms from "./pages/Terms";
@@ -73,6 +74,7 @@ const AppContent = () => {
           <Route path="/account-subheads" element={<AccountSubheads />} />
           <Route path="/account-chart-setup" element={<AccountChartSetup />} />
           <Route path="/billing-items" element={<BillingItems />} />
+          <Route path="/student-billing" element={<StudentBilling />} />
           <Route path="/concession-discounts" element={<ConcessionDiscounts />} />
           <Route path="/journal-transfers" element={<JournalTransfers />} />
           <Route path="/default-subhead-settings" element={<DefaultSubheadSettings />} />
