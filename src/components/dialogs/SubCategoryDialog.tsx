@@ -12,6 +12,7 @@ interface SubCategoryDialogProps {
   onOpenChange: (open: boolean) => void;
   subCategory?: SubCategory;
   mode: "add" | "edit" | "view";
+  defaultCategoryId?: string;
   onSubmit: (data: any) => void;
 }
 
@@ -20,6 +21,7 @@ export function SubCategoryDialog({
   onOpenChange,
   subCategory,
   mode,
+  defaultCategoryId,
   onSubmit,
 }: SubCategoryDialogProps) {
   const handleSubmit = (data: any) => {
@@ -58,16 +60,11 @@ export function SubCategoryDialog({
                 {subCategory.description || "N/A"}
               </p>
             </div>
-            <div>
-              <p className="text-sm font-medium">Created At</p>
-              <p className="text-sm text-muted-foreground">
-                {subCategory.createdAt}
-              </p>
-            </div>
           </div>
         ) : (
           <SubCategoryForm
             subCategory={subCategory}
+            defaultCategoryId={defaultCategoryId}
             onSubmit={handleSubmit}
             onCancel={() => onOpenChange(false)}
           />

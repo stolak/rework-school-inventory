@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -32,12 +33,15 @@ type SubCategoryFormData = z.infer<typeof subCategorySchema>;
 
 interface SubCategoryFormProps {
   subCategory?: SubCategory;
+  /** When adding a sub-category from a category panel, pre-select this category */
+  defaultCategoryId?: string;
   onSubmit: (data: SubCategoryFormData) => void;
   onCancel: () => void;
 }
 
 export function SubCategoryForm({
   subCategory,
+  defaultCategoryId,
   onSubmit,
   onCancel,
 }: SubCategoryFormProps) {
@@ -48,9 +52,24 @@ export function SubCategoryForm({
     defaultValues: {
       name: subCategory?.name || "",
       description: subCategory?.description || "",
-      categoryId: subCategory?.categoryId || "",
+      categoryId: subCategory?.categoryId || defaultCategoryId || "",
     },
   });
+
+  useEffect(() => {
+    form.reset({
+      name: subCategory?.name ?? "",
+      description: subCategory?.description ?? "",
+      categoryId: subCategory?.categoryId ?? defaultCategoryId ?? "",
+    });
+  }, [
+    subCategory?.id,
+    subCategory?.name,
+    subCategory?.description,
+    subCategory?.categoryId,
+    defaultCategoryId,
+    form,
+  ]);
 
   return (
     <Form {...form}>
@@ -75,7 +94,10 @@ export function SubCategoryForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Category</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select
+                value={field.value}
+                onValueChange={field.onChange}
+              >
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a category" />

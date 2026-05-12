@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -52,6 +53,20 @@ export function CategoryForm({
     },
   });
 
+  useEffect(() => {
+    form.reset({
+      name: initialData?.name ?? "",
+      description: initialData?.description ?? "",
+      status: initialData?.status ?? "active",
+    });
+  }, [
+    form,
+    initialData?.id,
+    initialData?.name,
+    initialData?.description,
+    initialData?.status,
+  ]);
+
   const handleSubmit = (data: CategoryFormData) => {
     onSubmit(data);
   };
@@ -82,7 +97,7 @@ export function CategoryForm({
                 <FormLabel>Status</FormLabel>
                 <Select
                   onValueChange={field.onChange}
-                  defaultValue={field.value}
+                  value={field.value}
                 >
                   <FormControl>
                     <SelectTrigger>

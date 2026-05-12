@@ -7,6 +7,7 @@ import {
 import { CategoryForm } from "@/components/forms/CategoryForm";
 import { Category } from "@/hooks/useCategories";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 interface CategoryDialogProps {
   open: boolean;
@@ -14,7 +15,9 @@ interface CategoryDialogProps {
   mode: "add" | "edit" | "view";
   category?: Category;
   categories?: Category[];
-  onSubmit: (data: any) => void;
+  onSubmit: (data: any) => void | Promise<void>;
+  /** From view mode, switch parent to edit while keeping the same category */
+  onRequestEdit?: () => void;
 }
 
 export function CategoryDialog({
@@ -24,10 +27,15 @@ export function CategoryDialog({
   category,
   categories,
   onSubmit,
+  onRequestEdit,
 }: CategoryDialogProps) {
-  const handleSubmit = (data: any) => {
-    onSubmit(data);
-    onOpenChange(false);
+  const handleSubmit = async (data: any) => {
+    try {
+      await Promise.resolve(onSubmit(data));
+      onOpenChange(false);
+    } catch {
+      // Parent shows toast; keep dialog open
+    }
   };
 
   const handleCancel = () => {
@@ -81,6 +89,17 @@ export function CategoryDialog({
                 Created Date
               </h4>
               <p>{category.createdAt}</p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t">
+              <Button type="button" variant="outline" onClick={handleCancel}>
+                Close
+              </Button>
+              {onRequestEdit && (
+                <Button type="button" onClick={onRequestEdit}>
+                  Edit category
+                </Button>
+              )}
             </div>
           </div>
         ) : (

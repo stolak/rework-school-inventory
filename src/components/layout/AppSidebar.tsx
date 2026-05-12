@@ -6,7 +6,6 @@ import {
   ShoppingCart,
   ShoppingBag,
   Home,
-  Package2,
   GraduationCap,
   Tag,
   Layers,
@@ -76,8 +75,7 @@ const sidebarNavSections: SidebarNavSection[] = [
       { title: "Project disbursement", url: "/project-disbursement", icon: PackageMinus },
       { title: "Sales", url: "/sales", icon: ShoppingBag },
       { title: "Suppliers", url: "/suppliers", icon: Users },
-      { title: "Categories", url: "/categories", icon: Package2 },
-      { title: "Sub-Categories", url: "/sub-categories", icon: Layers },
+      { title: "Categories & sub-categories", url: "/categories", icon: Layers },
       { title: "Brands", url: "/brands", icon: Tag },
       
       { title: "Units", url: "/uoms", icon: Ruler },
