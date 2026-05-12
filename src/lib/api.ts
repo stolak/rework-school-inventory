@@ -1892,11 +1892,125 @@ export const updateStudentBilling = (id: number, body: { amount: number }) =>
 export const deleteStudentBilling = (id: number) =>
   del<ApiResponse<unknown>>(`/api/v1/student-billings/${id}`);
 
+export type StudentBillingRecordStatus = "DRAFT" | "APPROVED";
+
+export const bulkPatchStudentBillingStatuses = (body: {
+  ids: number[];
+  status: StudentBillingRecordStatus;
+}) =>
+  patch<
+    ApiResponse<{ updatedCount: number; status: string }>,
+    typeof body
+  >("/api/v1/student-billings/status/bulk", body);
+
 export const studentBillingsApi = {
   bulkCreate: bulkCreateStudentBillings,
   list: fetchStudentBillings,
   update: updateStudentBilling,
   remove: deleteStudentBilling,
+  bulkPatchStatuses: bulkPatchStudentBillingStatuses,
+};
+
+/** Posted concession/discount amounts per student session/term */
+export type StudentConcessionDiscountRow = {
+  id: number;
+  studentId: string;
+  classId: string;
+  subclassId: string;
+  session: string;
+  term: string;
+  concessionDiscountId: number;
+  amount: string | number;
+  referentId: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  approvedAt: string | null;
+  approvedBy: string | null;
+  createdBy: string;
+  isPosted: boolean;
+  postedAt: string | null;
+  postedBy: string | null;
+  concessionDiscount?: { id: number; name: string; code: string } | null;
+};
+
+export type StudentConcessionDiscountBulkEntry = {
+  concessionDiscountId: number;
+  amount: number;
+};
+
+export const bulkCreateStudentConcessionDiscounts = (body: {
+  studentId: string;
+  classId: string;
+  subclassId: string;
+  session: string;
+  term: string;
+  entries: StudentConcessionDiscountBulkEntry[];
+}) =>
+  post<
+    ApiResponse<{
+      referentId: string;
+      count: number;
+      rows: StudentConcessionDiscountRow[];
+    }>,
+    typeof body
+  >("/api/v1/student-concession-discounts/bulk", body);
+
+export const fetchStudentConcessionDiscounts = (params: {
+  studentId: string;
+  classId: string;
+  subclassId: string;
+  session: string;
+  term: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const sp = new URLSearchParams();
+  sp.append("studentId", params.studentId);
+  sp.append("classId", params.classId);
+  sp.append("subclassId", params.subclassId);
+  sp.append("session", params.session);
+  sp.append("term", params.term);
+  if (params.page != null) sp.append("page", String(params.page));
+  if (params.limit != null) sp.append("limit", String(params.limit));
+  const qs = sp.toString();
+  return get<
+    ApiResponse<{
+      studentConcessionDiscounts: StudentConcessionDiscountRow[];
+      pagination?: Pagination;
+    }>
+  >(`/api/v1/student-concession-discounts?${qs}`);
+};
+
+export const updateStudentConcessionDiscount = (
+  id: number,
+  body: { amount: number }
+) =>
+  put<ApiResponse<StudentConcessionDiscountRow>, typeof body>(
+    `/api/v1/student-concession-discounts/${id}`,
+    body
+  );
+
+export const deleteStudentConcessionDiscount = (id: number) =>
+  del<ApiResponse<unknown>>(`/api/v1/student-concession-discounts/${id}`);
+
+export type StudentConcessionDiscountRecordStatus = "DRAFT" | "APPROVED";
+
+export const bulkPatchStudentConcessionDiscountStatuses = (body: {
+  ids: number[];
+  status: StudentConcessionDiscountRecordStatus;
+}) =>
+  patch<
+    ApiResponse<{ updatedCount: number; status: string }>,
+    typeof body
+  >("/api/v1/student-concession-discounts/status/bulk", body);
+
+export const studentConcessionDiscountsApi = {
+  bulkCreate: bulkCreateStudentConcessionDiscounts,
+  list: fetchStudentConcessionDiscounts,
+  update: updateStudentConcessionDiscount,
+  remove: deleteStudentConcessionDiscount,
+  bulkPatchStatuses: bulkPatchStudentConcessionDiscountStatuses,
 };
 
 export type ConcessionDiscountType = "CONCESSION" | "DISCOUNT";

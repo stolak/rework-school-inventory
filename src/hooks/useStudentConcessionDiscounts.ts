@@ -1,13 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  studentBillingsApi,
+  studentConcessionDiscountsApi,
   type Pagination,
-  type StudentBillingBulkEntry,
-  type StudentBillingRow,
+  type StudentConcessionDiscountBulkEntry,
+  type StudentConcessionDiscountRow,
 } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
-export type StudentBillingsListParams = {
+export type StudentConcessionDiscountsListParams = {
   studentId: string;
   classId: string;
   subclassId: string;
@@ -17,31 +17,35 @@ export type StudentBillingsListParams = {
   limit?: number;
 };
 
-export type BulkStudentBillingsBody = {
+export type BulkStudentConcessionDiscountsBody = {
   studentId: string;
   classId: string;
   subclassId: string;
   session: string;
   term: string;
-  entries: StudentBillingBulkEntry[];
+  entries: StudentConcessionDiscountBulkEntry[];
 };
 
-function unwrapList(res: Awaited<ReturnType<typeof studentBillingsApi.list>>): {
-  rows: StudentBillingRow[];
+function unwrapList(
+  res: Awaited<ReturnType<typeof studentConcessionDiscountsApi.list>>
+): {
+  rows: StudentConcessionDiscountRow[];
   pagination: Pagination | null;
 } {
-  if (!res.success) throw new Error(res.message || "Failed to load student billings");
+  if (!res.success) throw new Error(res.message || "Failed to load student concession discounts");
   const data = res.data as {
-    studentBillings?: StudentBillingRow[];
+    studentConcessionDiscounts?: StudentConcessionDiscountRow[];
     pagination?: Pagination;
   };
   return {
-    rows: data.studentBillings ?? [],
+    rows: data.studentConcessionDiscounts ?? [],
     pagination: data.pagination ?? null,
   };
 }
 
-export function useStudentBillingsQuery(params: StudentBillingsListParams | null) {
+export function useStudentConcessionDiscountsQuery(
+  params: StudentConcessionDiscountsListParams | null
+) {
   const enabled =
     Boolean(params?.studentId) &&
     Boolean(params?.classId) &&
@@ -50,37 +54,38 @@ export function useStudentBillingsQuery(params: StudentBillingsListParams | null
     Boolean(params?.term);
 
   return useQuery({
-    queryKey: ["student-billings", params],
+    queryKey: ["student-concession-discounts", params],
     queryFn: async () => {
       if (!params) throw new Error("Missing filters");
-      return unwrapList(await studentBillingsApi.list(params));
+      return unwrapList(await studentConcessionDiscountsApi.list(params));
     },
     enabled,
     staleTime: 15_000,
   });
 }
 
-export function useStudentBillingsMutations() {
+export function useStudentConcessionDiscountsMutations() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ["student-billings"] });
+    queryClient.invalidateQueries({ queryKey: ["student-concession-discounts"] });
   };
 
   const bulkCreate = useMutation({
-    mutationFn: (body: BulkStudentBillingsBody) => studentBillingsApi.bulkCreate(body),
+    mutationFn: (body: BulkStudentConcessionDiscountsBody) =>
+      studentConcessionDiscountsApi.bulkCreate(body),
     onSuccess: (res) => {
       toast({
         title: "Success",
-        description: res.message || "Student billings created",
+        description: res.message || "Student concession/discount lines created",
       });
       invalidate();
     },
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to create billings",
+        description: error.message || "Failed to create concession/discount lines",
         variant: "destructive",
       });
     },
@@ -88,48 +93,49 @@ export function useStudentBillingsMutations() {
 
   const updateAmount = useMutation({
     mutationFn: ({ id, amount }: { id: number; amount: number }) =>
-      studentBillingsApi.update(id, { amount }),
+      studentConcessionDiscountsApi.update(id, { amount }),
     onSuccess: (res) => {
       toast({
         title: "Success",
-        description: res.message || "Billing updated",
+        description: res.message || "Concession/discount updated",
       });
       invalidate();
     },
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to update billing",
+        description: error.message || "Failed to update",
         variant: "destructive",
       });
     },
   });
 
   const remove = useMutation({
-    mutationFn: (id: number) => studentBillingsApi.remove(id),
+    mutationFn: (id: number) => studentConcessionDiscountsApi.remove(id),
     onSuccess: (res) => {
       toast({
         title: "Success",
-        description: (res as { message?: string }).message || "Billing deleted",
+        description: (res as { message?: string }).message || "Line deleted",
       });
       invalidate();
     },
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to delete billing",
+        description: error.message || "Failed to delete",
         variant: "destructive",
       });
     },
   });
 
   const bulkPatchStatuses = useMutation({
-    mutationFn: (body: Parameters<typeof studentBillingsApi.bulkPatchStatuses>[0]) =>
-      studentBillingsApi.bulkPatchStatuses(body),
+    mutationFn: (
+      body: Parameters<typeof studentConcessionDiscountsApi.bulkPatchStatuses>[0]
+    ) => studentConcessionDiscountsApi.bulkPatchStatuses(body),
     onSuccess: (res) => {
       toast({
         title: "Success",
-        description: res.message || "Billing statuses updated",
+        description: res.message || "Statuses updated",
       });
       invalidate();
     },
