@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
-import { Plus, Search, Edit, Trash2, Receipt } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Receipt, Percent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Combobox } from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -29,16 +30,22 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { BillingItemDialog } from "@/components/dialogs/BillingItemDialog";
+import { ConcessionDiscountDialog } from "@/components/dialogs/ConcessionDiscountDialog";
 import {
   useBillingItemCategories,
   useBillingItems,
 } from "@/hooks/useBillingItems";
 import { useAccountCharts } from "@/hooks/useAccountCharts";
+import {
+  useConcessionDiscounts,
+  type ConcessionDiscountRow,
+} from "@/hooks/useConcessionDiscounts";
 import type { BillingItem } from "@/lib/api";
 import type {
   BillingItemAddFormData,
   BillingItemEditFormData,
 } from "@/components/forms/BillingItemForm";
+import type { ConcessionDiscountFormData } from "@/components/forms/ConcessionDiscountForm";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,49 +58,82 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const ALL = "__all__";
+const STATUS_ALL = "All";
 
 function toInt(s: string, fallback: number) {
   const n = parseInt(s, 10);
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
+function toIntCd(s: string, fallback: number) {
+  const n = parseInt(s, 10);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 export default function BillingItems() {
   const { data: categories = [], isLoading: categoriesLoading } =
     useBillingItemCategories();
 
-  const [categoryStr, setCategoryStr] = useState<string>(ALL);
-  const [statusFilter, setStatusFilter] = useState<string>("Active");
-  const [pageStr, setPageStr] = useState<string>("1");
-  const [limitStr, setLimitStr] = useState<string>("100");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [biCategoryStr, setBiCategoryStr] = useState<string>(ALL);
+  const [biStatusFilter, setBiStatusFilter] = useState<string>("Active");
+  const [biPageStr, setBiPageStr] = useState<string>("1");
+  const [biLimitStr, setBiLimitStr] = useState<string>("100");
+  const [biSearchTerm, setBiSearchTerm] = useState("");
 
-  const page = toInt(pageStr, 1);
-  const limit = toInt(limitStr, 100);
+  const biPage = toInt(biPageStr, 1);
+  const biLimit = toInt(biLimitStr, 100);
 
-  const listParams = useMemo(
+  const biListParams = useMemo(
     () => ({
-      category: categoryStr === ALL ? undefined : categoryStr,
-      status: statusFilter,
-      page,
-      limit,
+      category: biCategoryStr === ALL ? undefined : biCategoryStr,
+      status: biStatusFilter,
+      page: biPage,
+      limit: biLimit,
     }),
-    [categoryStr, statusFilter, page, limit]
+    [biCategoryStr, biStatusFilter, biPage, biLimit]
   );
 
   const {
-    billingItems,
-    pagination,
-    isLoading: itemsLoading,
+    billingItems: biRows,
+    pagination: biPagination,
+    isLoading: biLoading,
     createBillingItem,
     updateBillingItem,
     deleteBillingItem,
-  } = useBillingItems(listParams);
+  } = useBillingItems(biListParams);
+
+  const [cdStatusFilter, setCdStatusFilter] = useState<string>("Active");
+  const [cdPageStr, setCdPageStr] = useState<string>("1");
+  const [cdLimitStr, setCdLimitStr] = useState<string>("100");
+  const [cdSearchTerm, setCdSearchTerm] = useState("");
+
+  const cdPage = Math.max(1, toIntCd(cdPageStr, 1));
+  const cdLimit = Math.max(1, toIntCd(cdLimitStr, 100));
+
+  const {
+    concessionDiscounts,
+    pagination: cdPagination,
+    isLoading: cdLoading,
+    createConcessionDiscount,
+    updateConcessionDiscount,
+    deleteConcessionDiscount,
+  } = useConcessionDiscounts({
+    status: cdStatusFilter,
+    page: cdPage,
+    limit: cdLimit,
+  });
+
+  const { billingItems: discountFormBiList } = useBillingItems({
+      status: "Active",
+      page: 1,
+      limit: 500,
+    });
 
   const { charts: accountCharts = [] } = useAccountCharts({
     status: "All",
   });
 
-  const categoryOptions = useMemo(
+  const biCategoryOptions = useMemo(
     () => [
       { value: ALL, label: "All categories" },
       ...categories.map((c) => ({ value: c, label: c })),
@@ -110,60 +150,93 @@ export default function BillingItems() {
     return mapped;
   }, [accountCharts]);
 
-  const filtered = useMemo(() => {
-    const q = searchTerm.trim().toLowerCase();
-    if (!q) return billingItems;
-    return billingItems.filter(
+  const discountBillingItemOptions = useMemo(
+    () =>
+      discountFormBiList.map((b) => ({
+        value: String(b.id),
+        label: `${b.code} — ${b.name}`,
+      })),
+    [discountFormBiList]
+  );
+
+  const biFiltered = useMemo(() => {
+    const q = biSearchTerm.trim().toLowerCase();
+    if (!q) return biRows;
+    return biRows.filter(
       (b) =>
         b.code.toLowerCase().includes(q) ||
         b.name.toLowerCase().includes(q) ||
         b.category.toLowerCase().includes(q) ||
         (b.account?.accountDescription ?? "").toLowerCase().includes(q)
     );
-  }, [billingItems, searchTerm]);
+  }, [biRows, biSearchTerm]);
 
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogMode, setDialogMode] = useState<"add" | "edit">("add");
-  const [selectedItem, setSelectedItem] = useState<BillingItem | undefined>();
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [toDelete, setToDelete] = useState<BillingItem | null>(null);
+  const cdFiltered = useMemo(() => {
+    const q = cdSearchTerm.trim().toLowerCase();
+    if (!q) return concessionDiscounts;
+    return concessionDiscounts.filter((d) => {
+      const appliesCount = d.appliesToIds.length;
+      return (
+        d.code.toLowerCase().includes(q) ||
+        d.name.toLowerCase().includes(q) ||
+        d.type.toLowerCase().includes(q) ||
+        d.calculationType.toLowerCase().includes(q) ||
+        String(appliesCount).includes(q) ||
+        (d.account?.accountDescription ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [concessionDiscounts, cdSearchTerm]);
 
-  const handleAdd = () => {
-    setDialogMode("add");
-    setSelectedItem(undefined);
-    setDialogOpen(true);
+  const [biDialogOpen, setBiDialogOpen] = useState(false);
+  const [biDialogMode, setBiDialogMode] = useState<"add" | "edit">("add");
+  const [biSelectedItem, setBiSelectedItem] = useState<BillingItem | undefined>();
+  const [biDeleteOpen, setBiDeleteOpen] = useState(false);
+  const [biToDelete, setBiToDelete] = useState<BillingItem | null>(null);
+
+  const [cdDialogOpen, setCdDialogOpen] = useState(false);
+  const [cdDialogMode, setCdDialogMode] = useState<"add" | "edit">("add");
+  const [cdSelectedDiscount, setCdSelectedDiscount] = useState<
+    ConcessionDiscountRow | undefined
+  >();
+  const [cdDeleteOpen, setCdDeleteOpen] = useState(false);
+  const [cdToDelete, setCdToDelete] = useState<ConcessionDiscountRow | null>(null);
+
+  const handleBiAdd = () => {
+    setBiDialogMode("add");
+    setBiSelectedItem(undefined);
+    setBiDialogOpen(true);
   };
 
-  const handleEdit = (row: BillingItem) => {
-    setDialogMode("edit");
-    setSelectedItem(row);
-    setDialogOpen(true);
+  const handleBiEdit = (row: BillingItem) => {
+    setBiDialogMode("edit");
+    setBiSelectedItem(row);
+    setBiDialogOpen(true);
   };
 
-  const handleDelete = (row: BillingItem) => {
-    setToDelete(row);
-    setDeleteOpen(true);
+  const handleBiDelete = (row: BillingItem) => {
+    setBiToDelete(row);
+    setBiDeleteOpen(true);
   };
 
-  const confirmDelete = async () => {
-    if (!toDelete) return;
+  const confirmBiDelete = async () => {
+    if (!biToDelete) return;
     try {
-      await deleteBillingItem(toDelete.id);
-      setToDelete(null);
-      setDeleteOpen(false);
+      await deleteBillingItem(biToDelete.id);
+      setBiToDelete(null);
+      setBiDeleteOpen(false);
     } catch {
-      setToDelete(null);
-      setDeleteOpen(false);
+      setBiToDelete(null);
+      setBiDeleteOpen(false);
     }
   };
 
-  const handleSubmit = async (
+  const handleBiSubmit = async (
     data: BillingItemAddFormData | BillingItemEditFormData
   ) => {
     const accountId = parseInt(data.accountId, 10);
     if (!Number.isFinite(accountId) || accountId <= 0) return;
 
-    if (dialogMode === "add") {
+    if (biDialogMode === "add") {
       const d = data as BillingItemAddFormData;
       await createBillingItem({
         code: d.code.trim(),
@@ -172,10 +245,10 @@ export default function BillingItems() {
         accountId,
         optional: d.optional,
       });
-    } else if (dialogMode === "edit" && selectedItem) {
+    } else if (biDialogMode === "edit" && biSelectedItem) {
       const d = data as BillingItemEditFormData;
       await updateBillingItem({
-        id: selectedItem.id,
+        id: biSelectedItem.id,
         data: {
           code: d.code.trim(),
           name: d.name.trim(),
@@ -188,228 +261,477 @@ export default function BillingItems() {
     }
   };
 
-  const canPrev = pagination ? pagination.page > 1 : page > 1;
-  const canNext = pagination ? pagination.page < pagination.totalPages : false;
+  const cdOpenAdd = () => {
+    setCdDialogMode("add");
+    setCdSelectedDiscount(undefined);
+    setCdDialogOpen(true);
+  };
+
+  const cdOpenEdit = (row: ConcessionDiscountRow) => {
+    setCdDialogMode("edit");
+    setCdSelectedDiscount(row);
+    setCdDialogOpen(true);
+  };
+
+  const cdOpenDelete = (row: ConcessionDiscountRow) => {
+    setCdToDelete(row);
+    setCdDeleteOpen(true);
+  };
+
+  const confirmCdDelete = async () => {
+    if (!cdToDelete) return;
+    try {
+      await deleteConcessionDiscount(cdToDelete.id);
+      setCdToDelete(null);
+      setCdDeleteOpen(false);
+    } catch {
+      setCdToDelete(null);
+      setCdDeleteOpen(false);
+    }
+  };
+
+  const handleCdSubmit = async (data: ConcessionDiscountFormData) => {
+    const payload = {
+      code: data.code.trim(),
+      name: data.name.trim(),
+      type: data.type,
+      calculationType: data.calculationType,
+      value: data.value,
+      accountId: parseInt(data.accountId, 10),
+      appliesToIds: data.appliesToIds.map((id) => parseInt(id, 10)),
+      maxLimit: data.maxLimit,
+      status: data.status,
+    };
+
+    if (cdDialogMode === "add") {
+      await createConcessionDiscount(payload);
+    } else if (cdDialogMode === "edit" && cdSelectedDiscount) {
+      await updateConcessionDiscount({
+        id: cdSelectedDiscount.id,
+        data: payload,
+      });
+    }
+  };
+
+  const biCanPrev = biPagination ? biPagination.page > 1 : biPage > 1;
+  const biCanNext = biPagination ? biPagination.page < biPagination.totalPages : false;
+
+  const cdCanPrev = cdPagination ? cdPagination.page > 1 : false;
+  const cdCanNext = cdPagination ? cdPagination.page < cdPagination.totalPages : false;
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Receipt className="h-8 w-8" />
+    <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+      <div>
+        <h1 className="text-3xl font-bold flex items-center gap-2 flex-wrap">
+          <Receipt className="h-8 w-8 shrink-0" />
+          Billing &amp; discounts
+        </h1>
+        <p className="text-muted-foreground mt-1 max-w-3xl">
+          Manage billable products (codes and accounts), then configure concessions and discounts
+          that reference those billing items.
+        </p>
+      </div>
+
+      <Tabs defaultValue="items" className="space-y-4">
+        <TabsList className="grid w-full max-w-md grid-cols-2 sm:w-auto sm:inline-flex">
+          <TabsTrigger value="items" className="gap-2">
+            <Receipt className="h-4 w-4" />
             Billing items
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Manage billing items (code, category, linked account, optional)
-          </p>
-        </div>
-        <Button onClick={handleAdd}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add billing item
-        </Button>
-      </div>
+          </TabsTrigger>
+          <TabsTrigger value="discounts" className="gap-2">
+            <Percent className="h-4 w-4" />
+            Concession discounts
+          </TabsTrigger>
+        </TabsList>
 
-      <Card className="shadow-card">
-        <CardHeader>
-          <CardTitle className="text-lg">Filters</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="space-y-2">
-            <Label>Category</Label>
-            <Combobox
-              options={categoryOptions}
-              value={categoryStr}
-              onValueChange={(v) => {
-                setCategoryStr(v);
-                setPageStr("1");
-              }}
-              placeholder={categoriesLoading ? "Loading…" : "All categories"}
-              searchPlaceholder="Search categories…"
-              disabled={categoriesLoading}
-            />
+        <TabsContent value="items" className="space-y-6 mt-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardDescription className="text-sm sm:flex-1">
+              Codes, categories, optional flag, and linked GL accounts for student billing.
+            </CardDescription>
+            <Button onClick={handleBiAdd} size="sm" className="shrink-0">
+              <Plus className="mr-2 h-4 w-4" />
+              Add billing item
+            </Button>
           </div>
-          <div className="space-y-2">
-            <Label>Status</Label>
-            <Select
-              value={statusFilter}
-              onValueChange={(v) => {
-                setStatusFilter(v);
-                setPageStr("1");
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All">All</SelectItem>
-                <SelectItem value="Active">Active</SelectItem>
-                <SelectItem value="Inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Page</Label>
-            <Input
-              type="number"
-              min={1}
-              value={pageStr}
-              onChange={(e) => setPageStr(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Limit</Label>
-            <Input
-              type="number"
-              min={1}
-              value={limitStr}
-              onChange={(e) => setLimitStr(e.target.value)}
-            />
-          </div>
-        </CardContent>
-      </Card>
 
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search code, name, category, account…"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8"
-          />
-        </div>
-        <div className="text-sm text-muted-foreground">
-          {pagination
-            ? `Page ${pagination.page} of ${pagination.totalPages} • Total ${pagination.total}`
-            : undefined}
-        </div>
-      </div>
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle className="text-lg">Filters</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="space-y-2">
+                <Label>Category</Label>
+                <Combobox
+                  options={biCategoryOptions}
+                  value={biCategoryStr}
+                  onValueChange={(v) => {
+                    setBiCategoryStr(v);
+                    setBiPageStr("1");
+                  }}
+                  placeholder={categoriesLoading ? "Loading…" : "All categories"}
+                  searchPlaceholder="Search categories…"
+                  disabled={categoriesLoading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select
+                  value={biStatusFilter}
+                  onValueChange={(v) => {
+                    setBiStatusFilter(v);
+                    setBiPageStr("1");
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All</SelectItem>
+                    <SelectItem value="Active">Active</SelectItem>
+                    <SelectItem value="Inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Page</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={biPageStr}
+                  onChange={(e) => setBiPageStr(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Limit</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={biLimitStr}
+                  onChange={(e) => setBiLimitStr(e.target.value)}
+                />
+              </div>
+            </CardContent>
+          </Card>
 
-      <Card className="shadow-card overflow-hidden">
-        <CardContent className="p-0">
-          {itemsLoading ? (
-            <div className="p-8 text-center text-muted-foreground">
-              Loading billing items…
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Optional</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Account</TableHead>
-                  <TableHead className="text-right w-[100px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell className="font-medium">{row.code}</TableCell>
-                    <TableCell>{row.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{row.category}</Badge>
-                    </TableCell>
-                    <TableCell>{row.optional ? "Yes" : "No"}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          row.status === "Active" ? "default" : "secondary"
-                        }
-                      >
-                        {row.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {row.account?.accountDescription ?? `Account ${row.accountId}`}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEdit(row)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDelete(row)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-
-          {!itemsLoading && filtered.length === 0 && (
-            <div className="p-8 text-center text-muted-foreground">
-              No billing items match the current filters.
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {pagination && (
-        <Pagination>
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (!canPrev) return;
-                  setPageStr(String(Math.max(1, page - 1)));
-                }}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="relative flex-1 max-w-sm min-w-[200px]">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search code, name, category, account…"
+                value={biSearchTerm}
+                onChange={(e) => setBiSearchTerm(e.target.value)}
+                className="pl-8"
               />
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationNext
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (!canNext) return;
-                  setPageStr(String(page + 1));
-                }}
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      )}
+            </div>
+            <div className="text-sm text-muted-foreground">
+              {biPagination
+                ? `Page ${biPagination.page} of ${biPagination.totalPages} • Total ${biPagination.total}`
+                : undefined}
+            </div>
+          </div>
+
+          <Card className="shadow-card overflow-hidden">
+            <CardContent className="p-0">
+              {biLoading ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  Loading billing items…
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Code</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Optional</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Account</TableHead>
+                      <TableHead className="text-right w-[100px]">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {biFiltered.map((row) => (
+                      <TableRow key={row.id}>
+                        <TableCell className="font-medium">{row.code}</TableCell>
+                        <TableCell>{row.name}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">{row.category}</Badge>
+                        </TableCell>
+                        <TableCell>{row.optional ? "Yes" : "No"}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={row.status === "Active" ? "default" : "secondary"}
+                          >
+                            {row.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {row.account?.accountDescription ?? `Account ${row.accountId}`}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button size="sm" variant="outline" onClick={() => handleBiEdit(row)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => handleBiDelete(row)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+
+              {!biLoading && biFiltered.length === 0 && (
+                <div className="p-8 text-center text-muted-foreground">
+                  No billing items match the current filters.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {biPagination && (
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (!biCanPrev) return;
+                      setBiPageStr(String(Math.max(1, biPage - 1)));
+                    }}
+                  />
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (!biCanNext) return;
+                      setBiPageStr(String(biPage + 1));
+                    }}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </TabsContent>
+
+        <TabsContent value="discounts" className="space-y-6 mt-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardDescription className="text-sm sm:flex-1">
+              Percentage or fixed concessions/discounts tied to accounts and billing items.
+            </CardDescription>
+            <Button onClick={cdOpenAdd} size="sm" className="shrink-0">
+              <Plus className="mr-2 h-4 w-4" />
+              Add discount
+            </Button>
+          </div>
+
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle className="text-lg">Filters</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select
+                  value={cdStatusFilter}
+                  onValueChange={(v) => {
+                    setCdStatusFilter(v);
+                    setCdPageStr("1");
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={STATUS_ALL}>All</SelectItem>
+                    <SelectItem value="Active">Active</SelectItem>
+                    <SelectItem value="Inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Page</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={cdPageStr}
+                  onChange={(e) => setCdPageStr(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Limit</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={cdLimitStr}
+                  onChange={(e) => setCdLimitStr(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Search</Label>
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Code, name, applies to…"
+                    value={cdSearchTerm}
+                    onChange={(e) => setCdSearchTerm(e.target.value)}
+                    className="pl-8"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-card overflow-hidden">
+            <CardContent className="p-0">
+              {cdLoading ? (
+                <div className="p-8 text-center text-muted-foreground">Loading…</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Code</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Calculation</TableHead>
+                        <TableHead className="text-right">Value</TableHead>
+                        <TableHead className="text-right">Max limit</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Account</TableHead>
+                        <TableHead>Applies to</TableHead>
+                        <TableHead className="text-right w-[140px]">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {cdFiltered.map((row) => (
+                        <TableRow key={row.id}>
+                          <TableCell className="font-medium">{row.code}</TableCell>
+                          <TableCell>{row.name}</TableCell>
+                          <TableCell>{row.type}</TableCell>
+                          <TableCell>{row.calculationType}</TableCell>
+                          <TableCell className="text-right tabular-nums">{row.value}</TableCell>
+                          <TableCell className="text-right tabular-nums">{row.maxLimit}</TableCell>
+                          <TableCell>
+                            <span className="text-sm">{row.status}</span>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            {row.account?.accountDescription ?? `Account #${row.accountId}`}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            {row.appliesToIds.length}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1">
+                              <Button size="sm" variant="outline" onClick={() => cdOpenEdit(row)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => cdOpenDelete(row)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+              {!cdLoading && cdFiltered.length === 0 && (
+                <div className="p-8 text-center text-muted-foreground">
+                  No concession discounts found.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="flex items-center justify-center">
+            {cdPagination && cdPagination.totalPages > 1 && (
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (!cdCanPrev) return;
+                        setCdPageStr(String(cdPagination.page - 1));
+                      }}
+                    />
+                  </PaginationItem>
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (!cdCanNext) return;
+                        setCdPageStr(String(cdPagination.page + 1));
+                      }}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
 
       <BillingItemDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        mode={dialogMode}
-        billingItem={selectedItem}
-        categoryOptions={categoryOptions.filter((o) => o.value !== ALL)}
+        open={biDialogOpen}
+        onOpenChange={setBiDialogOpen}
+        mode={biDialogMode}
+        billingItem={biSelectedItem}
+        categoryOptions={biCategoryOptions.filter((o) => o.value !== ALL)}
         accountOptions={accountOptions}
-        onSubmit={handleSubmit}
+        onSubmit={handleBiSubmit}
       />
 
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+      <ConcessionDiscountDialog
+        open={cdDialogOpen}
+        onOpenChange={setCdDialogOpen}
+        mode={cdDialogMode}
+        discount={cdSelectedDiscount}
+        billingItemOptions={discountBillingItemOptions}
+        accountOptions={accountOptions}
+        onSubmit={handleCdSubmit}
+      />
+
+      <AlertDialog open={biDeleteOpen} onOpenChange={setBiDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete billing item?</AlertDialogTitle>
             <AlertDialogDescription>
-              This cannot be undone. Item <strong>{toDelete?.code}</strong> will
-              be removed.
+              This cannot be undone. Item <strong>{biToDelete?.code}</strong> will be removed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
+            <AlertDialogAction onClick={confirmBiDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={cdDeleteOpen} onOpenChange={setCdDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this discount?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This cannot be undone. <strong>{cdToDelete?.code}</strong> will be removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmCdDelete}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
   );
 }
-

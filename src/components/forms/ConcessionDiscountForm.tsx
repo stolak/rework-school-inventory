@@ -52,11 +52,11 @@ const discountFormSchema = z
       return;
     }
 
-    // FIXED_AMOUNT
-    if (data.appliesToIds.length !== 1) {
+    // FIXED_AMOUNT — billing item targets are not used; keep empty
+    if (data.appliesToIds.length !== 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Select exactly one billing item.",
+        message: "Clear billing items for fixed amount.",
         path: ["appliesToIds"],
       });
     }
@@ -98,9 +98,12 @@ export function ConcessionDiscountForm({
       value: initialData?.value ?? 0,
       maxLimit: initialData?.maxLimit ?? 0,
       accountId: initialData ? String(initialData.accountId) : "",
-      appliesToIds: initialData?.appliesToIds
-        ? initialData.appliesToIds.map(String)
-        : [],
+      appliesToIds:
+        initialData?.calculationType === "FIXED_AMOUNT"
+          ? []
+          : initialData?.appliesToIds
+            ? initialData.appliesToIds.map(String)
+            : [],
       status: normalizeStatus(initialData?.status),
     },
   });
@@ -109,8 +112,8 @@ export function ConcessionDiscountForm({
   const appliesToIds = form.watch("appliesToIds");
 
   useEffect(() => {
-    if (calculationType === "FIXED_AMOUNT" && appliesToIds.length > 1) {
-      form.setValue("appliesToIds", [appliesToIds[0]], { shouldValidate: true });
+    if (calculationType === "FIXED_AMOUNT" && appliesToIds.length > 0) {
+      form.setValue("appliesToIds", [], { shouldValidate: true });
     }
   }, [calculationType, appliesToIds, form]);
 
@@ -181,13 +184,7 @@ export function ConcessionDiscountForm({
                   onValueChange={(v) => {
                     field.onChange(v);
                     if (v === "FIXED_AMOUNT") {
-                      // keep only first selection
-                      const first = form.getValues("appliesToIds")[0];
-                      form.setValue(
-                        "appliesToIds",
-                        first ? [first] : [],
-                        { shouldValidate: true }
-                      );
+                      form.setValue("appliesToIds", [], { shouldValidate: true });
                     }
                   }}
                   value={field.value}
@@ -199,7 +196,7 @@ export function ConcessionDiscountForm({
                   </FormControl>
                   <SelectContent>
                     <SelectItem value="PERCENTAGE">PERCENTAGE</SelectItem>
-                    <SelectItem value="FIXED_AMOUNT">FIXED_AMOUNT</SelectItem>
+                    <SelectItem value="FIXED_AMOUNT">FIXED AMOUNT</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -278,31 +275,7 @@ export function ConcessionDiscountForm({
               )}
             />
           ) : (
-            <FormField
-              control={form.control}
-              name="appliesToIds"
-              render={() => (
-                <FormItem className="sm:col-span-2">
-                  <FormLabel>Applies to (single)</FormLabel>
-                  <FormControl>
-                    <Combobox
-                      options={billingItemOptions}
-                      value={appliesToIds[0] ?? ""}
-                      onValueChange={(v) =>
-                        form.setValue(
-                          "appliesToIds",
-                          v ? [v] : [],
-                          { shouldValidate: true }
-                        )
-                      }
-                      placeholder="Select billing item…"
-                      searchPlaceholder="Search billing items…"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <></>
           )}
 
           <FormField
