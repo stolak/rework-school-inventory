@@ -8,13 +8,23 @@ interface TermDialogProps {
   onOpenChange: (open: boolean) => void;
   mode: "add" | "edit" | "view";
   term?: Term;
-  onSubmit?: (data: TermFormData) => void;
+  onSubmit?: (data: TermFormData) => void | Promise<void>;
 }
 
-export function TermDialog({ open, onOpenChange, mode, term, onSubmit }: TermDialogProps) {
-  const handleSubmit = (data: TermFormData) => {
-    onSubmit?.(data);
-    onOpenChange(false);
+export function TermDialog({
+  open,
+  onOpenChange,
+  mode,
+  term,
+  onSubmit,
+}: TermDialogProps) {
+  const handleSubmit = async (data: TermFormData) => {
+    try {
+      await Promise.resolve(onSubmit?.(data));
+      onOpenChange(false);
+    } catch {
+      // Hook shows toast; keep dialog open
+    }
   };
 
   const handleCancel = () => onOpenChange(false);

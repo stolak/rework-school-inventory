@@ -190,31 +190,33 @@ export default function Categories() {
 
   return (
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Package2 className="h-8 w-8" />
-            Categories &amp; sub-categories
-          </h1>
-          <p className="text-muted-foreground mt-1 max-w-2xl">
-            Pick a category on the left, then add or edit its sub-categories on the right. Inventory
-            items use both levels.
-          </p>
-        </div>
-        <Button onClick={handleAddCategory} className="shrink-0">
-          <Plus className="mr-2 h-4 w-4" />
-          Add category
-        </Button>
+      <div>
+        <h1 className="text-3xl font-bold flex items-center gap-2">
+          <Package2 className="h-8 w-8" />
+          Categories &amp; sub-categories
+        </h1>
+        <p className="text-muted-foreground mt-1 max-w-2xl">
+          Pick a category on the left, then add or edit its sub-categories on the right. Inventory
+          items use both levels.
+        </p>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6 min-h-[520px]">
         <Card className="shadow-card lg:w-[min(100%,380px)] shrink-0 flex flex-col">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Package2 className="h-5 w-5" />
-              Categories
-            </CardTitle>
-            <CardDescription>Top-level grouping for inventory</CardDescription>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Package2 className="h-5 w-5" />
+                  Categories
+                </CardTitle>
+                <CardDescription>Top-level grouping for inventory</CardDescription>
+              </div>
+              <Button type="button" size="sm" className="shrink-0" onClick={handleAddCategory}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add category
+              </Button>
+            </div>
             <div className="relative pt-2">
               <Search className="absolute left-2 top-4 h-4 w-4 text-muted-foreground pointer-events-none" />
               <Input

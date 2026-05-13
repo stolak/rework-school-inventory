@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -39,9 +40,18 @@ export function TermForm({ initialData, mode, onSubmit, onCancel }: TermFormProp
     resolver: zodResolver(schema),
     defaultValues: {
       name: initialData?.name || "",
-      status: (initialData?.status as any) || "Active",
+      status: (initialData?.status as TermFormData["status"]) || "Active",
     },
   });
+
+  useEffect(() => {
+    form.reset({
+      name: initialData?.name ?? "",
+      status:
+        (initialData?.status as TermFormData["status"]) ||
+        ("Active" as TermFormData["status"]),
+    });
+  }, [form, initialData?.id, initialData?.name, initialData?.status]);
 
   const disabled = mode === "view";
 
@@ -68,7 +78,7 @@ export function TermForm({ initialData, mode, onSubmit, onCancel }: TermFormProp
           render={({ field }) => (
             <FormItem>
               <FormLabel>Status</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={disabled}>
+              <Select onValueChange={field.onChange} value={field.value} disabled={disabled}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
@@ -98,4 +108,3 @@ export function TermForm({ initialData, mode, onSubmit, onCancel }: TermFormProp
     </Form>
   );
 }
-

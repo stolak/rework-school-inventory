@@ -7,18 +7,34 @@ export interface Term {
   name: string;
   status: "Active" | "Inactive" | string;
   createdAt?: string;
+  /** When set, term belongs to this school session (from API) */
+  sessionId?: string;
 }
 
-export function useTerms(params?: { page?: number; limit?: number; status?: string }) {
+export function useTerms(params?: {
+  page?: number;
+  limit?: number;
+  status?: string;
+  sessionId?: string;
+  queryEnabled?: boolean;
+}) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const page = params?.page ?? 1;
   const limit = params?.limit ?? 20;
+  const queryEnabled = params?.queryEnabled !== false;
 
   const { data: response, isLoading, error } = useQuery({
-    queryKey: ["terms", page, limit, params?.status ?? null],
-    queryFn: () => termApi.list({ page, limit, status: params?.status }),
+    queryKey: ["terms", page, limit, params?.status ?? null, params?.sessionId ?? ""],
+    queryFn: () =>
+      termApi.list({
+        page,
+        limit,
+        status: params?.status,
+        sessionId: params?.sessionId,
+      }),
+    enabled: queryEnabled,
   });
 
   const rawTerms = (response as any)?.data?.terms ?? [];
@@ -29,6 +45,7 @@ export function useTerms(params?: { page?: number; limit?: number; status?: stri
     name: t.name,
     status: t.status,
     createdAt: t.createdAt,
+    sessionId: t.sessionId ?? t.schoolSessionId ?? t.session?.id,
   }));
 
   const addMutation = useMutation({

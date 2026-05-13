@@ -8,7 +8,7 @@ interface SchoolSessionDialogProps {
   onOpenChange: (open: boolean) => void;
   mode: "add" | "edit" | "view";
   session?: SchoolSession;
-  onSubmit?: (data: SchoolSessionFormData) => void;
+  onSubmit?: (data: SchoolSessionFormData) => void | Promise<void>;
 }
 
 export function SchoolSessionDialog({
@@ -18,9 +18,13 @@ export function SchoolSessionDialog({
   session,
   onSubmit,
 }: SchoolSessionDialogProps) {
-  const handleSubmit = (data: SchoolSessionFormData) => {
-    onSubmit?.(data);
-    onOpenChange(false);
+  const handleSubmit = async (data: SchoolSessionFormData) => {
+    try {
+      await Promise.resolve(onSubmit?.(data));
+      onOpenChange(false);
+    } catch {
+      // Hook shows toast
+    }
   };
 
   const handleCancel = () => onOpenChange(false);

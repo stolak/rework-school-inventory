@@ -403,21 +403,35 @@ export const schoolSessionApi = {
 };
 
 // School Terms (endpoint: /api/v1/terms)
-export const fetchTerms = (params?: { page?: number; limit?: number; status?: string }) => {
+export const fetchTerms = (params?: {
+  page?: number;
+  limit?: number;
+  status?: string;
+  /** When supported, returns terms for this school session */
+  sessionId?: string;
+}) => {
   const queryParams = new URLSearchParams();
   queryParams.append("page", String(params?.page ?? 1));
   queryParams.append("limit", String(params?.limit ?? 20));
   if (params?.status) queryParams.append("status", params.status);
+  if (params?.sessionId) queryParams.append("sessionId", params.sessionId);
   const qs = queryParams.toString();
   return get<any>(`/api/v1/terms${qs ? `?${qs}` : ""}`);
 };
 
-export const createTerm = (body: { name: string; status: "Active" | "Inactive" }) =>
-  post<any>("/api/v1/terms", body);
+export const createTerm = (body: {
+  name: string;
+  status: "Active" | "Inactive";
+  sessionId?: string;
+}) => post<any>("/api/v1/terms", body);
 
 export const updateTerm = (
   id: string,
-  body: Partial<{ name: string; status: "Active" | "Inactive" | string }>
+  body: Partial<{
+    name: string;
+    status: "Active" | "Inactive" | string;
+    sessionId?: string;
+  }>
 ) => put<any>(`/api/v1/terms/${id}`, body);
 
 export const deleteTerm = (id: string) => del<any>(`/api/v1/terms/${id}`);
@@ -427,6 +441,53 @@ export const termApi = {
   create: createTerm,
   update: updateTerm,
   remove: deleteTerm,
+};
+
+/** Global academic active period (billing/collections context) */
+export type ActivePeriod = {
+  id: string;
+  startDate: string;
+  endDate: string;
+  sessionId: string;
+  termId: string;
+  updatedAt?: string;
+  session?: { id: string; name: string };
+  term?: { id: string; name: string };
+};
+
+export const fetchActivePeriod = () =>
+  get<ApiResponse<ActivePeriod>>("/api/v1/active-period");
+
+export const upsertActivePeriod = (body: {
+  startDate: string;
+  endDate: string;
+  sessionId: string;
+  termId: string;
+}) =>
+  put<ApiResponse<ActivePeriod>, typeof body>("/api/v1/active-period", body);
+
+export const activePeriodApi = {
+  get: fetchActivePeriod,
+  upsert: upsertActivePeriod,
+};
+
+/** Same shape as active period; used for default student billing window */
+export type DefaultBillingPeriod = ActivePeriod;
+
+export const fetchDefaultBillingPeriod = () =>
+  get<ApiResponse<DefaultBillingPeriod>>("/api/v1/default-billing-period");
+
+export const upsertDefaultBillingPeriod = (body: {
+  startDate: string;
+  endDate: string;
+  sessionId: string;
+  termId: string;
+}) =>
+  put<ApiResponse<DefaultBillingPeriod>, typeof body>("/api/v1/default-billing-period", body);
+
+export const defaultBillingPeriodApi = {
+  get: fetchDefaultBillingPeriod,
+  upsert: upsertDefaultBillingPeriod,
 };
 
 // Student Collections (new API)
