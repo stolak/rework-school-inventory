@@ -105,6 +105,7 @@ const sidebarNavSections: SidebarNavSection[] = [
       { title: "Inventory Collections Report", url: "/reports/inventory-collections", icon: BarChart },
       { title: "Item balance report", url: "/reports/item-balances", icon: Scale },
       { title: "Item transaction log", url: "/reports/item-transaction-log", icon: History },
+      { title: "Student billing summary", url: "/reports/student-billing-summary", icon: FileBarChart },
     ],
   },
   {

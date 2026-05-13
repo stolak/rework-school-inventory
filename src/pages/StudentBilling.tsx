@@ -37,6 +37,7 @@ import { useClasses } from "@/hooks/useClasses";
 import { useSubClasses } from "@/hooks/useSubClasses";
 import { useSchoolSessions } from "@/hooks/useSchoolSessions";
 import { useTerms } from "@/hooks/useTerms";
+import { useDefaultBillingPeriod } from "@/hooks/useDefaultBillingPeriod";
 import { useBillingItems } from "@/hooks/useBillingItems";
 import { useConcessionDiscounts } from "@/hooks/useConcessionDiscounts";
 import {
@@ -217,6 +218,9 @@ export default function StudentBilling() {
   const [sessionId, setSessionId] = useState("");
   const [termId, setTermId] = useState("");
 
+  const { defaultBillingPeriod } = useDefaultBillingPeriod();
+  const seededSessionTermFromDefaultBilling = useRef(false);
+
   const prevStudentRef = useRef<string>("");
 
   const { students } = useStudents({
@@ -249,6 +253,20 @@ export default function StudentBilling() {
     if (s?.classId) setClassId(s.classId);
     if (s?.subClassId) setSubclassId(s.subClassId);
   }, [studentId, students]);
+
+  /** One-time seed from Settings → default billing period (session + term still user-editable). */
+  useEffect(() => {
+    if (seededSessionTermFromDefaultBilling.current) return;
+    if (!defaultBillingPeriod) return;
+    const sid = defaultBillingPeriod.sessionId;
+    const tid = defaultBillingPeriod.termId;
+    const sessionOk = Boolean(sid && sessions.some((s) => s.id === sid));
+    const termOk = Boolean(tid && terms.some((t) => t.id === tid));
+    if (!sessionOk || !termOk) return;
+    setSessionId(sid);
+    setTermId(tid);
+    seededSessionTermFromDefaultBilling.current = true;
+  }, [defaultBillingPeriod, sessions, terms]);
 
   useEffect(() => {
     setBillingPageStr("1");

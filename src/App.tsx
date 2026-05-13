@@ -36,6 +36,7 @@ import StudentInventoryReport from "./pages/StudentInventoryReport";
 import InventoryCollectionsReport from "./pages/InventoryCollectionsReport";
 import ItemBalanceReport from "./pages/ItemBalanceReport";
 import ItemTransactionLogReport from "./pages/ItemTransactionLogReport";
+import StudentBillingSummaryReport from "./pages/StudentBillingSummaryReport";
 import SubClasses from "./pages/SubClasses";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
@@ -92,6 +93,10 @@ const AppContent = () => {
           <Route path="/reports/inventory-collections" element={<InventoryCollectionsReport />} />
           <Route path="/reports/item-balances" element={<ItemBalanceReport />} />
           <Route path="/reports/item-transaction-log" element={<ItemTransactionLogReport />} />
+        <Route
+          path="/reports/student-billing-summary"
+          element={<StudentBillingSummaryReport />}
+        />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>

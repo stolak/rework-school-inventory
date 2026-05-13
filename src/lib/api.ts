@@ -1980,6 +1980,48 @@ export const bulkPostStudentBillings = (body: { ids: number[] }) =>
     typeof body
   >("/api/v1/student-billings/post/bulk", body);
 
+/** Per-student totals for session/term/class/subclass (billing summary report). */
+export type StudentBillingSummaryReportRow = {
+  studentId: string;
+  session: string;
+  term: string;
+  classId: string;
+  subclassId: string;
+  student: {
+    id: string;
+    admissionNumber: string;
+    firstName: string;
+    middleName?: string | null;
+    lastName: string;
+  };
+  sessionInfo: { id: string; name: string };
+  termInfo: { id: string; name: string };
+  classInfo: { id: string; name: string };
+  subclassInfo: { id: string; name: string };
+  approvedBillingTotal: number;
+  draftBillingTotal: number;
+  approvedDiscountTotal: number;
+  draftDiscountTotal: number;
+};
+
+export const fetchStudentBillingsSummaryReport = (params: {
+  session: string;
+  term: string;
+  /** Omit or empty = all classes (when supported by API). */
+  classId?: string;
+  /** Omit or empty = all subclasses (when supported by API). */
+  subclassId?: string;
+}) => {
+  const sp = new URLSearchParams();
+  sp.append("session", params.session);
+  sp.append("term", params.term);
+  if (params.classId) sp.append("classId", params.classId);
+  if (params.subclassId) sp.append("subclassId", params.subclassId);
+  return get<ApiResponse<StudentBillingSummaryReportRow[]>>(
+    `/api/v1/student-billings/report/summary?${sp.toString()}`
+  );
+};
+
 export const studentBillingsApi = {
   bulkCreate: bulkCreateStudentBillings,
   list: fetchStudentBillings,
@@ -1987,6 +2029,7 @@ export const studentBillingsApi = {
   remove: deleteStudentBilling,
   bulkPatchStatuses: bulkPatchStudentBillingStatuses,
   bulkPost: bulkPostStudentBillings,
+  summaryReport: fetchStudentBillingsSummaryReport,
 };
 
 /** Posted concession/discount amounts per student session/term */
