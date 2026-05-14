@@ -1909,9 +1909,38 @@ export const fetchAccountReportByAccount = (params: {
   );
 };
 
+export type BalanceSheetSubheadRow = {
+  id: number;
+  name: string;
+  balance: number;
+};
+
+export type BalanceSheetHeadSection = {
+  name: string;
+  headcode: number;
+  subheads: BalanceSheetSubheadRow[];
+};
+
+/** API: keyed by strings like headcode11, headcode12, … */
+export type BalanceSheetReportData = Record<string, BalanceSheetHeadSection>;
+
+export const fetchAccountReportByHeadSubhead = (params: {
+  transactionDateTo: string;
+  transactionDateFrom?: string;
+}) => {
+  const sp = new URLSearchParams();
+  sp.append("transactionDateTo", params.transactionDateTo);
+  if (params.transactionDateFrom)
+    sp.append("transactionDateFrom", params.transactionDateFrom);
+  return get<ApiResponse<BalanceSheetReportData>>(
+    `/api/v1/account-transactions/report-by-head-subhead?${sp.toString()}`
+  );
+};
+
 export const accountTransactionsApi = {
   transactionLog: fetchAccountTransactionLog,
   reportByAccount: fetchAccountReportByAccount,
+  reportByHeadSubhead: fetchAccountReportByHeadSubhead,
 };
 
 export type BillingItem = {
