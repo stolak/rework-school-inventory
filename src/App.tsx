@@ -36,6 +36,8 @@ import StudentInventoryReport from "./pages/StudentInventoryReport";
 import InventoryCollectionsReport from "./pages/InventoryCollectionsReport";
 import ItemBalanceReport from "./pages/ItemBalanceReport";
 import ItemTransactionLogReport from "./pages/ItemTransactionLogReport";
+import AccountStatementReport from "./pages/AccountStatementReport";
+import TrialBalanceReport from "./pages/TrialBalanceReport";
 import StudentBillingSummaryReport from "./pages/StudentBillingSummaryReport";
 import SubClasses from "./pages/SubClasses";
 import NotFound from "./pages/NotFound";
@@ -93,6 +95,8 @@ const AppContent = () => {
           <Route path="/reports/inventory-collections" element={<InventoryCollectionsReport />} />
           <Route path="/reports/item-balances" element={<ItemBalanceReport />} />
           <Route path="/reports/item-transaction-log" element={<ItemTransactionLogReport />} />
+        <Route path="/reports/account-statement" element={<AccountStatementReport />} />
+        <Route path="/reports/trial-balance" element={<TrialBalanceReport />} />
         <Route
           path="/reports/student-billing-summary"
           element={<StudentBillingSummaryReport />}

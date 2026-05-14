@@ -146,7 +146,16 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(text || res.statusText || `Request failed: ${res.status}`);
+    let message = text.trim() || res.statusText || `Request failed: ${res.status}`;
+    try {
+      const parsed = JSON.parse(text) as { message?: string };
+      if (typeof parsed?.message === "string" && parsed.message.trim()) {
+        message = parsed.message.trim();
+      }
+    } catch {
+      /* not JSON — keep message as body text or status */
+    }
+    throw new Error(message);
   }
 
   const contentType = res.headers.get("content-type") || "";
@@ -1810,6 +1819,99 @@ export const accountChartsApi = {
   create: createAccountChart,
   update: updateAccountChart,
   remove: deleteAccountChart,
+};
+
+/** Single line on the GL transaction log for an account */
+export type AccountTransactionLogRow = {
+  id: number;
+  debit: string;
+  credit: string;
+  remarks: string | null;
+  ref: string;
+  manualRef: string | null;
+  transactionDate: string;
+  postedBy: string;
+  createdAt: string;
+  project: { id?: string; name?: string } | null;
+};
+
+export type AccountTransactionLogData = {
+  account: {
+    id: number;
+    accountNo?: string | null;
+    accountRef: string | null;
+    accountDescription: string;
+    group?: { id: number; name: string };
+    head?: { id: number; name: string };
+    subhead?: { id: number; name: string };
+  };
+  transactionDateFrom: string;
+  transactionDateTo: string;
+  balanceBeforeFromDate: string;
+  transactions: AccountTransactionLogRow[];
+};
+
+export const fetchAccountTransactionLog = (params: {
+  accountId: number;
+  transactionDateFrom?: string;
+  transactionDateTo?: string;
+}) => {
+  const sp = new URLSearchParams();
+  sp.append("accountId", String(params.accountId));
+  if (params.transactionDateFrom)
+    sp.append("transactionDateFrom", params.transactionDateFrom);
+  if (params.transactionDateTo)
+    sp.append("transactionDateTo", params.transactionDateTo);
+  return get<ApiResponse<AccountTransactionLogData>>(
+    `/api/v1/account-transactions/transaction-log?${sp.toString()}`
+  );
+};
+
+/** Row for report-by-account (trial balance style: net credit − debit per account). */
+export type TrialBalanceReportAccount = {
+  id: number;
+  groupId: number;
+  headId: number;
+  subheadId: number;
+  rank: number;
+  accountNo?: string | null;
+  accountRef?: string | null;
+  accountDescription: string;
+  group?: { id: number; name: string };
+  head?: { id: number; code?: string | null; name: string };
+  subhead?: { id: number; code?: string | null; name: string; rank?: number };
+};
+
+export type TrialBalanceReportRow = {
+  accountId: number;
+  headId: number;
+  subheadId: number;
+  sumCreditMinusDebit: string;
+  account: TrialBalanceReportAccount;
+};
+
+export type TrialBalanceReportData = {
+  transactionDateFrom: string | null;
+  transactionDateTo: string;
+  rows: TrialBalanceReportRow[];
+};
+
+export const fetchAccountReportByAccount = (params: {
+  transactionDateTo: string;
+  transactionDateFrom?: string;
+}) => {
+  const sp = new URLSearchParams();
+  sp.append("transactionDateTo", params.transactionDateTo);
+  if (params.transactionDateFrom)
+    sp.append("transactionDateFrom", params.transactionDateFrom);
+  return get<ApiResponse<TrialBalanceReportData>>(
+    `/api/v1/account-transactions/report-by-account?${sp.toString()}`
+  );
+};
+
+export const accountTransactionsApi = {
+  transactionLog: fetchAccountTransactionLog,
+  reportByAccount: fetchAccountReportByAccount,
 };
 
 export type BillingItem = {
