@@ -129,12 +129,107 @@ export function PurchaseCreateForm({
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
+
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Items</p>
+              <p className="text-xs text-muted-foreground">Add one or more items to this purchase.</p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => append({ itemId: "", qtyIn: 1, inCost: 0 })}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Item
+            </Button>
+          </div>
+
+          {fields.map((f, index) => (
+            <div key={f.id} className="rounded-md border p-4">
+              <div className="flex flex-row items-end gap-4">
+                <FormField
+                  control={form.control}
+                  name={`items.${index}.itemId`}
+                  render={({ field }) => (
+                    <FormItem className="min-w-0 flex-1">
+                      <FormLabel>Inventory Item {index + 1}</FormLabel>
+                      <FormControl>
+                        <Combobox
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          options={inventoryItems.map((it) => ({
+                            value: it.id,
+                            label: `${it.name}${it.sku ? ` - ${it.sku}` : ""}`,
+                          }))}
+                          placeholder="Select item"
+                          searchPlaceholder="Search items..."
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name={`items.${index}.qtyIn`}
+                  render={({ field }) => (
+                    <FormItem className="w-24 shrink-0">
+                      <FormLabel>Qty</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          value={field.value}
+                          onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name={`items.${index}.inCost`}
+                  render={({ field }) => (
+                    <FormItem className="w-32 shrink-0">
+                      <FormLabel>Cost Value(₦)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={field.value}
+                          onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="shrink-0"
+                  onClick={() => remove(index)}
+                  disabled={fields.length === 1}
+                  aria-label="Remove item"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="flex flex-row items-end gap-4">
           <FormField
             control={form.control}
             name="transactionDate"
             render={({ field }) => (
-              <FormItem className="flex flex-col">
+              <FormItem className="flex min-w-0 flex-1 flex-col">
                 <FormLabel>Transaction Date</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
@@ -166,14 +261,27 @@ export function PurchaseCreateForm({
               </FormItem>
             )}
           />
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+         
+
           <FormField
+            control={form.control}
+            name="referenceNo"
+            render={({ field }) => (
+              <FormItem className="min-w-0 flex-1">
+                <FormLabel>Reference No (Optional)</FormLabel>
+                <FormControl>
+                  <Input placeholder="string" value={field.value ?? ""} onChange={field.onChange} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+           <FormField
             control={form.control}
             name="amountPaid"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="w-36 shrink-0">
                 <FormLabel>Amount Paid (₦)</FormLabel>
                 <FormControl>
                   <Input
@@ -187,20 +295,6 @@ export function PurchaseCreateForm({
                       )
                     }
                   />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="referenceNo"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Reference No (Optional)</FormLabel>
-                <FormControl>
-                  <Input placeholder="string" value={field.value ?? ""} onChange={field.onChange} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -221,103 +315,6 @@ export function PurchaseCreateForm({
             </FormItem>
           )}
         />
-
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Items</p>
-              <p className="text-xs text-muted-foreground">Add one or more items to this purchase.</p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => append({ itemId: "", qtyIn: 1, inCost: 0 })}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Item
-            </Button>
-          </div>
-
-          {fields.map((f, index) => (
-            <div key={f.id} className="rounded-md border p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium">Item {index + 1}</p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => remove(index)}
-                  disabled={fields.length === 1}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name={`items.${index}.itemId`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Inventory Item</FormLabel>
-                      <FormControl>
-                        <Combobox
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          options={inventoryItems.map((it) => ({
-                            value: it.id,
-                            label: `${it.name}${it.sku ? ` - ${it.sku}` : ""}`,
-                          }))}
-                          placeholder="Select item"
-                          searchPlaceholder="Search items..."
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name={`items.${index}.qtyIn`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Qty In</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          value={field.value}
-                          onChange={(e) => field.onChange(Number(e.target.value) || 0)}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name={`items.${index}.inCost`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>In Cost (₦)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={field.value}
-                          onChange={(e) => field.onChange(Number(e.target.value) || 0)}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-
         <div className="flex justify-end space-x-2">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
