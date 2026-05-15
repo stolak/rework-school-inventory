@@ -132,6 +132,30 @@ export type Purchase = {
   createdBy?: { firstName?: string; lastName?: string } | null;
 };
 
+export type GroupedPurchaseLineItem = {
+  id: string;
+  itemId: string;
+  item?: { name?: string } | null;
+  qtyIn: string;
+  inCost: string;
+  status: string;
+};
+
+export type GroupedPurchase = {
+  supplierId: string;
+  transactionType: "purchase";
+  referenceNo: string;
+  storeId: string;
+  transactionDate: string;
+  status: string;
+  amountPaid: string;
+  supplier?: { name?: string } | null;
+  createdBy?: { firstName?: string; lastName?: string } | null;
+  store?: { id: string; name?: string } | null;
+  notes?: string | null;
+  items: GroupedPurchaseLineItem[];
+};
+
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("authToken");
@@ -1225,6 +1249,29 @@ export const fetchPurchases = (params?: {
   );
 };
 
+export const fetchPurchasesGrouped = (params?: {
+  supplierId?: string;
+  storeId?: string;
+  transactionDateFrom?: string;
+  transactionDateTo?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const searchParams = new URLSearchParams();
+  if (params?.supplierId) searchParams.append("supplierId", params.supplierId);
+  if (params?.storeId) searchParams.append("storeId", params.storeId);
+  if (params?.transactionDateFrom)
+    searchParams.append("transactionDateFrom", params.transactionDateFrom);
+  if (params?.transactionDateTo)
+    searchParams.append("transactionDateTo", params.transactionDateTo);
+  if (params?.page) searchParams.append("page", String(params.page));
+  if (params?.limit) searchParams.append("limit", String(params.limit));
+  const qs = searchParams.toString();
+  return get<ApiResponse<{ purchases: GroupedPurchase[]; pagination: Pagination }>>(
+    `/api/v1/purchases/grouped${qs ? `?${qs}` : ""}`
+  );
+};
+
 export const createPurchase = (body: {
   itemId: string;
   supplierId: string;
@@ -1265,6 +1312,7 @@ export const deletePurchase = (id: string) =>
 
 export const purchaseApi = {
   list: fetchPurchases,
+  listGrouped: fetchPurchasesGrouped,
   create: createPurchase,
   bulkCreate: createPurchasesBulk,
   update: updatePurchase,

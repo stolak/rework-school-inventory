@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react"
-import { Plus, Search, Eye, Edit, Trash2, Filter, ShoppingCart, CalendarIcon } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { Plus, Search, Eye, Trash2, Filter, ShoppingCart, CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,7 +14,19 @@ import { useInventory } from "@/hooks/useInventory"
 import { useSuppliers } from "@/hooks/useSuppliers"
 import { useStores } from "@/hooks/useStores"
 import { PurchaseDialog } from "@/components/dialogs/PurchaseDialog"
-import { usePurchases, type Purchase } from "@/hooks/usePurchases"
+import {
+  usePurchases,
+  type GroupedPurchase,
+  groupedPurchaseTotalCost,
+  groupedPurchaseTotalQty,
+} from "@/hooks/usePurchases"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 import { useToast } from "@/hooks/use-toast"
 import {
   AlertDialog,
@@ -45,85 +57,89 @@ export default function Purchases() {
   const [endDate, setEndDate] = useState<Date | undefined>()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<'add' | 'edit' | 'view'>('add')
-  const [selectedPurchase, setSelectedPurchase] = useState<Purchase | undefined>()
+  const [selectedGroup, setSelectedGroup] = useState<GroupedPurchase | undefined>()
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [purchaseToDelete, setPurchaseToDelete] = useState<Purchase | null>(null)
+  const [groupToDelete, setGroupToDelete] = useState<GroupedPurchase | null>(null)
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid")
+  const [page, setPage] = useState(1)
+
+  useEffect(() => {
+    setPage(1)
+  }, [supplierId, storeId, startDate, endDate])
 
   const listQuery = useMemo(
     () => ({
-      itemId: itemId || undefined,
       supplierId: supplierId || undefined,
       storeId: storeId || undefined,
-      status: statusFilter === "all" ? undefined : statusFilter,
       transactionDateFrom: startDate ? format(startDate, "yyyy-MM-dd") : undefined,
       transactionDateTo: endDate ? format(endDate, "yyyy-MM-dd") : undefined,
-      page: 1,
+      page,
       limit: 20,
     }),
-    [itemId, supplierId, storeId, statusFilter, startDate, endDate]
+    [supplierId, storeId, startDate, endDate, page]
   )
 
   const { items: inventoryItems } = useInventory({ page: 1, limit: 100 })
   const { suppliers } = useSuppliers({ status: "Active", page: 1, limit: 100 })
   const { stores: activeStores } = useStores({ status: "Active", page: 1, limit: 100 })
 
-  const { purchases, bulkCreatePurchases, updatePurchase, deletePurchase } =
-    usePurchases(listQuery)
+  const {
+    groupedPurchases,
+    pagination,
+    isLoading,
+    bulkCreatePurchases,
+    deletePurchase,
+  } = usePurchases(listQuery)
   const { toast } = useToast()
 
-  /** Client-side only: narrows the list returned by the API (search box). */
-  const filteredPurchases = useMemo(
+  /** Client-side: search, item, and status filters on grouped rows. */
+  const filteredGroups = useMemo(
     () =>
-      purchases.filter((purchase) => {
+      groupedPurchases.filter((group) => {
+        if (statusFilter !== "all" && group.status !== statusFilter) return false
+        if (itemId && !group.items.some((line) => line.itemId === itemId)) return false
         if (!searchTerm.trim()) return true
         const q = searchTerm.toLowerCase()
         return (
-          (purchase.item?.name || "").toLowerCase().includes(q) ||
-          (purchase.supplier?.name || "").toLowerCase().includes(q) ||
-          (purchase.store?.name || "").toLowerCase().includes(q) ||
-          (purchase.referenceNo || "").toLowerCase().includes(q)
+          (group.referenceNo || "").toLowerCase().includes(q) ||
+          (group.supplier?.name || "").toLowerCase().includes(q) ||
+          (group.store?.name || "").toLowerCase().includes(q) ||
+          group.items.some((line) => (line.item?.name || "").toLowerCase().includes(q))
         )
       }),
-    [purchases, searchTerm]
+    [groupedPurchases, searchTerm, statusFilter, itemId]
   )
 
   const handleAdd = () => {
-    setDialogMode('add')
-    setSelectedPurchase(undefined)
+    setDialogMode("add")
+    setSelectedGroup(undefined)
     setDialogOpen(true)
   }
 
-  const handleEdit = (purchase: Purchase) => {
-    setDialogMode('edit')
-    setSelectedPurchase(purchase)
+  const handleView = (group: GroupedPurchase) => {
+    setDialogMode("view")
+    setSelectedGroup(group)
     setDialogOpen(true)
   }
 
-  const handleView = (purchase: Purchase) => {
-    setDialogMode('view')
-    setSelectedPurchase(purchase)
-    setDialogOpen(true)
+  const handleDelete = (group: GroupedPurchase) => {
+    setGroupToDelete(group)
+    setDeleteDialogOpen(true)
   }
-
-  const handleDelete = (purchase: Purchase) => {
-    setPurchaseToDelete(purchase);
-    setDeleteDialogOpen(true);
-  };
 
   const confirmDelete = async () => {
-    if (purchaseToDelete) {
-      try {
-        await deletePurchase(purchaseToDelete.id);
-        setPurchaseToDelete(null);
-        setDeleteDialogOpen(false);
-      } catch (err) {
-        // Error is already handled in the hook
-        setPurchaseToDelete(null);
-        setDeleteDialogOpen(false);
+    if (!groupToDelete) return
+    try {
+      for (const line of groupToDelete.items) {
+        await deletePurchase(line.id)
       }
+      setGroupToDelete(null)
+      setDeleteDialogOpen(false)
+    } catch {
+      setGroupToDelete(null)
+      setDeleteDialogOpen(false)
     }
-  };
+  }
 
   const handleSubmit = async (data: any) => {
     if (dialogMode === 'add') {
@@ -160,39 +176,6 @@ export default function Purchases() {
         });
         throw err
       }
-    } else if (dialogMode === 'edit' && selectedPurchase) {
-      toast({
-        title: "Updating...",
-        description: "Please wait while we update the purchase order",
-      });
-      
-      const updateData = {
-        storeId: data.storeId || null,
-        itemId: data.itemId,
-        supplierId: data.supplierId,
-        qtyIn: data.qtyIn,
-        inCost: data.inCost,
-        amountPaid: data.amountPaid,
-        status: data.status,
-        referenceNo: data.referenceNo || undefined,
-        notes: data.notes || undefined,
-        transactionDate: format(data.transactionDate, "yyyy-MM-dd"),
-      }
-      
-      try {
-        await updatePurchase(selectedPurchase.id, updateData);
-        toast({
-          title: "Success",
-          description: "Purchase order updated successfully",
-        });
-      } catch (err) {
-        toast({
-          title: "Error",
-          description: "Failed to update purchase order",
-          variant: "destructive",
-        });
-        throw err
-      }
     }
   }
 
@@ -209,9 +192,17 @@ export default function Purchases() {
     }
   }
 
-  const totalValue = filteredPurchases.reduce((sum, p) => sum + Number(p.inCost || 0), 0)
-  const completedOrders = filteredPurchases.filter(p => p.status === 'completed').length
-  const pendingOrders = filteredPurchases.filter(p => p.status === 'pending').length
+  const totalValue = filteredGroups.reduce(
+    (sum, g) => sum + groupedPurchaseTotalCost(g),
+    0
+  )
+  const completedOrders = filteredGroups.filter((g) => g.status === "completed").length
+  const pendingOrders = filteredGroups.filter((g) => g.status === "pending").length
+
+  const canPrevPage = pagination ? pagination.page > 1 : page > 1
+  const canNextPage = pagination
+    ? pagination.page < pagination.totalPages
+    : false
 
   return (
     <div className="p-6 space-y-6">
@@ -241,7 +232,7 @@ export default function Purchases() {
           <CardContent>
             <div className="text-2xl font-bold">₦{totalValue.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              {filteredPurchases.length} orders
+              {filteredGroups.length} order{filteredGroups.length !== 1 ? "s" : ""} on this page
             </p>
           </CardContent>
         </Card>
@@ -403,72 +394,85 @@ export default function Purchases() {
           </div>
       </div>
 
-      {viewMode === "grid" ? (
+      {isLoading ? (
+        <div className="text-center py-10 text-muted-foreground">Loading purchase orders…</div>
+      ) : viewMode === "grid" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredPurchases.map((purchase) => (
-            <Card key={purchase.id} className="hover:shadow-md transition-shadow">
+          {filteredGroups.map((group) => (
+            <Card key={group.referenceNo} className="hover:shadow-md transition-shadow">
               <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <CardTitle className="text-lg">{purchase.item?.name || "N/A"}</CardTitle>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1 min-w-0">
+                    <CardTitle className="text-lg truncate">{group.referenceNo || "N/A"}</CardTitle>
                     <p className="text-sm text-muted-foreground">
-                      {purchase.supplier?.name || "No Supplier"}
+                      {group.supplier?.name || "No Supplier"}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {purchase.store?.name ? `Store: ${purchase.store.name}` : "Store: —"}
+                    <p className="text-xs text-muted-foreground">
+                      {group.store?.name ? `Store: ${group.store.name}` : "Store: —"}
                     </p>
                   </div>
-                  {getStatusBadge(purchase.status)}
+                  {getStatusBadge(group.status)}
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="space-y-2 text-sm">
+                  <p className="text-muted-foreground">
+                    {group.items.length} line item{group.items.length !== 1 ? "s" : ""}
+                  </p>
+                  <ul className="space-y-1">
+                    {group.items.slice(0, 3).map((line) => (
+                      <li key={line.id} className="flex justify-between gap-2">
+                        <span className="truncate">{line.item?.name || "N/A"}</span>
+                        <span className="shrink-0 text-muted-foreground">×{line.qtyIn}</span>
+                      </li>
+                    ))}
+                    {group.items.length > 3 ? (
+                      <li className="text-xs text-muted-foreground">
+                        +{group.items.length - 3} more
+                      </li>
+                    ) : null}
+                  </ul>
+                </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-muted-foreground">Quantity</p>
-                    <p className="font-semibold">{purchase.qtyIn}</p>
+                    <p className="text-muted-foreground">Total Qty</p>
+                    <p className="font-semibold">{groupedPurchaseTotalQty(group)}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">Total Cost</p>
-                    <p className="font-semibold">₦{Number(purchase.inCost || 0).toLocaleString()}</p>
+                    <p className="font-semibold">
+                      ₦{groupedPurchaseTotalCost(group).toLocaleString()}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Reference</p>
-                    <p className="font-semibold">{purchase.referenceNo || 'N/A'}</p>
+                    <p className="text-muted-foreground">Amount Paid</p>
+                    <p className="font-semibold">
+                      ₦{Number(group.amountPaid || 0).toLocaleString()}
+                    </p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">Date</p>
                     <p className="font-semibold">
-                      {purchase.transactionDate ? new Date(purchase.transactionDate).toLocaleDateString() : 'N/A'}
+                      {group.transactionDate
+                        ? new Date(group.transactionDate).toLocaleDateString()
+                        : "N/A"}
                     </p>
                   </div>
                 </div>
-
-                {purchase.notes && (
+                {group.notes ? (
                   <div className="text-sm">
                     <p className="text-muted-foreground">Notes</p>
-                    <p className="text-foreground line-clamp-2">{purchase.notes}</p>
+                    <p className="text-foreground line-clamp-2">{group.notes}</p>
                   </div>
-                )}
-
-                <div className="flex justify-end space-x-2 pt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleView(purchase)}
-                  >
+                ) : null}
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" size="sm" onClick={() => handleView(group)}>
                     <Eye className="h-4 w-4" />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleEdit(purchase)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDelete(purchase)}
+                    onClick={() => handleDelete(group)}
                     className="text-destructive hover:text-destructive"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -483,48 +487,65 @@ export default function Purchases() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Item</TableHead>
+                <TableHead>Reference</TableHead>
                 <TableHead>Supplier</TableHead>
                 <TableHead>Store</TableHead>
-                <TableHead className="text-right">Qty</TableHead>
+                <TableHead>Items</TableHead>
+                <TableHead className="text-right">Total qty</TableHead>
                 <TableHead className="text-right">Total cost</TableHead>
-                <TableHead>Reference</TableHead>
+                <TableHead className="text-right">Amount paid</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPurchases.map((purchase) => (
-                <TableRow key={purchase.id}>
-                  <TableCell className="font-medium">{purchase.item?.name || "N/A"}</TableCell>
-                  <TableCell>{purchase.supplier?.name || "No Supplier"}</TableCell>
+              {filteredGroups.map((group) => (
+                <TableRow key={group.referenceNo}>
+                  <TableCell className="font-medium">{group.referenceNo || "N/A"}</TableCell>
+                  <TableCell>{group.supplier?.name || "No Supplier"}</TableCell>
                   <TableCell className="max-w-[140px] truncate">
-                    {purchase.store?.name ?? "—"}
+                    {group.store?.name ?? "—"}
                   </TableCell>
-                  <TableCell className="text-right">{purchase.qtyIn}</TableCell>
-                  <TableCell className="text-right">
-                    ₦{Number(purchase.inCost || 0).toLocaleString()}
-                  </TableCell>
-                  <TableCell>{purchase.referenceNo || "N/A"}</TableCell>
                   <TableCell>
-                    {purchase.transactionDate
-                      ? new Date(purchase.transactionDate).toLocaleDateString()
+                    <div className="space-y-1 min-w-[160px]">
+                      {group.items.map((line) => (
+                        <div
+                          key={line.id}
+                          className="flex items-center justify-between gap-2 text-sm"
+                        >
+                          <span className="truncate">{line.item?.name || "N/A"}</span>
+                          <span className="shrink-0 text-muted-foreground tabular-nums">
+                            ×{line.qtyIn}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {groupedPurchaseTotalQty(group)}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    ₦{groupedPurchaseTotalCost(group).toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    ₦{Number(group.amountPaid || 0).toLocaleString()}
+                  </TableCell>
+                  <TableCell>
+                    {group.transactionDate
+                      ? new Date(group.transactionDate).toLocaleDateString()
                       : "N/A"}
                   </TableCell>
-                  <TableCell>{getStatusBadge(purchase.status)}</TableCell>
+                  <TableCell>{getStatusBadge(group.status)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button variant="outline" size="sm" onClick={() => handleView(purchase)}>
+                      <Button variant="outline" size="sm" onClick={() => handleView(group)}>
                         <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(purchase)}>
-                        <Edit className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleDelete(purchase)}
+                        onClick={() => handleDelete(group)}
                         className="text-destructive hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -538,7 +559,39 @@ export default function Purchases() {
         </div>
       )}
 
-      {filteredPurchases.length === 0 && (
+      {!isLoading && pagination && pagination.totalPages > 1 ? (
+        <Pagination className="justify-end">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault()
+                  if (canPrevPage) setPage((p) => Math.max(1, p - 1))
+                }}
+                className={!canPrevPage ? "pointer-events-none opacity-50" : undefined}
+              />
+            </PaginationItem>
+            <PaginationItem>
+              <span className="px-3 text-sm text-muted-foreground">
+                Page {pagination.page} of {pagination.totalPages}
+              </span>
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationNext
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault()
+                  if (canNextPage) setPage((p) => p + 1)
+                }}
+                className={!canNextPage ? "pointer-events-none opacity-50" : undefined}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      ) : null}
+
+      {!isLoading && filteredGroups.length === 0 && (
         <div className="text-center py-10">
           <ShoppingCart className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-semibold">No purchase orders found</h3>
@@ -572,7 +625,7 @@ export default function Purchases() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         mode={dialogMode}
-        purchase={selectedPurchase}
+        groupedPurchase={selectedGroup}
         onSubmit={handleSubmit}
       />
 
@@ -581,8 +634,7 @@ export default function Purchases() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              purchase transaction and all associated data.
+              This action cannot be undone. This will permanently delete all line items in this purchase order.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -4,26 +4,37 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { PurchaseCreateForm } from "@/components/forms/PurchaseCreateForm"
 import { PurchaseEditForm } from "@/components/forms/PurchaseEditForm"
-import type { Purchase } from "@/hooks/usePurchases"
+import type { GroupedPurchase, Purchase } from "@/hooks/usePurchases"
+import { groupedPurchaseTotalCost } from "@/hooks/usePurchases"
 
 interface PurchaseDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  mode: 'add' | 'edit' | 'view'
+  mode: "add" | "edit" | "view"
+  groupedPurchase?: GroupedPurchase
   purchase?: Purchase
-  onSubmit: (data: any) => Promise<void>
+  onSubmit: (data: unknown) => Promise<void>
 }
 
-export function PurchaseDialog({ 
-  open, 
-  onOpenChange, 
-  mode, 
-  purchase, 
-  onSubmit 
+export function PurchaseDialog({
+  open,
+  onOpenChange,
+  mode,
+  groupedPurchase,
+  purchase,
+  onSubmit,
 }: PurchaseDialogProps) {
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: unknown) => {
     await onSubmit(data)
     onOpenChange(false)
   }
@@ -34,16 +45,20 @@ export function PurchaseDialog({
 
   const getTitle = () => {
     switch (mode) {
-      case 'add':
-        return 'New Purchase Order'
-      case 'edit':
-        return 'Edit Purchase Order'
-      case 'view':
-        return 'Purchase Order Details'
+      case "add":
+        return "New Purchase Order"
+      case "edit":
+        return "Edit Purchase Line"
+      case "view":
+        return "Purchase Order Details"
       default:
-        return 'Purchase Order'
+        return "Purchase Order"
     }
   }
+
+  const createdByName = groupedPurchase?.createdBy
+    ? `${groupedPurchase.createdBy.firstName ?? ""} ${groupedPurchase.createdBy.lastName ?? ""}`.trim()
+    : ""
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -55,53 +70,95 @@ export function PurchaseDialog({
         <DialogHeader>
           <DialogTitle>{getTitle()}</DialogTitle>
         </DialogHeader>
-        
-        {mode === 'view' && purchase ? (
+
+        {mode === "view" && groupedPurchase ? (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium">Item</label>
-                <p className="text-sm text-muted-foreground">{purchase.item?.name || "N/A"}</p>
+                <label className="text-sm font-medium">Reference No</label>
+                <p className="text-sm text-muted-foreground">
+                  {groupedPurchase.referenceNo || "N/A"}
+                </p>
               </div>
               <div>
                 <label className="text-sm font-medium">Supplier</label>
-                <p className="text-sm text-muted-foreground">{purchase.supplier?.name || "N/A"}</p>
+                <p className="text-sm text-muted-foreground">
+                  {groupedPurchase.supplier?.name || "N/A"}
+                </p>
               </div>
               <div>
                 <label className="text-sm font-medium">Store</label>
-                <p className="text-sm text-muted-foreground">{purchase.store?.name || "N/A"}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Quantity</label>
-                <p className="text-sm text-muted-foreground">{purchase.qtyIn}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Total Cost</label>
-                <p className="text-sm text-muted-foreground">₦{Number(purchase.inCost || 0).toLocaleString()}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Reference No</label>
-                <p className="text-sm text-muted-foreground">{purchase.referenceNo || 'N/A'}</p>
+                <p className="text-sm text-muted-foreground">
+                  {groupedPurchase.store?.name || "N/A"}
+                </p>
               </div>
               <div>
                 <label className="text-sm font-medium">Status</label>
-                <p className="text-sm text-muted-foreground capitalize">{purchase.status}</p>
+                <p className="text-sm text-muted-foreground capitalize">
+                  {groupedPurchase.status}
+                </p>
               </div>
               <div>
-                <label className="text-sm font-medium">Delivery Person</label>
-                <p className="text-sm text-muted-foreground">N/A</p>
+                <label className="text-sm font-medium">Amount Paid</label>
+                <p className="text-sm text-muted-foreground">
+                  ₦{Number(groupedPurchase.amountPaid || 0).toLocaleString()}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Total Cost</label>
+                <p className="text-sm text-muted-foreground">
+                  ₦{groupedPurchaseTotalCost(groupedPurchase).toLocaleString()}
+                </p>
               </div>
               <div>
                 <label className="text-sm font-medium">Transaction Date</label>
-                <p className="text-sm text-muted-foreground">{purchase.transactionDate ? new Date(purchase.transactionDate).toLocaleDateString() : 'N/A'}</p>
+                <p className="text-sm text-muted-foreground">
+                  {groupedPurchase.transactionDate
+                    ? new Date(groupedPurchase.transactionDate).toLocaleDateString()
+                    : "N/A"}
+                </p>
               </div>
+              {createdByName ? (
+                <div>
+                  <label className="text-sm font-medium">Created By</label>
+                  <p className="text-sm text-muted-foreground">{createdByName}</p>
+                </div>
+              ) : null}
             </div>
-            {purchase.notes && (
+
+            {groupedPurchase.notes ? (
               <div>
                 <label className="text-sm font-medium">Notes</label>
-                <p className="text-sm text-muted-foreground">{purchase.notes}</p>
+                <p className="text-sm text-muted-foreground">{groupedPurchase.notes}</p>
               </div>
-            )}
+            ) : null}
+
+            <div className="rounded-md border overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead className="text-right">Qty</TableHead>
+                    <TableHead className="text-right">Line cost (₦)</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {groupedPurchase.items.map((line) => (
+                    <TableRow key={line.id}>
+                      <TableCell className="font-medium">
+                        {line.item?.name || "N/A"}
+                      </TableCell>
+                      <TableCell className="text-right">{line.qtyIn}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        ₦{Number(line.inCost || 0).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="capitalize">{line.status}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </div>
         ) : mode === "add" ? (
           <PurchaseCreateForm onSubmit={handleSubmit} onCancel={handleCancel} />
