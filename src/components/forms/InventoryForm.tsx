@@ -42,32 +42,16 @@ function formatAmountOnBlur(s: string): string {
 }
 
 const intInputSchema = (label: string) =>
-  z
-    .string()
-    .refine((s) => s.trim() === "" || /^\d+$/.test(s.trim()), {
-      message: `${label} must be a non-negative whole number`,
-    })
-    .transform((s) => {
-      const t = s.trim();
-      if (t === "") return 0;
-      const n = parseInt(t, 10);
-      return Number.isFinite(n) ? n : 0;
-    });
+  z.string().refine((s) => s.trim() === "" || /^\d+$/.test(s.trim()), {
+    message: `${label} must be a non-negative whole number`,
+  })
 
 const decimalInputSchema = (label: string) =>
-  z
-    .string()
-    .refine((s) => {
-      const cleaned = sanitizeAmountInput(s.trim());
-      if (cleaned === "") return true;
-      return /^\d+(\.\d+)?$/.test(cleaned);
-    }, { message: `${label} must be a non-negative number` })
-    .transform((s) => {
-      const cleaned = sanitizeAmountInput(s.trim());
-      if (cleaned === "" || cleaned === ".") return 0;
-      const n = parseFloat(cleaned);
-      return Number.isFinite(n) ? n : 0;
-    });
+  z.string().refine((s) => {
+    const cleaned = sanitizeAmountInput(s.trim())
+    if (cleaned === "") return true
+    return /^\d+(\.\d+)?$/.test(cleaned)
+  }, { message: `${label} must be a non-negative number` })
 
 const baseInventorySchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -92,8 +76,39 @@ const buildInventorySchema = (mode: "add" | "edit") => {
   return baseInventorySchema
 }
 
-type InventoryFormInput = z.input<ReturnType<typeof buildInventorySchema>>
-type InventoryFormData = z.output<ReturnType<typeof buildInventorySchema>>
+type InventoryFormValues = z.infer<ReturnType<typeof buildInventorySchema>>
+
+export type InventoryFormData = Omit<
+  InventoryFormValues,
+  "lowStockThreshold" | "costPrice" | "sellingPrice"
+> & {
+  lowStockThreshold: number
+  costPrice: number
+  sellingPrice: number
+}
+
+function parseIntField(s: string): number {
+  const t = s.trim()
+  if (t === "") return 0
+  const n = parseInt(t, 10)
+  return Number.isFinite(n) ? n : 0
+}
+
+function parseDecimalField(s: string): number {
+  const cleaned = sanitizeAmountInput(s.trim())
+  if (cleaned === "" || cleaned === ".") return 0
+  const n = parseFloat(cleaned)
+  return Number.isFinite(n) ? n : 0
+}
+
+function toInventoryFormData(values: InventoryFormValues): InventoryFormData {
+  return {
+    ...values,
+    lowStockThreshold: parseIntField(values.lowStockThreshold),
+    costPrice: parseDecimalField(values.costPrice),
+    sellingPrice: parseDecimalField(values.sellingPrice),
+  }
+}
 
 export const INVENTORY_ITEM_FORM_ID = "inventory-item-form"
 
@@ -198,7 +213,7 @@ export function InventoryForm({
 
   const schema = useMemo(() => buildInventorySchema(mode), [mode])
 
-  const form = useForm<InventoryFormInput, unknown, InventoryFormData>({
+  const form = useForm<InventoryFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       name: initialData?.name || "",
@@ -223,8 +238,8 @@ export function InventoryForm({
     categoryId: selectedCategoryId || undefined,
   })
 
-  const handleSubmit = (data: InventoryFormData) => {
-    onSubmit(data)
+  const handleSubmit = (values: InventoryFormValues) => {
+    onSubmit(toInventoryFormData(values))
   }
 
   return (
