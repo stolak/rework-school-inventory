@@ -18,9 +18,34 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useInventory } from "@/hooks/useInventory";
+import { useInventory, type InventoryItem } from "@/hooks/useInventory";
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { useStores } from "@/hooks/useStores";
+
+function roundMoney(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+function itemUnitCost(items: InventoryItem[], itemId: string): number {
+  const item = items.find((i) => i.id === itemId);
+  if (!item) return 0;
+  const n = Number(item.costPrice ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function lineTotalCost(qty: number, unitCost: number): number {
+  return roundMoney(qty * unitCost);
+}
+
+const moneyFormatter = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 2,
+  minimumFractionDigits: 0,
+});
+
+function formatMoneyDisplay(n: number): string {
+  const value = Number.isFinite(n) ? n : 0;
+  return moneyFormatter.format(value);
+}
 
 const schema = z.object({
   storeId: z.string().min(1, "Please select a store"),
@@ -34,6 +59,7 @@ const schema = z.object({
       z.object({
         itemId: z.string().min(1, "Please select an item"),
         qtyIn: z.number().min(1, "Qty must be at least 1"),
+        unitCost: z.number().min(0, "Unit cost must be non-negative"),
         inCost: z.number().min(0, "Cost must be non-negative"),
       })
     )
@@ -66,7 +92,7 @@ export function PurchaseCreateForm({
       notes: "",
       transactionDate: new Date(),
       amountPaid: undefined,
-      items: [{ itemId: "", qtyIn: 1, inCost: 0 }],
+      items: [{ itemId: "", qtyIn: 1, unitCost: 0, inCost: 0 }],
     },
   });
 
@@ -74,6 +100,23 @@ export function PurchaseCreateForm({
     control: form.control,
     name: "items",
   });
+
+  const applyItemSelection = (index: number, itemId: string) => {
+    const unitCost = itemUnitCost(inventoryItems, itemId);
+    const qty = form.getValues(`items.${index}.qtyIn`) || 1;
+    form.setValue(`items.${index}.unitCost`, unitCost, { shouldDirty: true });
+    form.setValue(`items.${index}.inCost`, lineTotalCost(qty, unitCost), {
+      shouldDirty: true,
+    });
+  };
+
+  const applyLineTotals = (index: number) => {
+    const qty = form.getValues(`items.${index}.qtyIn`) || 0;
+    const unitCost = form.getValues(`items.${index}.unitCost`) || 0;
+    form.setValue(`items.${index}.inCost`, lineTotalCost(qty, unitCost), {
+      shouldDirty: true,
+    });
+  };
 
   return (
     <Form {...form}>
@@ -140,7 +183,7 @@ export function PurchaseCreateForm({
             <Button
               type="button"
               variant="outline"
-              onClick={() => append({ itemId: "", qtyIn: 1, inCost: 0 })}
+              onClick={() => append({ itemId: "", qtyIn: 1, unitCost: 0, inCost: 0 })}
             >
               <Plus className="mr-2 h-4 w-4" />
               Add Item
@@ -159,7 +202,10 @@ export function PurchaseCreateForm({
                       <FormControl>
                         <Combobox
                           value={field.value}
-                          onValueChange={field.onChange}
+                          onValueChange={(itemId) => {
+                            field.onChange(itemId);
+                            if (itemId) applyItemSelection(index, itemId);
+                          }}
                           options={inventoryItems.map((it) => ({
                             value: it.id,
                             label: `${it.name}${it.sku ? ` - ${it.sku}` : ""}`,
@@ -182,8 +228,37 @@ export function PurchaseCreateForm({
                       <FormControl>
                         <Input
                           type="number"
+                          min={1}
                           value={field.value}
-                          onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                          onChange={(e) => {
+                            const qty = Number(e.target.value) || 0;
+                            field.onChange(qty);
+                            applyLineTotals(index);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name={`items.${index}.unitCost`}
+                  render={({ field }) => (
+                    <FormItem className="w-32 shrink-0">
+                      <FormLabel>Unit Cost (₦)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          value={field.value}
+                          onChange={(e) => {
+                            const unitCost = Number(e.target.value) || 0;
+                            field.onChange(unitCost);
+                            applyLineTotals(index);
+                          }}
                         />
                       </FormControl>
                       <FormMessage />
@@ -196,13 +271,14 @@ export function PurchaseCreateForm({
                   name={`items.${index}.inCost`}
                   render={({ field }) => (
                     <FormItem className="w-32 shrink-0">
-                      <FormLabel>Cost Value(₦)</FormLabel>
+                      <FormLabel>Cost Value (₦)</FormLabel>
                       <FormControl>
                         <Input
-                          type="number"
-                          step="0.01"
-                          value={field.value}
-                          onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                          type="text"
+                          readOnly
+                          tabIndex={-1}
+                          className="bg-muted text-right tabular-nums"
+                          value={formatMoneyDisplay(field.value)}
                         />
                       </FormControl>
                       <FormMessage />
