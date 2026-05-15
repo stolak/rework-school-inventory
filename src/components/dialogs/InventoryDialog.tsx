@@ -1,17 +1,36 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { InventoryForm } from "@/components/forms/InventoryForm"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import {
+  InventoryForm,
+  INVENTORY_ITEM_FORM_ID,
+} from "@/components/forms/InventoryForm"
 import { InventoryItem } from "@/hooks/useInventory"
+
+const dialogShellClass =
+  "max-h-[90dvh] gap-0 overflow-hidden p-0 grid-rows-[auto_minmax(0,1fr)_auto]"
 
 interface InventoryDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  mode: 'add' | 'edit' | 'view'
+  mode: "add" | "edit" | "view"
   item?: InventoryItem
-  onSubmit?: (data: any) => void
+  onSubmit?: (data: unknown) => void
 }
 
-export function InventoryDialog({ open, onOpenChange, mode, item, onSubmit }: InventoryDialogProps) {
-  const handleSubmit = (data: any) => {
+export function InventoryDialog({
+  open,
+  onOpenChange,
+  mode,
+  item,
+  onSubmit,
+}: InventoryDialogProps) {
+  const handleSubmit = (data: unknown) => {
     onSubmit?.(data)
     onOpenChange(false)
   }
@@ -20,79 +39,97 @@ export function InventoryDialog({ open, onOpenChange, mode, item, onSubmit }: In
     onOpenChange(false)
   }
 
-  if (mode === 'view' && item) {
+  if (mode === "view" && item) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
+        <DialogContent className={`max-w-2xl ${dialogShellClass} grid-rows-[auto_minmax(0,1fr)]`}>
+          <DialogHeader className="px-6 pt-6 pb-4">
             <DialogTitle>Inventory Item Details</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Item Name</label>
-                <p className="text-sm font-semibold">{item.name}</p>
+          <div className="min-h-0 overflow-y-auto overscroll-contain px-6 pb-6">
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Item Name
+                  </label>
+                  <p className="text-sm font-semibold">{item.name}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">SKU</label>
+                  <p className="text-sm">{item.sku || "N/A"}</p>
+                </div>
               </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">SKU</label>
-                <p className="text-sm">{item.sku || 'N/A'}</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Status</label>
+                  <p className="text-sm">{item.status || "N/A"}</p>
+                </div>
+                <div />
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Category</label>
+                  <p className="text-sm">{item.category?.name || "N/A"}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Sub-Category
+                  </label>
+                  <p className="text-sm">{item.subCategory?.name || "N/A"}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Brand</label>
+                  <p className="text-sm">{item.brand?.name || "N/A"}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Unit of Measurement
+                  </label>
+                  <p className="text-sm">
+                    {item.uom
+                      ? `${item.uom.name}${item.uom.symbol ? ` (${item.uom.symbol})` : ""}`
+                      : "N/A"}
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Current Stock
+                  </label>
+                  <p className="text-sm font-semibold">{item.currentStock ?? 0} units</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Low Stock Threshold
+                  </label>
+                  <p className="text-sm">{item.lowStockThreshold ?? 0} units</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Cost Price</label>
+                  <p className="text-sm">₦{Number(item.costPrice ?? 0).toLocaleString()}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Selling Price
+                  </label>
+                  <p className="text-sm font-semibold">
+                    ₦{Number(item.sellingPrice ?? 0).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              {item.barcode ? (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Barcode</label>
+                  <p className="text-sm">{item.barcode}</p>
+                </div>
+              ) : null}
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Status</label>
-                <p className="text-sm">{item.status || "N/A"}</p>
-              </div>
-              <div />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Category</label>
-                <p className="text-sm">{item.category?.name || 'N/A'}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Sub-Category</label>
-                <p className="text-sm">{item.subCategory?.name || 'N/A'}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Brand</label>
-                <p className="text-sm">{item.brand?.name || 'N/A'}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Unit of Measurement</label>
-                <p className="text-sm">
-                  {item.uom ? `${item.uom.name}${item.uom.symbol ? ` (${item.uom.symbol})` : ""}` : 'N/A'}
-                </p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Current Stock</label>
-                <p className="text-sm font-semibold">{item.currentStock ?? 0} units</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Low Stock Threshold</label>
-                <p className="text-sm">{item.lowStockThreshold ?? 0} units</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Cost Price</label>
-                <p className="text-sm">₦{Number(item.costPrice ?? 0).toLocaleString()}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Selling Price</label>
-                <p className="text-sm font-semibold">₦{Number(item.sellingPrice ?? 0).toLocaleString()}</p>
-              </div>
-            </div>
-            {item.barcode && (
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Barcode</label>
-                <p className="text-sm">{item.barcode}</p>
-              </div>
-            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -101,19 +138,35 @@ export function InventoryDialog({ open, onOpenChange, mode, item, onSubmit }: In
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
+      <DialogContent className={`max-w-3xl sm:max-w-3xl ${dialogShellClass}`}>
+        <DialogHeader className="px-6 pt-6 pb-2">
           <DialogTitle>
-            {mode === 'add' ? 'Add New Inventory Item' : 'Edit Inventory Item'}
+            {mode === "add" ? "Add New Inventory Item" : "Edit Inventory Item"}
           </DialogTitle>
         </DialogHeader>
-        <InventoryForm
-          key={mode === "edit" ? item?.id ?? "edit" : "add"}
-          initialData={item}
-          mode={mode === "add" ? "add" : "edit"}
-          onSubmit={handleSubmit}
-          onCancel={handleCancel}
-        />
+
+        <div className="min-h-0 overflow-y-auto overscroll-contain px-6 py-2">
+          <InventoryForm
+            key={mode === "edit" ? item?.id ?? "edit" : "add"}
+            initialData={item}
+            mode={mode === "add" ? "add" : "edit"}
+            onSubmit={handleSubmit}
+            showFooter={false}
+          />
+        </div>
+
+        <DialogFooter className="gap-2 border-t bg-background px-6 py-4 sm:justify-end">
+          <Button type="button" variant="outline" onClick={handleCancel}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form={INVENTORY_ITEM_FORM_ID}
+            className="bg-gradient-primary"
+          >
+            {mode === "add" ? "Add Item" : "Update Item"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

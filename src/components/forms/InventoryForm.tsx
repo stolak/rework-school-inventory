@@ -44,14 +44,24 @@ const buildInventorySchema = (mode: "add" | "edit") => {
 
 type InventoryFormData = z.infer<ReturnType<typeof buildInventorySchema>>
 
+export const INVENTORY_ITEM_FORM_ID = "inventory-item-form"
+
 interface InventoryFormProps {
   initialData?: Partial<InventoryItem>
   mode: "add" | "edit"
   onSubmit: (data: InventoryFormData) => void
-  onCancel: () => void
+  onCancel?: () => void
+  /** When false, submit/cancel render in DialogFooter (see InventoryDialog). */
+  showFooter?: boolean
 }
 
-export function InventoryForm({ initialData, mode, onSubmit, onCancel }: InventoryFormProps) {
+export function InventoryForm({
+  initialData,
+  mode,
+  onSubmit,
+  onCancel,
+  showFooter = false,
+}: InventoryFormProps) {
   const { categories } = useCategories()
   const { brands } = useBrands()
   const { uoms } = useUoms()
@@ -89,7 +99,11 @@ export function InventoryForm({ initialData, mode, onSubmit, onCancel }: Invento
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+      <form
+        id={INVENTORY_ITEM_FORM_ID}
+        onSubmit={form.handleSubmit(handleSubmit)}
+        className="space-y-4"
+      >
         {mode === "edit" && (
           <div className="grid grid-cols-2 gap-4">
             <FormField
@@ -289,6 +303,30 @@ export function InventoryForm({ initialData, mode, onSubmit, onCancel }: Invento
 
         <FormField
           control={form.control}
+          name="lowStockThreshold"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Low stock threshold</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  min={0}
+                  step={1}
+                  placeholder="e.g. 10"
+                  value={field.value}
+                  onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                />
+              </FormControl>
+              <p className="text-xs text-muted-foreground">
+                Item is marked low stock when quantity is at or below this level.
+              </p>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
           name="barcode"
           render={({ field }) => (
             <FormItem>
@@ -301,14 +339,16 @@ export function InventoryForm({ initialData, mode, onSubmit, onCancel }: Invento
           )}
         />
 
-        <div className="flex justify-end space-x-2 pt-4">
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button type="submit" className="bg-gradient-primary">
-            {mode === "edit" ? "Update Item" : "Add Item"}
-          </Button>
-        </div>
+        {showFooter ? (
+          <div className="flex justify-end gap-2 border-t pt-4">
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button type="submit" className="bg-gradient-primary">
+              {mode === "edit" ? "Update Item" : "Add Item"}
+            </Button>
+          </div>
+        ) : null}
       </form>
     </Form>
   )
