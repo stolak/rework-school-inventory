@@ -4,7 +4,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { CategoryForm } from "@/components/forms/CategoryForm";
+import { CategoryForm, type CategoryFormSubmitData } from "@/components/forms/CategoryForm";
 import { Category } from "@/hooks/useCategories";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,10 +14,20 @@ interface CategoryDialogProps {
   onOpenChange: (open: boolean) => void;
   mode: "add" | "edit" | "view";
   category?: Category;
-  categories?: Category[];
-  onSubmit: (data: any) => void | Promise<void>;
-  /** From view mode, switch parent to edit while keeping the same category */
+  onSubmit: (data: CategoryFormSubmitData) => void | Promise<void>;
   onRequestEdit?: () => void;
+}
+
+function consumableAccountDisplay(category: Category): string {
+  if (!category.consumableAccount) {
+    return category.consumableAccountId != null
+      ? `Account #${category.consumableAccountId}`
+      : "—";
+  }
+  const no = category.consumableAccount.accountNo?.trim();
+  return no
+    ? `${no} — ${category.consumableAccount.accountDescription}`
+    : category.consumableAccount.accountDescription;
 }
 
 export function CategoryDialog({
@@ -25,11 +35,10 @@ export function CategoryDialog({
   onOpenChange,
   mode,
   category,
-  categories,
   onSubmit,
   onRequestEdit,
 }: CategoryDialogProps) {
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: CategoryFormSubmitData) => {
     try {
       await Promise.resolve(onSubmit(data));
       onOpenChange(false);
@@ -47,9 +56,9 @@ export function CategoryDialog({
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {mode === "add" && "Add New Category"}
-            {mode === "edit" && "Edit Category"}
-            {mode === "view" && "Category Details"}
+            {mode === "add" && "Add new category"}
+            {mode === "edit" && "Edit category"}
+            {mode === "view" && "Category details"}
           </DialogTitle>
         </DialogHeader>
 
@@ -57,18 +66,12 @@ export function CategoryDialog({
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <h4 className="font-medium text-muted-foreground">
-                  Category Name
-                </h4>
+                <h4 className="font-medium text-muted-foreground">Category name</h4>
                 <p className="text-lg font-semibold">{category.name}</p>
               </div>
               <div>
                 <h4 className="font-medium text-muted-foreground">Status</h4>
-                <Badge
-                  variant={
-                    category.status === "active" ? "default" : "secondary"
-                  }
-                >
+                <Badge variant={category.status === "active" ? "default" : "secondary"}>
                   {category.status}
                 </Badge>
               </div>
@@ -76,18 +79,23 @@ export function CategoryDialog({
 
             <div>
               <h4 className="font-medium text-muted-foreground">Description</h4>
-              <p>{category.description}</p>
+              <p>{category.description || "—"}</p>
             </div>
 
             <div>
-              <h4 className="font-medium text-muted-foreground">Item Count</h4>
-              <p>{category.itemCount} items</p>
+              <h4 className="font-medium text-muted-foreground">Consumable expense account</h4>
+              <p>{consumableAccountDisplay(category)}</p>
             </div>
 
+            {category.itemCount > 0 ? (
+              <div>
+                <h4 className="font-medium text-muted-foreground">Item count</h4>
+                <p>{category.itemCount} items</p>
+              </div>
+            ) : null}
+
             <div>
-              <h4 className="font-medium text-muted-foreground">
-                Created Date
-              </h4>
+              <h4 className="font-medium text-muted-foreground">Created</h4>
               <p>{category.createdAt}</p>
             </div>
 
@@ -95,17 +103,17 @@ export function CategoryDialog({
               <Button type="button" variant="outline" onClick={handleCancel}>
                 Close
               </Button>
-              {onRequestEdit && (
+              {onRequestEdit ? (
                 <Button type="button" onClick={onRequestEdit}>
                   Edit category
                 </Button>
-              )}
+              ) : null}
             </div>
           </div>
         ) : (
           <CategoryForm
+            isEdit={mode === "edit"}
             initialData={category}
-            categories={categories}
             onSubmit={handleSubmit}
             onCancel={handleCancel}
           />

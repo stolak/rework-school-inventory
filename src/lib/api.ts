@@ -13,6 +13,12 @@ export type Pagination = {
   totalPages: number;
 };
 
+export type CategoryConsumableAccount = {
+  id: number;
+  accountNo?: string | null;
+  accountDescription: string;
+};
+
 export type Category = {
   id: string;
   name: string;
@@ -20,6 +26,8 @@ export type Category = {
   status: "Active" | "Inactive" | string;
   createdAt: string;
   updatedAt: string;
+  consumableAccountId?: number | null;
+  consumableAccount?: CategoryConsumableAccount | null;
 };
 
 export type SubCategory = {
@@ -191,28 +199,64 @@ export const del = <T = any>(path: string) =>
   request<T>(path, { method: "DELETE" });
 
 // Category-specific helpers (thin wrappers)
-export const fetchCategories = () =>
-  get<ApiResponse<{ categories: Category[]; pagination: Pagination }>>(
-    "/api/v1/categories"
+export const fetchCategories = (params?: {
+  status?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const sp = new URLSearchParams();
+  if (params?.status) sp.append("status", params.status);
+  if (params?.page != null) sp.append("page", String(params.page));
+  if (params?.limit != null) sp.append("limit", String(params.limit));
+  const qs = sp.toString();
+  return get<ApiResponse<{ categories: Category[]; pagination: Pagination }>>(
+    `/api/v1/categories${qs ? `?${qs}` : ""}`
   );
+};
+
+export const fetchCategoryById = (id: string) =>
+  get<ApiResponse<Category>>(`/api/v1/categories/${id}`);
+
 export const createCategory = (body: {
   name: string;
   description?: string;
-  status?: "Active" | "Inactive";
-}) =>
-  post<ApiResponse<Category>, typeof body>("/api/v1/categories", body);
+  consumableAccountId?: number | null;
+}) => post<ApiResponse<Category>, typeof body>("/api/v1/categories", body);
+
 export const updateCategory = (
   id: string,
-  body: { name?: string; description?: string; status?: "Active" | "Inactive" }
+  body: {
+    name?: string;
+    description?: string;
+    status?: "Active" | "Inactive";
+    consumableAccountId?: number | null;
+  }
 ) => put<ApiResponse<Category>, typeof body>(`/api/v1/categories/${id}`, body);
+
 export const deleteCategory = (id: string) =>
   del<any>(`/api/v1/categories/${id}`);
 
+/** Account charts under the consumable expense default subhead (category GL link). */
+export const CONSUMABLE_EXPENSE_SETTINGS_ID = "COMSUMABLE_EXPENSE_SUBHEAD";
+
+export type ConsumableExpenseAccountChartsData = {
+  settingsId: string;
+  subheadId: number;
+  accountCharts: AccountChart[];
+};
+
+export const fetchConsumableExpenseAccountCharts = () =>
+  get<ApiResponse<ConsumableExpenseAccountChartsData>>(
+    `/api/v1/default-subhead-settings/${encodeURIComponent(CONSUMABLE_EXPENSE_SETTINGS_ID)}/account-charts`
+  );
+
 export const categoryApi = {
   list: fetchCategories,
+  getById: fetchCategoryById,
   create: createCategory,
   update: updateCategory,
   remove: deleteCategory,
+  consumableExpenseAccountCharts: fetchConsumableExpenseAccountCharts,
 };
 
 // Brand-specific helpers

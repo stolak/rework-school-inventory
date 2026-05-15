@@ -20,55 +20,114 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Category } from "@/hooks/useCategories";
+import {
+  consumableAccountChartLabel,
+  useConsumableExpenseAccountCharts,
+} from "@/hooks/useConsumableExpenseAccountCharts";
 
-const categorySchema = z.object({
+const categoryCreateSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   description: z.string().min(5, "Description must be at least 5 characters."),
-  parentCategory: z.string().optional(),
+  consumableAccountId: z.string().min(1, "Consumable expense account is required"),
+});
+
+const categoryEditSchema = categoryCreateSchema.extend({
   status: z.enum(["active", "inactive"]),
 });
 
-type CategoryFormData = z.infer<typeof categorySchema>;
+type CategoryCreateFormData = z.infer<typeof categoryCreateSchema>;
+type CategoryEditFormData = z.infer<typeof categoryEditSchema>;
+
+export type CategoryFormSubmitData = {
+  name: string;
+  description: string;
+  consumableAccountId: number | null;
+  status?: "active" | "inactive";
+};
 
 interface CategoryFormProps {
+  isEdit?: boolean;
   initialData?: Partial<Category>;
-  onSubmit: (data: CategoryFormData) => void;
+  onSubmit: (data: CategoryFormSubmitData) => void;
   onCancel: () => void;
-  categories?: Category[];
 }
 
 export function CategoryForm({
+  isEdit = false,
   initialData,
   onSubmit,
   onCancel,
-  categories = [],
 }: CategoryFormProps) {
-  const form = useForm<CategoryFormData>({
-    resolver: zodResolver(categorySchema),
-    defaultValues: {
-      name: initialData?.name || "",
-      description: initialData?.description || "",
-      status: initialData?.status || "active",
-    },
+  const { accountCharts, isLoading: accountsLoading } = useConsumableExpenseAccountCharts();
+
+  const accountOptions = accountCharts.map((a) => ({
+    value: String(a.id),
+    label: consumableAccountChartLabel(a),
+  }));
+
+  const consumableDefault = initialData?.consumableAccountId
+    ? String(initialData.consumableAccountId)
+    : "";
+
+  const form = useForm<CategoryEditFormData | CategoryCreateFormData>({
+    resolver: zodResolver(isEdit ? categoryEditSchema : categoryCreateSchema),
+    defaultValues: isEdit
+      ? {
+          name: initialData?.name || "",
+          description: initialData?.description || "",
+          consumableAccountId: consumableDefault,
+          status: initialData?.status || "active",
+        }
+      : {
+          name: initialData?.name || "",
+          description: initialData?.description || "",
+          consumableAccountId: consumableDefault,
+        },
   });
 
   useEffect(() => {
-    form.reset({
-      name: initialData?.name ?? "",
-      description: initialData?.description ?? "",
-      status: initialData?.status ?? "active",
-    });
+    const consumableId = initialData?.consumableAccountId
+      ? String(initialData.consumableAccountId)
+      : "";
+    if (isEdit) {
+      form.reset({
+        name: initialData?.name ?? "",
+        description: initialData?.description ?? "",
+        consumableAccountId: consumableId,
+        status: initialData?.status ?? "active",
+      });
+    } else {
+      form.reset({
+        name: initialData?.name ?? "",
+        description: initialData?.description ?? "",
+        consumableAccountId: consumableId,
+      });
+    }
   }, [
     form,
+    isEdit,
     initialData?.id,
     initialData?.name,
     initialData?.description,
     initialData?.status,
+    initialData?.consumableAccountId,
   ]);
 
-  const handleSubmit = (data: CategoryFormData) => {
-    onSubmit(data);
+  const handleSubmit = (data: CategoryCreateFormData | CategoryEditFormData) => {
+    const accountId = data.consumableAccountId
+      ? parseInt(data.consumableAccountId, 10)
+      : null;
+    const payload: CategoryFormSubmitData = {
+      name: data.name,
+      description: data.description,
+      consumableAccountId: Number.isFinite(accountId) ? accountId : null,
+    };
+    if (isEdit && "status" in data) {
+      payload.status = data.status;
+    }
+    onSubmit(payload);
   };
 
   return (
@@ -79,8 +138,8 @@ export function CategoryForm({
             control={form.control}
             name="name"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Category Name</FormLabel>
+              <FormItem className={isEdit ? undefined : "md:col-span-2"}>
+                <FormLabel>Category name</FormLabel>
                 <FormControl>
                   <Input placeholder="Enter category name" {...field} />
                 </FormControl>
@@ -89,30 +148,29 @@ export function CategoryForm({
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="status"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Status</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  value={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {isEdit ? (
+            <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Status</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ) : null}
         </div>
 
         <FormField
@@ -129,14 +187,34 @@ export function CategoryForm({
           )}
         />
 
-        {/* parentCategory removed */}
+        <FormField
+          control={form.control}
+          name="consumableAccountId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Consumable expense account</FormLabel>
+              {accountsLoading ? (
+                <p className="text-sm text-muted-foreground">Loading accounts…</p>
+              ) : (
+                <Combobox
+                  options={accountOptions}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  placeholder="Select GL account…"
+                  searchPlaceholder="Search accounts…"
+                />
+              )}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <div className="flex justify-end space-x-2">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button type="submit">
-            {initialData ? "Update Category" : "Add Category"}
+          <Button type="submit" disabled={accountsLoading}>
+            {isEdit ? "Update category" : "Add category"}
           </Button>
         </div>
       </form>

@@ -1,6 +1,12 @@
-import { useState, useEffect } from "react";
-import { categoryApi } from "@/lib/api";
+import { useState, useEffect, useCallback } from "react";
+import { categoryApi, type Category as ApiCategory } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+
+export type CategoryConsumableAccount = {
+  id: number;
+  accountNo?: string | null;
+  accountDescription: string;
+};
 
 export interface Category {
   id: string;
@@ -9,6 +15,8 @@ export interface Category {
   status: "active" | "inactive";
   itemCount: number;
   createdAt: string;
+  consumableAccountId: number | null;
+  consumableAccount: CategoryConsumableAccount | null;
 }
 
 function normalizeStatus(status: unknown): "active" | "inactive" {
@@ -20,114 +28,136 @@ function toApiCategoryStatus(status: "active" | "inactive"): "Active" | "Inactiv
   return status === "inactive" ? "Inactive" : "Active";
 }
 
+function mapCategory(item: ApiCategory & { itemCount?: number }): Category {
+  return {
+    id: item.id,
+    name: item.name,
+    description: item.description ?? "",
+    status: normalizeStatus(item.status),
+    itemCount: item.itemCount ?? 0,
+    createdAt: item.createdAt ?? new Date().toISOString().split("T")[0],
+    consumableAccountId: item.consumableAccountId ?? null,
+    consumableAccount: item.consumableAccount ?? null,
+  };
+}
+
+export type CategoryCreateInput = {
+  name: string;
+  description: string;
+  consumableAccountId?: number | null;
+};
+
+export type CategoryUpdateInput = {
+  name?: string;
+  description?: string;
+  status?: "active" | "inactive";
+  consumableAccountId?: number | null;
+};
+
 export const useCategories = () => {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    let mounted = true;
-
-    const load = async () => {
-      try {
-        const res = await categoryApi.list();
-        const list = res?.data?.categories;
-
-        if (!Array.isArray(list))
-          throw new Error("Invalid categories response");
-
-        const mapped: Category[] = list.map((item: any) => ({
-          id: item.id,
-          name: item.name,
-          description: item.description ?? "",
-          status: normalizeStatus(item.status),
-          itemCount: item.itemCount ?? 0,
-          createdAt: item.createdAt ?? new Date().toISOString().split("T")[0],
-        }));
-
-        if (mounted) setCategories(mapped);
-      } catch (err) {
-        if (mounted) setCategories([]);
-        toast({
-          title: "Error",
-          description: "Failed to load categories",
-          variant: "destructive",
-        });
-      }
-    };
-
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const addCategory = async (
-    categoryData: Omit<Category, "id" | "createdAt" | "itemCount">
-  ) => {
+  const loadCategories = useCallback(async () => {
+    setIsLoading(true);
     try {
-      const res = await categoryApi.create({
+      const res = await categoryApi.list({
+        status: "Active",
+        page: 1,
+        limit: 100,
+      });
+      const list = res?.data?.categories;
+
+      if (!Array.isArray(list)) throw new Error("Invalid categories response");
+
+      setCategories(list.map((item) => mapCategory(item)));
+    } catch {
+      setCategories([]);
+      toast({
+        title: "Error",
+        description: "Failed to load categories",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    loadCategories();
+  }, [loadCategories]);
+
+  const addCategory = async (categoryData: CategoryCreateInput) => {
+    try {
+      const body: {
+        name: string;
+        description?: string;
+        consumableAccountId?: number;
+      } = {
         name: categoryData.name,
         description: categoryData.description,
-        status: toApiCategoryStatus(categoryData.status),
-      });
+      };
+      if (categoryData.consumableAccountId != null) {
+        body.consumableAccountId = categoryData.consumableAccountId;
+      }
+
+      const res = await categoryApi.create(body);
       const data = res?.data;
       if (!data?.id) throw new Error(res?.message || "Failed to add category");
-      const newCategory: Category = {
-        id: data.id,
-        name: data.name,
-        description: data.description ?? "",
-        status: normalizeStatus(data.status),
-        itemCount: 0,
-        createdAt: data.createdAt ?? new Date().toISOString().split("T")[0],
-      };
+
+      const newCategory = mapCategory(data);
       setCategories((prev) => [...prev, newCategory]);
       toast({
         title: "Success",
         description: res?.message || "Category added successfully",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to add category";
       toast({
         title: "Error",
-        description: error.message || "Failed to add category",
+        description: message,
         variant: "destructive",
       });
       throw error;
     }
   };
 
-  const updateCategory = async (id: string, updates: Partial<Category>) => {
+  const updateCategory = async (id: string, updates: CategoryUpdateInput) => {
     try {
-      const res = await categoryApi.update(id, {
-        name: updates.name,
-        description: updates.description,
-        ...(updates.status !== undefined
-          ? { status: toApiCategoryStatus(updates.status) }
-          : {}),
-      });
-      const data = res?.data;
-      if (!data?.id)
-        throw new Error(res?.message || "Failed to update category");
-      const updated: Partial<Category> = {
-        name: data.name,
-        description: data.description ?? "",
-        status: normalizeStatus(data.status),
-      };
+      const body: {
+        name?: string;
+        description?: string;
+        status?: "Active" | "Inactive";
+        consumableAccountId?: number | null;
+      } = {};
 
+      if (updates.name !== undefined) body.name = updates.name;
+      if (updates.description !== undefined) body.description = updates.description;
+      if (updates.status !== undefined) {
+        body.status = toApiCategoryStatus(updates.status);
+      }
+      if (updates.consumableAccountId !== undefined) {
+        body.consumableAccountId = updates.consumableAccountId;
+      }
+
+      const res = await categoryApi.update(id, body);
+      const data = res?.data;
+      if (!data?.id) throw new Error(res?.message || "Failed to update category");
+
+      const updated = mapCategory(data);
       setCategories((prev) =>
-        prev.map((category) =>
-          category.id === id
-            ? ({ ...category, ...updated } as Category)
-            : category
-        )
+        prev.map((category) => (category.id === id ? updated : category))
       );
       toast({
         title: "Success",
         description: res?.message || "Category updated successfully",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to update category";
       toast({
         title: "Error",
-        description: error.message || "Failed to update category",
+        description: message,
         variant: "destructive",
       });
       throw error;
@@ -142,10 +172,11 @@ export const useCategories = () => {
         title: "Success",
         description: "Category deleted successfully",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to delete category";
       toast({
         title: "Error",
-        description: error.message || "Failed to delete category",
+        description: message,
         variant: "destructive",
       });
       throw error;
@@ -154,6 +185,8 @@ export const useCategories = () => {
 
   return {
     categories,
+    isLoading,
+    refetch: loadCategories,
     addCategory,
     updateCategory,
     deleteCategory,

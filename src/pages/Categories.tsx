@@ -17,6 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useCategories, type Category } from "@/hooks/useCategories";
 import { useSubCategories, type SubCategory } from "@/hooks/useSubCategories";
 import { CategoryDialog } from "@/components/dialogs/CategoryDialog";
+import type { CategoryFormSubmitData } from "@/components/forms/CategoryForm";
 import { SubCategoryDialog } from "@/components/dialogs/SubCategoryDialog";
 import {
   AlertDialog,
@@ -135,11 +136,20 @@ export default function Categories() {
     [categories, categoryToDelete]
   );
 
-  const handleCategorySubmit = async (data: unknown) => {
+  const handleCategorySubmit = async (data: CategoryFormSubmitData) => {
     if (categoryDialogMode === "add") {
-      await addCategory(data as Parameters<typeof addCategory>[0]);
+      await addCategory({
+        name: data.name,
+        description: data.description,
+        consumableAccountId: data.consumableAccountId,
+      });
     } else if (categoryDialogMode === "edit" && categoryForDialog) {
-      await updateCategory(categoryForDialog.id, data as Parameters<typeof updateCategory>[1]);
+      await updateCategory(categoryForDialog.id, {
+        name: data.name,
+        description: data.description,
+        status: data.status,
+        consumableAccountId: data.consumableAccountId,
+      });
     }
   };
 
@@ -256,6 +266,14 @@ export default function Categories() {
                       <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
                         {category.description || "—"}
                       </p>
+                      {category.consumableAccount ? (
+                        <p className="text-xs text-muted-foreground line-clamp-1 mt-1">
+                          GL:{" "}
+                          {category.consumableAccount.accountNo?.trim()
+                            ? `${category.consumableAccount.accountNo} — ${category.consumableAccount.accountDescription}`
+                            : category.consumableAccount.accountDescription}
+                        </p>
+                      ) : null}
                       <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
                         <span>{category.itemCount} items</span>
                         <ChevronRight
