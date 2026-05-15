@@ -19,6 +19,56 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
+const amountFormatter = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 2,
+  minimumFractionDigits: 0,
+})
+
+function sanitizeAmountInput(raw: string): string {
+  let t = raw.replace(/,/g, "").replace(/[^\d.]/g, "")
+  const firstDot = t.indexOf(".")
+  if (firstDot !== -1) {
+    t = t.slice(0, firstDot + 1) + t.slice(firstDot + 1).replace(/\./g, "")
+  }
+  return t
+}
+
+function formatAmountOnBlur(s: string): string {
+  const cleaned = sanitizeAmountInput((s ?? "").toString())
+  if (cleaned === "" || cleaned === ".") return ""
+  const n = parseFloat(cleaned)
+  if (!Number.isFinite(n)) return ""
+  return amountFormatter.format(n)
+}
+
+const intInputSchema = (label: string) =>
+  z
+    .string()
+    .refine((s) => s.trim() === "" || /^\d+$/.test(s.trim()), {
+      message: `${label} must be a non-negative whole number`,
+    })
+    .transform((s) => {
+      const t = s.trim();
+      if (t === "") return 0;
+      const n = parseInt(t, 10);
+      return Number.isFinite(n) ? n : 0;
+    });
+
+const decimalInputSchema = (label: string) =>
+  z
+    .string()
+    .refine((s) => {
+      const cleaned = sanitizeAmountInput(s.trim());
+      if (cleaned === "") return true;
+      return /^\d+(\.\d+)?$/.test(cleaned);
+    }, { message: `${label} must be a non-negative number` })
+    .transform((s) => {
+      const cleaned = sanitizeAmountInput(s.trim());
+      if (cleaned === "" || cleaned === ".") return 0;
+      const n = parseFloat(cleaned);
+      return Number.isFinite(n) ? n : 0;
+    });
+
 const baseInventorySchema = z.object({
   name: z.string().min(1, "Name is required"),
   sku: z.string().optional(),
@@ -26,9 +76,9 @@ const baseInventorySchema = z.object({
   subCategoryId: z.string().min(1, "Sub-category is required"),
   brandId: z.string().min(1, "Brand is required"),
   uomId: z.string().min(1, "Unit of measurement is required"),
-  lowStockThreshold: z.number().min(0, "Threshold must be non-negative"),
-  costPrice: z.number().min(0, "Cost price must be non-negative"),
-  sellingPrice: z.number().min(0, "Selling price must be non-negative"),
+  lowStockThreshold: intInputSchema("Low stock threshold"),
+  costPrice: decimalInputSchema("Cost price"),
+  sellingPrice: decimalInputSchema("Selling price"),
   barcode: z.string().optional(),
   status: z.enum(["Active", "Inactive"]).optional(),
 })
@@ -42,9 +92,89 @@ const buildInventorySchema = (mode: "add" | "edit") => {
   return baseInventorySchema
 }
 
-type InventoryFormData = z.infer<ReturnType<typeof buildInventorySchema>>
+type InventoryFormInput = z.input<ReturnType<typeof buildInventorySchema>>
+type InventoryFormData = z.output<ReturnType<typeof buildInventorySchema>>
 
 export const INVENTORY_ITEM_FORM_ID = "inventory-item-form"
+
+function toIntegerInputString(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) return "";
+  const n = typeof value === "number" ? value : Number(String(value).replace(/,/g, ""));
+  if (!Number.isFinite(n) || n === 0) return "";
+  return String(n);
+}
+
+function toMoneyInputString(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) return "";
+  const n =
+    typeof value === "number" ? value : parseFloat(String(value).replace(/,/g, ""));
+  if (!Number.isFinite(n) || n === 0) return "";
+  return amountFormatter.format(n);
+}
+
+function MoneyAmountInput({
+  value,
+  onChange,
+  onBlur,
+  placeholder,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onBlur?: () => void;
+  placeholder?: string;
+}) {
+  return (
+    <Input
+      type="text"
+      inputMode="decimal"
+      className="text-right tabular-nums"
+      placeholder={placeholder}
+      value={value}
+      onFocus={() => onChange(value.replace(/,/g, ""))}
+      onChange={(e) => onChange(sanitizeAmountInput(e.target.value))}
+      onBlur={() => {
+        onChange(formatAmountOnBlur(value));
+        onBlur?.();
+      }}
+    />
+  );
+}
+
+function NumericFormInput({
+  value,
+  onChange,
+  onBlur,
+  integerOnly,
+  placeholder,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onBlur?: () => void;
+  integerOnly?: boolean;
+  placeholder?: string;
+}) {
+  return (
+    <Input
+      type="text"
+      inputMode={integerOnly ? "numeric" : "decimal"}
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => {
+        const next = e.target.value;
+        if (next === "") {
+          onChange("");
+          return;
+        }
+        if (integerOnly) {
+          if (/^\d+$/.test(next)) onChange(next);
+          return;
+        }
+        if (/^\d*\.?\d*$/.test(next)) onChange(next);
+      }}
+      onBlur={onBlur}
+    />
+  );
+}
 
 interface InventoryFormProps {
   initialData?: Partial<InventoryItem>
@@ -68,7 +198,7 @@ export function InventoryForm({
 
   const schema = useMemo(() => buildInventorySchema(mode), [mode])
 
-  const form = useForm<InventoryFormData>({
+  const form = useForm<InventoryFormInput, unknown, InventoryFormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       name: initialData?.name || "",
@@ -77,9 +207,9 @@ export function InventoryForm({
       subCategoryId: initialData?.subCategoryId || "",
       brandId: initialData?.brandId || "",
       uomId: initialData?.uomId || "",
-      lowStockThreshold: initialData?.lowStockThreshold || 0,
-      costPrice: Number(initialData?.costPrice ?? 0),
-      sellingPrice: Number(initialData?.sellingPrice ?? 0),
+      lowStockThreshold: toIntegerInputString(initialData?.lowStockThreshold),
+      costPrice: toMoneyInputString(initialData?.costPrice),
+      sellingPrice: toMoneyInputString(initialData?.sellingPrice),
       barcode: initialData?.barcode ?? "",
       status:
         mode === "edit"
@@ -267,12 +397,11 @@ export function InventoryForm({
               <FormItem>
                 <FormLabel>Cost Price (₦)</FormLabel>
                 <FormControl>
-                  <Input
-                    type="number"
-                    step="0.01"
+                  <MoneyAmountInput
                     placeholder="Enter cost price"
-                    {...field}
-                    onChange={(e) => field.onChange(Number(e.target.value))}
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
                   />
                 </FormControl>
                 <FormMessage />
@@ -287,12 +416,11 @@ export function InventoryForm({
               <FormItem>
                 <FormLabel>Selling Price (₦)</FormLabel>
                 <FormControl>
-                  <Input
-                    type="number"
-                    step="0.01"
+                  <MoneyAmountInput
                     placeholder="Enter selling price"
-                    {...field}
-                    onChange={(e) => field.onChange(Number(e.target.value))}
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
                   />
                 </FormControl>
                 <FormMessage />
@@ -308,13 +436,12 @@ export function InventoryForm({
             <FormItem>
               <FormLabel>Low stock threshold</FormLabel>
               <FormControl>
-                <Input
-                  type="number"
-                  min={0}
-                  step={1}
+                <NumericFormInput
+                  integerOnly
                   placeholder="e.g. 10"
                   value={field.value}
-                  onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
                 />
               </FormControl>
               <p className="text-xs text-muted-foreground">
