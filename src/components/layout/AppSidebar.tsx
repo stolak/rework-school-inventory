@@ -120,10 +120,11 @@ const sidebarNavSections: SidebarNavSection[] = [
     sectionIcon: Landmark,
     items: [
       { title: "Account subheads", url: "/account-subheads", icon: ListTree },
-      { title: "Default subhead settings", url: "/default-subhead-settings", icon: SlidersHorizontal },
+      { title: "Default settings", url: "/default-settings", icon: SlidersHorizontal },
       { title: "Account chart setup", url: "/account-chart-setup", icon: Landmark },
       { title: "Billing & discounts", url: "/billing-items", icon: Receipt },
       { title: "Student billing", url: "/student-billing", icon: Banknote },
+      { title: "Class default billing", url: "/class-default-billings", icon: Layers },
       { title: "Journal transfers", url: "/journal-transfers", icon: ArrowLeftRight },
     ],
   },

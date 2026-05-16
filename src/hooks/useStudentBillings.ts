@@ -160,16 +160,40 @@ export function useStudentBillingsMutations() {
     },
   });
 
+  const notifyParent = useMutation({
+    mutationFn: (body: Parameters<typeof studentBillingsApi.notifyParent>[0]) =>
+      studentBillingsApi.notifyParent(body),
+    onSuccess: (res) => {
+      const data = res.data;
+      const email = data?.guardianEmail?.trim();
+      toast({
+        title: "Notification sent",
+        description: email
+          ? `${res.message || "Parent notified."} (${email})`
+          : res.message || "Parent notified successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send parent notification",
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     bulkCreate: bulkCreate.mutateAsync,
     updateAmount: updateAmount.mutateAsync,
     remove: remove.mutateAsync,
     bulkPatchStatuses: bulkPatchStatuses.mutateAsync,
     bulkPost: bulkPost.mutateAsync,
+    notifyParent: notifyParent.mutateAsync,
     isBulkCreating: bulkCreate.isPending,
     isUpdating: updateAmount.isPending,
     isDeleting: remove.isPending,
     isBulkPatchingStatus: bulkPatchStatuses.isPending,
     isBulkPosting: bulkPost.isPending,
+    isNotifyingParent: notifyParent.isPending,
   };
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Banknote, Percent, Plus, Trash2 } from "lucide-react";
+import { Banknote, Download, Mail, Percent, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,7 +48,9 @@ import {
   useStudentConcessionDiscountsMutations,
   useStudentConcessionDiscountsQuery,
 } from "@/hooks/useStudentConcessionDiscounts";
+import { classDefaultBillingsApi } from "@/lib/api";
 import type { StudentBillingRow, StudentConcessionDiscountRow } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 const amountFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
@@ -212,6 +214,7 @@ type BillingDraftLine = { id: string; billingId: string; amount: string };
 type DiscountDraftLine = { id: string; concessionDiscountId: string; amount: string };
 
 export default function StudentBilling() {
+  const { toast } = useToast();
   const [studentId, setStudentId] = useState("");
   const [classId, setClassId] = useState("");
   const [subclassId, setSubclassId] = useState("");
@@ -374,6 +377,12 @@ export default function StudentBilling() {
     Boolean(sessionId) &&
     Boolean(termId);
 
+  const classPeriodContextComplete =
+    Boolean(classId) &&
+    Boolean(subclassId) &&
+    Boolean(sessionId) &&
+    Boolean(termId);
+
   const listParamsBase = useMemo(() => {
     if (!contextComplete) return null;
     return {
@@ -438,11 +447,13 @@ export default function StudentBilling() {
     remove,
     bulkPatchStatuses: bulkPatchBillingStatuses,
     bulkPost: bulkPostBilling,
+    notifyParent: notifyParentBilling,
     isBulkCreating,
     isUpdating: isBillingUpdating,
     isDeleting: isBillingDeleting,
     isBulkPatchingStatus: isBillingBulkPatchingStatus,
     isBulkPosting: isBillingBulkPosting,
+    isNotifyingParent,
   } = useStudentBillingsMutations();
 
   const {
@@ -580,9 +591,15 @@ export default function StudentBilling() {
 
   const amountDue = totalBillingAll - totalDiscountAll;
 
+  const approvedBillingCount = useMemo(() => {
+    const rows = billingSummaryQuery.data?.rows ?? [];
+    return rows.filter((r) => isApprovedStatus(r.status)).length;
+  }, [billingSummaryQuery.data?.rows]);
+
   const [billingDraftLines, setBillingDraftLines] = useState<BillingDraftLine[]>(() => [
     { id: crypto.randomUUID(), billingId: "", amount: "" },
   ]);
+  const [isImportingClassDefaults, setIsImportingClassDefaults] = useState(false);
 
   const [discountDraftLines, setDiscountDraftLines] = useState<DiscountDraftLine[]>(() => [
     { id: crypto.randomUUID(), concessionDiscountId: "", amount: "" },
@@ -603,6 +620,64 @@ export default function StudentBilling() {
 
   const updateBillingDraftLine = (id: string, patch: Partial<BillingDraftLine>) => {
     setBillingDraftLines((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
+  };
+
+  const handleImportClassDefaults = async () => {
+    if (!classPeriodContextComplete) return;
+    setIsImportingClassDefaults(true);
+    try {
+      const res = await classDefaultBillingsApi.list({
+        classId,
+        subclassId,
+        session: sessionId,
+        term: termId,
+      });
+      if (!res.success) {
+        throw new Error(res.message || "Failed to load class default billings");
+      }
+      const defaults = Array.isArray(res.data) ? res.data : [];
+      if (defaults.length === 0) {
+        toast({
+          title: "No class defaults",
+          description:
+            "No default billings are configured for this class, subclass, session, and term.",
+        });
+        return;
+      }
+
+      setBillingDraftLines((prev) => {
+        const importedIds = new Set(defaults.map((d) => d.billingId));
+        const imported = defaults.map((row) => ({
+          id: crypto.randomUUID(),
+          billingId: String(row.billingId),
+          amount:
+            formatAmountOnBlur(String(row.amount)) ||
+            formatAmountDisplay(parseRowAmount(row.amount)),
+        }));
+        const extras = prev.filter((line) => {
+          const bid = parseInt(line.billingId, 10);
+          return Number.isFinite(bid) && bid > 0 && !importedIds.has(bid);
+        });
+        const combined = [...imported, ...extras];
+        return combined.length > 0
+          ? combined
+          : [{ id: crypto.randomUUID(), billingId: "", amount: "" }];
+      });
+
+      toast({
+        title: "Defaults imported",
+        description: `${defaults.length} billing line${defaults.length === 1 ? "" : "s"} added for review.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Import failed",
+        description:
+          error instanceof Error ? error.message : "Could not load class default billings",
+        variant: "destructive",
+      });
+    } finally {
+      setIsImportingClassDefaults(false);
+    }
   };
 
   const addDiscountDraftLine = () => {
@@ -833,6 +908,20 @@ export default function StudentBilling() {
   const summaryLoading =
     contextComplete && (billingSummaryQuery.isLoading || discountSummaryQuery.isLoading);
 
+  const canNotifyParent =
+    contextComplete && approvedBillingCount > 0 && !summaryLoading;
+
+  const handleNotifyParent = async () => {
+    if (!canNotifyParent) return;
+    await notifyParentBilling({
+      studentId,
+      classId,
+      subclassId,
+      sessionId,
+      termId,
+    });
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div>
@@ -912,12 +1001,24 @@ export default function StudentBilling() {
       </Card>
 
       <Card className="shadow-card">
-        <CardHeader>
-          <CardTitle className="text-lg">New billing charges</CardTitle>
-          <CardDescription>
-            Add billing items with amounts (comma-separated thousands allowed), then post for this
-            student and period.
-          </CardDescription>
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1.5">
+            <CardTitle className="text-lg">New billing charges</CardTitle>
+            <CardDescription>
+              Add billing items with amounts (comma-separated thousands allowed), then create
+              charges for this student and period. Use import to load class defaults for review.
+            </CardDescription>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="shrink-0"
+            disabled={!classPeriodContextComplete || isImportingClassDefaults}
+            onClick={handleImportClassDefaults}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            {isImportingClassDefaults ? "Importing…" : "Import class defaults"}
+          </Button>
         </CardHeader>
         <CardContent className="space-y-4">
           <Table>
@@ -1504,25 +1605,44 @@ export default function StudentBilling() {
           ) : !contextComplete ? (
             <p className="text-sm text-muted-foreground">Select context to see totals.</p>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div>
-                <div className="text-sm text-muted-foreground">Total billing</div>
-                <div className="text-xl font-semibold tabular-nums">
-                  {formatAmountDisplay(totalBillingAll)}
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div>
+                  <div className="text-sm text-muted-foreground">Total billing</div>
+                  <div className="text-xl font-semibold tabular-nums">
+                    {formatAmountDisplay(totalBillingAll)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Total discounts</div>
+                  <div className="text-xl font-semibold tabular-nums">
+                    {formatAmountDisplay(totalDiscountAll)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Amount due</div>
+                  <div className="text-2xl font-bold tabular-nums text-primary">
+                    {formatAmountDisplay(amountDue)}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Billing − discounts</p>
                 </div>
               </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Total discounts</div>
-                <div className="text-xl font-semibold tabular-nums">
-                  {formatAmountDisplay(totalDiscountAll)}
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Amount due</div>
-                <div className="text-2xl font-bold tabular-nums text-primary">
-                  {formatAmountDisplay(amountDue)}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">Billing − discounts</p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-t pt-4">
+                <p className="text-sm text-muted-foreground">
+                  {approvedBillingCount > 0
+                    ? `${approvedBillingCount} approved billing line${approvedBillingCount !== 1 ? "s" : ""} for this period.`
+                    : "Approve at least one billing line to email the parent."}
+                </p>
+                <Button
+                  type="button"
+                  variant="default"
+                  className="shrink-0"
+                  disabled={!canNotifyParent || isNotifyingParent}
+                  onClick={handleNotifyParent}
+                >
+                  <Mail className="mr-2 h-4 w-4" />
+                  {isNotifyingParent ? "Sending…" : "Notify parent"}
+                </Button>
               </div>
             </div>
           )}

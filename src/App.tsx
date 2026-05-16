@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Dashboard from "./pages/Dashboard";
@@ -20,8 +20,9 @@ import AccountChartSetup from "./pages/AccountChartSetup";
 import BillingItems from "./pages/BillingItems";
 import ConcessionDiscounts from "./pages/ConcessionDiscounts";
 import JournalTransfers from "./pages/JournalTransfers";
-import DefaultSubheadSettings from "./pages/DefaultSubheadSettings";
+import DefaultSettings from "./pages/DefaultSettings";
 import StudentBilling from "./pages/StudentBilling";
+import ClassDefaultBillings from "./pages/ClassDefaultBillings";
 import Uoms from "./pages/Uoms";
 import Sessions from "./pages/Sessions";
 import Terms from "./pages/Terms";
@@ -79,9 +80,12 @@ const AppContent = () => {
           <Route path="/account-chart-setup" element={<AccountChartSetup />} />
           <Route path="/billing-items" element={<BillingItems />} />
           <Route path="/student-billing" element={<StudentBilling />} />
+          <Route path="/class-default-billings" element={<ClassDefaultBillings />} />
           <Route path="/concession-discounts" element={<ConcessionDiscounts />} />
           <Route path="/journal-transfers" element={<JournalTransfers />} />
-          <Route path="/default-subhead-settings" element={<DefaultSubheadSettings />} />
+          <Route path="/default-settings" element={<DefaultSettings />} />
+          <Route path="/default-subhead-settings" element={<Navigate to="/default-settings" replace />} />
+          <Route path="/default-account-settings" element={<Navigate to="/default-settings" replace />} />
           <Route path="/uoms" element={<Uoms />} />
           <Route path="/sessions" element={<Sessions />} />
           <Route path="/terms" element={<Terms />} />

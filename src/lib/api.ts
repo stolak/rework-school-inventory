@@ -1776,6 +1776,35 @@ export const defaultSubheadSettingsApi = {
   update: updateDefaultSubheadSetting,
 };
 
+/** System-wide default account chart per posting context (e.g. collection, supplier). */
+export type DefaultAccountSetting = {
+  settingsId: string;
+  settings: string;
+  accountId: number | null;
+  account?: {
+    id: number;
+    accountDescription?: string;
+    accountNo?: string | null;
+  } | null;
+};
+
+export const fetchDefaultAccountSettings = () =>
+  get<ApiResponse<DefaultAccountSetting[]>>("/api/v1/default-account-settings");
+
+export const updateDefaultAccountSetting = (
+  settingsId: string,
+  body: { accountId: number }
+) =>
+  patch<ApiResponse<DefaultAccountSetting>, typeof body>(
+    `/api/v1/default-account-settings/${encodeURIComponent(settingsId)}`,
+    body
+  );
+
+export const defaultAccountSettingsApi = {
+  list: fetchDefaultAccountSettings,
+  update: updateDefaultAccountSetting,
+};
+
 export const createAccountSubhead = (body: {
   headId: number;
   code?: string;
@@ -2203,6 +2232,38 @@ export const bulkPostStudentBillings = (body: { ids: number[] }) =>
     typeof body
   >("/api/v1/student-billings/post/bulk", body);
 
+export type NotifyParentStudentBillingBody = {
+  studentId: string;
+  classId: string;
+  subclassId: string;
+  sessionId: string;
+  termId: string;
+};
+
+export type NotifyParentStudentBillingResult = {
+  studentId: string;
+  guardianEmail: string;
+  sent: boolean;
+  messageId: string;
+  summary: {
+    sessionId: string;
+    termId: string;
+    classId: string;
+    subclassId: string;
+    billingCount: number;
+    discountCount: number;
+    totalBilling: number;
+    totalDiscount: number;
+    netPayable: number;
+  };
+};
+
+export const notifyParentStudentBilling = (body: NotifyParentStudentBillingBody) =>
+  post<ApiResponse<NotifyParentStudentBillingResult>, typeof body>(
+    "/api/v1/student-billings/notify/parent",
+    body
+  );
+
 /** Per-student totals for session/term/class/subclass (billing summary report). */
 export type StudentBillingSummaryReportRow = {
   studentId: string;
@@ -2252,7 +2313,69 @@ export const studentBillingsApi = {
   remove: deleteStudentBilling,
   bulkPatchStatuses: bulkPatchStudentBillingStatuses,
   bulkPost: bulkPostStudentBillings,
+  notifyParent: notifyParentStudentBilling,
   summaryReport: fetchStudentBillingsSummaryReport,
+};
+
+/** Default billing amounts per class / subclass / session / term */
+export type ClassDefaultBillingRow = {
+  id: number;
+  classId: string;
+  subclassId: string;
+  session: string;
+  term: string;
+  billingId: number;
+  amount: string | number;
+  billing?: { id: number; name: string; code?: string } | null;
+};
+
+export type ClassDefaultBillingBulkItem = {
+  billingId: number;
+  amount: number;
+};
+
+export const bulkCreateClassDefaultBillings = (body: {
+  classId: string;
+  subclassId: string;
+  session: string;
+  term: string;
+  items: ClassDefaultBillingBulkItem[];
+}) =>
+  post<
+    ApiResponse<{ count: number; rows: ClassDefaultBillingRow[] }>,
+    typeof body
+  >("/api/v1/class-default-billings/bulk", body);
+
+export const fetchClassDefaultBillings = (params: {
+  classId: string;
+  subclassId: string;
+  session: string;
+  term: string;
+}) => {
+  const sp = new URLSearchParams();
+  sp.append("classId", params.classId);
+  sp.append("subclassId", params.subclassId);
+  sp.append("session", params.session);
+  sp.append("term", params.term);
+  return get<ApiResponse<ClassDefaultBillingRow[]>>(
+    `/api/v1/class-default-billings?${sp.toString()}`
+  );
+};
+
+export const updateClassDefaultBilling = (id: number, body: { amount: number }) =>
+  put<ApiResponse<ClassDefaultBillingRow>, typeof body>(
+    `/api/v1/class-default-billings/${id}`,
+    body
+  );
+
+export const deleteClassDefaultBilling = (id: number) =>
+  del<ApiResponse<ClassDefaultBillingRow>>(`/api/v1/class-default-billings/${id}`);
+
+export const classDefaultBillingsApi = {
+  bulkCreate: bulkCreateClassDefaultBillings,
+  list: fetchClassDefaultBillings,
+  update: updateClassDefaultBilling,
+  remove: deleteClassDefaultBilling,
 };
 
 /** Posted concession/discount amounts per student session/term */
