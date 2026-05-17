@@ -28,6 +28,7 @@ import {
   Receipt,
   SlidersHorizontal,
   Banknote,
+  Wallet,
   ChevronRight,
   LayoutDashboard,
   School,
@@ -112,6 +113,12 @@ const sidebarNavSections: SidebarNavSection[] = [
       { title: "Trial balance", url: "/reports/trial-balance", icon: Equal },
       { title: "Balance sheet", url: "/reports/balance-sheet", icon: BookMarked },
       { title: "Student billing summary", url: "/reports/student-billing-summary", icon: FileBarChart },
+      { title: "Student balances", url: "/reports/student-balances", icon: Wallet },
+      {
+        title: "Student transaction log",
+        url: "/reports/student-transaction-log",
+        icon: History,
+      },
     ],
   },
   {
@@ -126,6 +133,11 @@ const sidebarNavSections: SidebarNavSection[] = [
       { title: "Student billing", url: "/student-billing", icon: Banknote },
       { title: "Class default billing", url: "/class-default-billings", icon: Layers },
       { title: "Journal transfers", url: "/journal-transfers", icon: ArrowLeftRight },
+      {
+        title: "Student journal transfers",
+        url: "/student-journal-transfers",
+        icon: ArrowLeftRight,
+      },
     ],
   },
 ]

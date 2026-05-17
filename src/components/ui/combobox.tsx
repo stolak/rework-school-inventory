@@ -72,7 +72,7 @@ export function Combobox({
             <CommandGroup>
               {options.map((option) => (
                 <CommandItem
-                  key={option.value}
+                  key={option.value ? option.value : `opt-${option.label}`}
                   value={option.label}
                   onSelect={() => {
                     onValueChange?.(option.value)

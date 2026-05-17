@@ -2058,10 +2058,160 @@ export const fetchAccountReportByHeadSubhead = (params: {
   );
 };
 
+export type StudentBalanceStatus =
+  | "Active"
+  | "Inactive"
+  | "Graduated"
+  | "Transferred"
+  | "Suspended"
+  | "Archived";
+
+export type StudentBalanceRow = {
+  studentId: string;
+  admissionNumber: string;
+  firstName: string;
+  middleName?: string | null;
+  lastName: string;
+  status: string;
+  classId: string;
+  subclassId: string;
+  classInfo: { id: string; name: string };
+  subclassInfo: { id: string; name: string };
+  sumCredit: string | number;
+  sumDebit: string | number;
+  balance: string | number;
+};
+
+export type StudentBalancesReportData = {
+  asAtDate: string;
+  status: string;
+  orderBy: string;
+  orderDirection: string;
+  rows: StudentBalanceRow[];
+  pagination: Pagination;
+};
+
+export type ListStudentBalancesParams = {
+  asAtDate: string;
+  status?: StudentBalanceStatus;
+  classId?: string;
+  orderBy?: "classId" | "balance";
+  orderDirection?: "asc" | "desc";
+  page?: number;
+  limit?: number;
+};
+
+export type StudentTransactionLogData = {
+  student: {
+    id: string;
+    admissionNumber: string;
+    firstName: string;
+    middleName?: string | null;
+    lastName: string;
+    classId: string;
+    subClassId: string;
+  };
+  transactionDateFrom: string;
+  transactionDateTo: string;
+  balanceBeforeDateFrom: string;
+  transactions: AccountTransactionLogRow[];
+};
+
+export const fetchStudentTransactionLog = (params: {
+  studentId: string;
+  datefrom?: string;
+  dateTo?: string;
+}) => {
+  const sp = new URLSearchParams();
+  sp.append("studentId", params.studentId);
+  if (params.datefrom) sp.append("datefrom", params.datefrom);
+  if (params.dateTo) sp.append("dateTo", params.dateTo);
+  return get<ApiResponse<StudentTransactionLogData>>(
+    `/api/v1/account-transactions/student-transaction-log?${sp.toString()}`
+  );
+};
+
+export const fetchStudentBalances = (params: ListStudentBalancesParams) => {
+  const sp = new URLSearchParams();
+  sp.append("asAtDate", params.asAtDate);
+  if (params.status) sp.append("status", params.status);
+  if (params.classId) sp.append("classId", params.classId);
+  if (params.orderBy) sp.append("orderBy", params.orderBy);
+  if (params.orderDirection) sp.append("orderDirection", params.orderDirection);
+  if (params.page != null) sp.append("page", String(params.page));
+  if (params.limit != null) sp.append("limit", String(params.limit));
+  return get<ApiResponse<StudentBalancesReportData>>(
+    `/api/v1/account-transactions/student-balances?${sp.toString()}`
+  );
+};
+
+export type StudentJournalTransferTransactionType = "debit" | "credit";
+
+export type StudentJournalTransferEntryInput = {
+  amount: number;
+  accountId: string | number;
+  transactionType: StudentJournalTransferTransactionType;
+  remarks?: string;
+};
+
+export type StudentJournalTransferPostBody = {
+  studentId: string;
+  manualRef?: string;
+  transactionDate: string;
+  entries: StudentJournalTransferEntryInput[];
+};
+
+export type StudentJournalTransferPostResult = {
+  studentId: string;
+  ref: string;
+  manualRef: string;
+  transactionDate: string;
+  postedCount: number;
+};
+
+export type StudentJournalTransferRecordLine = {
+  account: { id: number; name: string };
+  transactionType: string;
+  amount: number;
+  remarks: string;
+};
+
+export type StudentJournalTransferGroup = {
+  studentId: string;
+  ref: string;
+  manualRef: string;
+  transactionDate: string;
+  record: StudentJournalTransferRecordLine[];
+};
+
+export const postStudentJournalTransfer = (body: StudentJournalTransferPostBody) =>
+  post<ApiResponse<StudentJournalTransferPostResult>, typeof body>(
+    "/api/v1/account-transactions/student-journal-transfer",
+    body
+  );
+
+export const fetchStudentJournalTransfers = (params: {
+  studentId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}) => {
+  const sp = new URLSearchParams();
+  if (params.studentId) sp.append("studentId", params.studentId);
+  if (params.dateFrom) sp.append("dateFrom", params.dateFrom);
+  if (params.dateTo) sp.append("dateTo", params.dateTo);
+  return get<ApiResponse<StudentJournalTransferGroup[]>>(
+    `/api/v1/account-transactions/student-journal-transfer?${sp.toString()}`
+  );
+};
+
 export const accountTransactionsApi = {
   transactionLog: fetchAccountTransactionLog,
   reportByAccount: fetchAccountReportByAccount,
   reportByHeadSubhead: fetchAccountReportByHeadSubhead,
+  studentBalances: fetchStudentBalances,
+  studentTransactionLog: fetchStudentTransactionLog,
+  postStudentJournalTransfer,
+  listStudentJournalTransfers: fetchStudentJournalTransfers,
 };
 
 export type BillingItem = {

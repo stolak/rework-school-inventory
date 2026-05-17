@@ -20,6 +20,7 @@ import AccountChartSetup from "./pages/AccountChartSetup";
 import BillingItems from "./pages/BillingItems";
 import ConcessionDiscounts from "./pages/ConcessionDiscounts";
 import JournalTransfers from "./pages/JournalTransfers";
+import StudentJournalTransfers from "./pages/StudentJournalTransfers";
 import DefaultSettings from "./pages/DefaultSettings";
 import StudentBilling from "./pages/StudentBilling";
 import ClassDefaultBillings from "./pages/ClassDefaultBillings";
@@ -41,6 +42,8 @@ import AccountStatementReport from "./pages/AccountStatementReport";
 import TrialBalanceReport from "./pages/TrialBalanceReport";
 import BalanceSheetReport from "./pages/BalanceSheetReport";
 import StudentBillingSummaryReport from "./pages/StudentBillingSummaryReport";
+import StudentBalancesReport from "./pages/StudentBalancesReport";
+import StudentTransactionLogReport from "./pages/StudentTransactionLogReport";
 import SubClasses from "./pages/SubClasses";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
@@ -83,6 +86,7 @@ const AppContent = () => {
           <Route path="/class-default-billings" element={<ClassDefaultBillings />} />
           <Route path="/concession-discounts" element={<ConcessionDiscounts />} />
           <Route path="/journal-transfers" element={<JournalTransfers />} />
+          <Route path="/student-journal-transfers" element={<StudentJournalTransfers />} />
           <Route path="/default-settings" element={<DefaultSettings />} />
           <Route path="/default-subhead-settings" element={<Navigate to="/default-settings" replace />} />
           <Route path="/default-account-settings" element={<Navigate to="/default-settings" replace />} />
@@ -106,6 +110,11 @@ const AppContent = () => {
         <Route
           path="/reports/student-billing-summary"
           element={<StudentBillingSummaryReport />}
+        />
+        <Route path="/reports/student-balances" element={<StudentBalancesReport />} />
+        <Route
+          path="/reports/student-transaction-log"
+          element={<StudentTransactionLogReport />}
         />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
