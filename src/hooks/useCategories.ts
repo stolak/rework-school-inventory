@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
-import { categoryApi, type Category as ApiCategory } from "@/lib/api";
+import {
+  categoryApi,
+  type Category as ApiCategory,
+  type CategoryType,
+} from "@/lib/api";
+
+export type { CategoryType } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 export type CategoryConsumableAccount = {
@@ -13,10 +19,16 @@ export interface Category {
   name: string;
   description: string;
   status: "active" | "inactive";
+  categoryType: CategoryType;
   itemCount: number;
   createdAt: string;
   consumableAccountId: number | null;
   consumableAccount: CategoryConsumableAccount | null;
+}
+
+function normalizeCategoryType(value: unknown): CategoryType {
+  if (value === "NonConsumable") return "NonConsumable";
+  return "Consumable";
 }
 
 function normalizeStatus(status: unknown): "active" | "inactive" {
@@ -34,6 +46,7 @@ function mapCategory(item: ApiCategory & { itemCount?: number }): Category {
     name: item.name,
     description: item.description ?? "",
     status: normalizeStatus(item.status),
+    categoryType: normalizeCategoryType(item.categoryType),
     itemCount: item.itemCount ?? 0,
     createdAt: item.createdAt ?? new Date().toISOString().split("T")[0],
     consumableAccountId: item.consumableAccountId ?? null,
@@ -44,17 +57,23 @@ function mapCategory(item: ApiCategory & { itemCount?: number }): Category {
 export type CategoryCreateInput = {
   name: string;
   description: string;
+  categoryType: CategoryType;
   consumableAccountId?: number | null;
 };
 
 export type CategoryUpdateInput = {
   name?: string;
   description?: string;
+  categoryType?: CategoryType;
   status?: "active" | "inactive";
   consumableAccountId?: number | null;
 };
 
-export const useCategories = () => {
+export type UseCategoriesOptions = {
+  categoryType?: CategoryType;
+};
+
+export const useCategories = (options?: UseCategoriesOptions) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
@@ -64,6 +83,7 @@ export const useCategories = () => {
     try {
       const res = await categoryApi.list({
         status: "Active",
+        ...(options?.categoryType ? { categoryType: options.categoryType } : {}),
         page: 1,
         limit: 100,
       });
@@ -82,7 +102,7 @@ export const useCategories = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, options?.categoryType]);
 
   useEffect(() => {
     loadCategories();
@@ -93,12 +113,17 @@ export const useCategories = () => {
       const body: {
         name: string;
         description?: string;
+        categoryType: CategoryType;
         consumableAccountId?: number;
       } = {
         name: categoryData.name,
         description: categoryData.description,
+        categoryType: categoryData.categoryType,
       };
-      if (categoryData.consumableAccountId != null) {
+      if (
+        categoryData.categoryType === "Consumable" &&
+        categoryData.consumableAccountId != null
+      ) {
         body.consumableAccountId = categoryData.consumableAccountId;
       }
 
@@ -128,12 +153,14 @@ export const useCategories = () => {
       const body: {
         name?: string;
         description?: string;
+        categoryType?: CategoryType;
         status?: "Active" | "Inactive";
         consumableAccountId?: number | null;
       } = {};
 
       if (updates.name !== undefined) body.name = updates.name;
       if (updates.description !== undefined) body.description = updates.description;
+      if (updates.categoryType !== undefined) body.categoryType = updates.categoryType;
       if (updates.status !== undefined) {
         body.status = toApiCategoryStatus(updates.status);
       }

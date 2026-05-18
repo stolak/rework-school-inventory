@@ -18,6 +18,10 @@ interface CategoryDialogProps {
   onRequestEdit?: () => void;
 }
 
+function categoryTypeLabel(type: Category["categoryType"]): string {
+  return type === "NonConsumable" ? "Non-consumable" : "Consumable";
+}
+
 function consumableAccountDisplay(category: Category): string {
   if (!category.consumableAccount) {
     return category.consumableAccountId != null
@@ -78,14 +82,21 @@ export function CategoryDialog({
             </div>
 
             <div>
+              <h4 className="font-medium text-muted-foreground">Category type</h4>
+              <Badge variant="outline">{categoryTypeLabel(category.categoryType)}</Badge>
+            </div>
+
+            <div>
               <h4 className="font-medium text-muted-foreground">Description</h4>
               <p>{category.description || "—"}</p>
             </div>
 
-            <div>
-              <h4 className="font-medium text-muted-foreground">Consumable expense account</h4>
-              <p>{consumableAccountDisplay(category)}</p>
-            </div>
+            {category.categoryType === "Consumable" ? (
+              <div>
+                <h4 className="font-medium text-muted-foreground">Consumable expense account</h4>
+                <p>{consumableAccountDisplay(category)}</p>
+              </div>
+            ) : null}
 
             {category.itemCount > 0 ? (
               <div>

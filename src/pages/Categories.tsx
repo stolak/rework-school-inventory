@@ -141,17 +141,25 @@ export default function Categories() {
       await addCategory({
         name: data.name,
         description: data.description,
+        categoryType: data.categoryType,
         consumableAccountId: data.consumableAccountId,
       });
     } else if (categoryDialogMode === "edit" && categoryForDialog) {
       await updateCategory(categoryForDialog.id, {
         name: data.name,
         description: data.description,
+        categoryType: data.categoryType,
         status: data.status,
         consumableAccountId: data.consumableAccountId,
       });
     }
   };
+
+  const categoryTypeBadge = (type: Category["categoryType"]) => (
+    <Badge variant="outline" className="text-xs shrink-0">
+      {type === "NonConsumable" ? "Non-consumable" : "Consumable"}
+    </Badge>
+  );
 
   const handleAddSub = () => {
     setSelectedSubCategory(undefined);
@@ -259,14 +267,17 @@ export default function Categories() {
                         "hover:bg-accent/50"
                       )}
                     >
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start justify-between gap-2 flex-wrap">
                         <span className="font-medium leading-snug">{category.name}</span>
-                        {categoryStatusBadge(category.status)}
+                        <div className="flex items-center gap-1 shrink-0">
+                          {categoryTypeBadge(category.categoryType)}
+                          {categoryStatusBadge(category.status)}
+                        </div>
                       </div>
                       <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
                         {category.description || "—"}
                       </p>
-                      {category.consumableAccount ? (
+                      {category.categoryType === "Consumable" && category.consumableAccount ? (
                         <p className="text-xs text-muted-foreground line-clamp-1 mt-1">
                           GL:{" "}
                           {category.consumableAccount.accountNo?.trim()

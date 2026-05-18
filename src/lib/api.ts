@@ -19,11 +19,14 @@ export type CategoryConsumableAccount = {
   accountDescription: string;
 };
 
+export type CategoryType = "Consumable" | "NonConsumable";
+
 export type Category = {
   id: string;
   name: string;
   description?: string;
   status: "Active" | "Inactive" | string;
+  categoryType: CategoryType;
   createdAt: string;
   updatedAt: string;
   consumableAccountId?: number | null;
@@ -225,11 +228,13 @@ export const del = <T = any>(path: string) =>
 // Category-specific helpers (thin wrappers)
 export const fetchCategories = (params?: {
   status?: string;
+  categoryType?: CategoryType;
   page?: number;
   limit?: number;
 }) => {
   const sp = new URLSearchParams();
   if (params?.status) sp.append("status", params.status);
+  if (params?.categoryType) sp.append("categoryType", params.categoryType);
   if (params?.page != null) sp.append("page", String(params.page));
   if (params?.limit != null) sp.append("limit", String(params.limit));
   const qs = sp.toString();
@@ -244,6 +249,7 @@ export const fetchCategoryById = (id: string) =>
 export const createCategory = (body: {
   name: string;
   description?: string;
+  categoryType: CategoryType;
   consumableAccountId?: number | null;
 }) => post<ApiResponse<Category>, typeof body>("/api/v1/categories", body);
 
@@ -252,6 +258,7 @@ export const updateCategory = (
   body: {
     name?: string;
     description?: string;
+    categoryType?: CategoryType;
     status?: "Active" | "Inactive";
     consumableAccountId?: number | null;
   }
