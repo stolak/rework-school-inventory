@@ -968,6 +968,90 @@ export const projectCollectionsApi = {
   remove: deleteProjectCollection,
 };
 
+// Facility collections (distribute inventory to facilities)
+export type FacilityCollectionRow = {
+  id: string;
+  itemId: string;
+  transactionType: "facility_collection" | string;
+  qtyOut: string;
+  referenceNo: string | null;
+  notes: string | null;
+  facilityId: string | null;
+  staffId: string | null;
+  storeId: string | null;
+  sessionId: string | null;
+  termId: string | null;
+  transactionDate: string;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+  item?: { name?: string } | null;
+  facility?: { id: string; name?: string } | null;
+  store?: { id: string; name?: string } | null;
+  staff?: {
+    id: string;
+    StaffNumber?: string | null;
+    name?: string | null;
+    email?: string | null;
+  } | null;
+  createdBy?: { firstName?: string; lastName?: string } | null;
+};
+
+export const fetchFacilityCollections = (params?: {
+  page?: number;
+  limit?: number;
+  itemId?: string;
+  facilityId?: string;
+  staffId?: string;
+  sessionId?: string;
+  termId?: string;
+  transactionDateFrom?: string;
+  transactionDateTo?: string;
+}) => {
+  const queryParams = new URLSearchParams();
+  queryParams.append("page", String(params?.page ?? 1));
+  queryParams.append("limit", String(params?.limit ?? 20));
+  if (params?.itemId) queryParams.append("itemId", params.itemId);
+  if (params?.facilityId) queryParams.append("facilityId", params.facilityId);
+  if (params?.staffId) queryParams.append("staffId", params.staffId);
+  if (params?.sessionId) queryParams.append("sessionId", params.sessionId);
+  if (params?.termId) queryParams.append("termId", params.termId);
+  if (params?.transactionDateFrom)
+    queryParams.append("transactionDateFrom", params.transactionDateFrom);
+  if (params?.transactionDateTo)
+    queryParams.append("transactionDateTo", params.transactionDateTo);
+
+  return get<
+    ApiResponse<{
+      facilityCollections: FacilityCollectionRow[];
+      pagination: Pagination;
+    }>
+  >(`/api/v1/facility-collections?${queryParams.toString()}`);
+};
+
+export const createFacilityCollectionsBulk = (body: {
+  notes?: string;
+  facilityId: string;
+  staffId: string;
+  storeId: string;
+  referenceNo?: string;
+  transactionDate: string;
+  items: { itemId: string; qtyOut: number }[];
+}) =>
+  post<ApiResponse<FacilityCollectionRow[]>, typeof body>(
+    "/api/v1/facility-collections/bulk",
+    body
+  );
+
+export const deleteFacilityCollection = (id: string) =>
+  del<ApiResponse<unknown>>(`/api/v1/facility-collections/${id}`);
+
+export const facilityCollectionsApi = {
+  list: fetchFacilityCollections,
+  bulkCreate: createFacilityCollectionsBulk,
+  remove: deleteFacilityCollection,
+};
+
 export const fetchStudentCollections = (params?: {
   page?: number;
   limit?: number;

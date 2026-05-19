@@ -32,6 +32,7 @@ import StudentItemCollections from "./pages/StudentItemCollections";
 import StaffItemCollections from "./pages/StaffItemCollections";
 import ItemInventoryDonations from "./pages/ItemInventoryDonations";
 import ProjectDisbursement from "./pages/ProjectDisbursement";
+import FacilityItemDistribution from "./pages/FacilityItemDistribution";
 import StoreSetup from "./pages/StoreSetup";
 import FacilityUnitSetup from "./pages/FacilityUnitSetup";
 import StoreItemTransfer from "./pages/StoreItemTransfer";
@@ -99,6 +100,7 @@ const AppContent = () => {
           <Route path="/staff-collections" element={<StaffItemCollections />} />
           <Route path="/donations" element={<ItemInventoryDonations />} />
           <Route path="/project-disbursement" element={<ProjectDisbursement />} />
+          <Route path="/facility-item-distribution" element={<FacilityItemDistribution />} />
           <Route path="/store-setup" element={<StoreSetup />} />
           <Route path="/facility-unit-setup" element={<FacilityUnitSetup />} />
           <Route path="/store-transfers" element={<StoreItemTransfer />} />

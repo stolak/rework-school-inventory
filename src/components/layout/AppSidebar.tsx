@@ -78,6 +78,7 @@ const sidebarNavSections: SidebarNavSection[] = [
       { title: "Purchases", url: "/purchases", icon: ShoppingCart },
       { title: "Donations", url: "/donations", icon: Gift },
       { title: "Project disbursement", url: "/project-disbursement", icon: PackageMinus },
+      { title: "Facility item distribution", url: "/facility-item-distribution", icon: Building2 },
       { title: "Sales", url: "/sales", icon: ShoppingBag },
       { title: "Suppliers", url: "/suppliers", icon: Users },
       { title: "Categories & sub-categories", url: "/categories", icon: Layers },
