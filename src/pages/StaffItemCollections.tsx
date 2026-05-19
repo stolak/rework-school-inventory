@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { Plus, Save, Trash2, Users } from "lucide-react"
+import { Plus, Save, Trash2, Users, FileBarChart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Combobox } from "@/components/ui/combobox"
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useStaffCollections, type StaffCollection } from "@/hooks/useStaffCollections"
 import { useInventory } from "@/hooks/useInventory"
 import { useSchoolSessions } from "@/hooks/useSchoolSessions"
@@ -41,7 +42,6 @@ export default function StaffItemCollections() {
     .toISOString()
     .slice(0, 10)
 
-  // Filters (optional)
   const [filterStaffId, setFilterStaffId] = useState<string>("")
   const [selectedSessionId, setSelectedSessionId] = useState<string>("")
   const [selectedTermId, setSelectedTermId] = useState<string>("")
@@ -50,7 +50,6 @@ export default function StaffItemCollections() {
   const [page, setPage] = useState<number>(1)
   const [limit, setLimit] = useState<number>(20)
 
-  // Create batch
   const [selectedStaffId, setSelectedStaffId] = useState<string>("")
   const [transactionDate, setTransactionDate] = useState<string>(
     new Date().toISOString().slice(0, 10)
@@ -61,7 +60,7 @@ export default function StaffItemCollections() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [collectionToDelete, setCollectionToDelete] = useState<string | null>(null)
 
-  const { staff, isLoading: staffLoading } = useStaff({ page: 1, limit: 100 })
+  const { staff, isLoading: staffLoading } = useStaff({ page: 1, limit: 500 })
   const { items } = useInventory()
   const { sessions } = useSchoolSessions({ status: "Active", page: 1, limit: 500 })
   const { terms } = useTerms({ page: 1, limit: 200, status: "Active" })
@@ -78,8 +77,27 @@ export default function StaffItemCollections() {
       limit,
     })
 
-  const selectedSession = sessions.find((s) => s.id === selectedSessionId)
-  const selectedTerm = terms.find((t) => t.id === selectedTermId)
+  const staffLabel = (s: { id: string; name?: string | null; StaffNumber?: string | null }) =>
+    `${s.name ?? "Unnamed"}`
+
+  const getItemOptionsForRow = (rowIndex: number) => {
+    const selectedElsewhere = new Set(
+      newItems
+        .filter((_, i) => i !== rowIndex)
+        .map((row) => row.itemId)
+        .filter(Boolean)
+    )
+    return items
+      .filter(
+        (inventoryItem) =>
+          !selectedElsewhere.has(inventoryItem.id) ||
+          newItems[rowIndex]?.itemId === inventoryItem.id
+      )
+      .map((inventoryItem) => ({
+        value: inventoryItem.id,
+        label: `${inventoryItem.name} - ${inventoryItem.category?.name} - ${inventoryItem.currentStock}`,
+      }))
+  }
 
   const addNewItemRow = () => {
     setNewItems((prev) => [
@@ -117,7 +135,7 @@ export default function StaffItemCollections() {
     if (!selectedStaffId) {
       toast({
         title: "Error",
-        description: "Please select a staff first",
+        description: "Please select a staff member first",
         variant: "destructive",
       })
       return
@@ -128,6 +146,16 @@ export default function StaffItemCollections() {
       toast({
         title: "Error",
         description: "Please add at least one valid item",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const itemIds = validItems.map((it) => it.itemId)
+    if (new Set(itemIds).size !== itemIds.length) {
+      toast({
+        title: "Error",
+        description: "Each item can only appear once in a batch.",
         variant: "destructive",
       })
       return
@@ -154,7 +182,7 @@ export default function StaffItemCollections() {
     } catch (err) {
       toast({
         title: "Error",
-        description: "Failed to add staff collection batch: " + (err as any).message,
+        description: "Failed to add staff collection batch: " + (err as Error).message,
         variant: "destructive",
       })
     }
@@ -205,6 +233,8 @@ export default function StaffItemCollections() {
     rows: StaffCollection[]
   }>())
 
+  const selectedStaffForEntry = staff.find((s) => s.id === selectedStaffId)
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -215,317 +245,327 @@ export default function StaffItemCollections() {
         <Users className="h-8 w-8 text-primary" />
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filters (optional)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label>Staff</Label>
-              <Combobox
-                value={filterStaffId}
-                onValueChange={(v) => {
-                  setFilterStaffId(v)
-                  setPage(1)
-                }}
-                options={[
-                  { value: "", label: "All staff" },
-                  ...(staffLoading
-                    ? []
-                    : staff.map((s) => ({
-                        value: s.id,
-                        label: `${s.name ?? "Unnamed"}${s.StaffNumber ? ` - ${s.StaffNumber}` : ""}`,
-                      }))),
-                ]}
-                placeholder={staffLoading ? "Loading staff..." : "All staff"}
-                searchPlaceholder="Search staff..."
-                disabled={staffLoading}
-              />
-            </div>
-            <div>
-              <Label>Session</Label>
-              <Combobox
-                value={selectedSessionId}
-                onValueChange={(v) => {
-                  setSelectedSessionId(v)
-                  setPage(1)
-                }}
-                options={[
-                  { value: "", label: "All sessions" },
-                  ...sessions.map((session) => ({
-                    value: session.id,
-                    label: session.name,
-                  })),
-                ]}
-                placeholder="All sessions"
-                searchPlaceholder="Search sessions..."
-              />
-            </div>
-            <div>
-              <Label>Term</Label>
-              <Combobox
-                value={selectedTermId}
-                onValueChange={(v) => {
-                  setSelectedTermId(v)
-                  setPage(1)
-                }}
-                options={[
-                  { value: "", label: "All terms" },
-                  ...terms.map((t) => ({
-                    value: t.id,
-                    label: t.name,
-                  })),
-                ]}
-                placeholder="All terms"
-                searchPlaceholder="Search terms..."
-              />
-            </div>
-            <div>
-              <Label>Transaction Date From</Label>
-              <Input
-                type="date"
-                value={transactionDateFrom}
-                onChange={(e) => {
-                  setTransactionDateFrom(e.target.value)
-                  setPage(1)
-                }}
-              />
-            </div>
-            <div>
-              <Label>Transaction Date To</Label>
-              <Input
-                type="date"
-                value={transactionDateTo}
-                onChange={(e) => {
-                  setTransactionDateTo(e.target.value)
-                  setPage(1)
-                }}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Page</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={page}
-                  onChange={(e) => setPage(Math.max(1, parseInt(e.target.value) || 1))}
-                />
+      <Tabs defaultValue="entry" className="space-y-4">
+        <TabsList className="grid w-full max-w-md grid-cols-2 sm:w-auto sm:inline-flex">
+          <TabsTrigger value="entry" className="gap-2">
+            <Plus className="h-4 w-4" />
+            New entry
+          </TabsTrigger>
+          <TabsTrigger value="report" className="gap-2">
+            <FileBarChart className="h-4 w-4" />
+            Report
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="entry" className="space-y-6 mt-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>
+                Record collection batch
+                {selectedStaffForEntry ? ` — ${staffLabel(selectedStaffForEntry)}` : ""}
+              </CardTitle>
+              {newItems.length > 0 && (
+                <Button onClick={saveBatch} size="sm">
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Batch
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div>
+                  <Label>Staff</Label>
+                  <Combobox
+                    value={selectedStaffId}
+                    onValueChange={setSelectedStaffId}
+                    options={
+                      staffLoading
+                        ? []
+                        : staff.map((s) => ({
+                            value: s.id,
+                            label: staffLabel(s),
+                          }))
+                    }
+                    placeholder={staffLoading ? "Loading staff..." : "Select staff..."}
+                    searchPlaceholder="Search staff..."
+                    disabled={staffLoading}
+                  />
+                </div>
+                <div>
+                  <Label>Transaction Date</Label>
+                  <Input
+                    type="date"
+                    value={transactionDate}
+                    onChange={(e) => setTransactionDate(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label>Notes</Label>
+                  <Input
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Optional notes..."
+                  />
+                </div>
               </div>
-              <div>
-                <Label>Limit</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={limit}
-                  onChange={(e) => setLimit(Math.max(1, parseInt(e.target.value) || 20))}
-                />
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Add batch */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>
-            Add New Collections
-            {selectedSession ? ` - ${selectedSession.name}` : ""}
-            {selectedTerm ? ` - ${selectedTerm.name}` : ""}
-          </CardTitle>
-          <div className="space-x-2">
-            <Button onClick={addNewItemRow} variant="outline" size="sm">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Item
-            </Button>
-            {newItems.length > 0 && (
-              <Button onClick={saveBatch} size="sm">
-                <Save className="mr-2 h-4 w-4" />
-                Save Batch
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div>
-              <Label>Staff</Label>
-              <Combobox
-                value={selectedStaffId}
-                onValueChange={setSelectedStaffId}
-                options={
-                  staffLoading
-                    ? []
-                    : staff.map((s) => ({
-                        value: s.id,
-                        label: `${s.name ?? "Unnamed"}${s.StaffNumber ? ` - ${s.StaffNumber}` : ""}`,
-                      }))
-                }
-                placeholder={staffLoading ? "Loading staff..." : "Select staff..."}
-                searchPlaceholder="Search staff..."
-                disabled={staffLoading}
-              />
-            </div>
-            <div>
-              <Label>Transaction Date</Label>
-              <Input
-                type="date"
-                value={transactionDate}
-                onChange={(e) => setTransactionDate(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label>Notes</Label>
-              <Input
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Optional notes..."
-              />
-            </div>
-          </div>
+              {newItems.length === 0 ? (
+                <div className="text-center py-8 space-y-4">
+                  <p className="text-muted-foreground">
+                    Add line items to build a collection batch for the selected staff member.
+                  </p>
+                  <Button onClick={addNewItemRow} variant="outline">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Item
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {newItems.map((row, index) => (
+                    <div
+                      key={index}
+                      className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg"
+                    >
+                      <div className="md:col-span-2">
+                        <Label>Item</Label>
+                        <Combobox
+                          value={row.itemId}
+                          onValueChange={(value) => updateNewItem(index, "itemId", value)}
+                          options={getItemOptionsForRow(index)}
+                          placeholder="Select item..."
+                          searchPlaceholder="Search items..."
+                          emptyText="No items available (already used in this batch)"
+                        />
+                      </div>
+                      <div>
+                        <Label>Quantity</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={row.qtyOut}
+                          onChange={(e) =>
+                            updateNewItem(index, "qtyOut", parseInt(e.target.value, 10) || '')
+                          }
+                        />
+                      </div>
+                      <div className="flex flex-col items-end justify-end gap-2">
+                        <Button
+                          onClick={() => removeNewItem(index)}
+                          variant="destructive"
+                          size="sm"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                        {index === newItems.length - 1 && (
+                          <Button onClick={addNewItemRow} variant="outline" size="sm">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Item
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          {newItems.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">
-                Click "Add Item" to start building a batch for the selected staff
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {newItems.map((row, index) => (
-                <div
-                  key={index}
-                  className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg"
-                >
-                  <div className="md:col-span-2">
-                    <Label>Item</Label>
-                    <Combobox
-                      value={row.itemId}
-                      onValueChange={(value) => updateNewItem(index, "itemId", value)}
-                      options={items.map((inventoryItem) => ({
-                        value: inventoryItem.id,
-                        label: `${inventoryItem.name} - ${inventoryItem.category?.name}`,
-                      }))}
-                      placeholder="Select item..."
-                      searchPlaceholder="Search items..."
-                    />
-                  </div>
-
+        <TabsContent value="report" className="space-y-6 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Filters (optional)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label>Staff</Label>
+                  <Combobox
+                    value={filterStaffId}
+                    onValueChange={(v) => {
+                      setFilterStaffId(v)
+                      setPage(1)
+                    }}
+                    options={[
+                      { value: "", label: "All staff" },
+                      ...(staffLoading
+                        ? []
+                        : staff.map((s) => ({
+                            value: s.id,
+                            label: staffLabel(s),
+                          }))),
+                    ]}
+                    placeholder={staffLoading ? "Loading staff..." : "All staff"}
+                    searchPlaceholder="Search staff..."
+                    disabled={staffLoading}
+                  />
+                </div>
+                <div>
+                  <Label>Session</Label>
+                  <Combobox
+                    value={selectedSessionId}
+                    onValueChange={(v) => {
+                      setSelectedSessionId(v)
+                      setPage(1)
+                    }}
+                    options={[
+                      { value: "", label: "All sessions" },
+                      ...sessions.map((session) => ({
+                        value: session.id,
+                        label: session.name,
+                      })),
+                    ]}
+                    placeholder="All sessions"
+                    searchPlaceholder="Search sessions..."
+                  />
+                </div>
+                <div>
+                  <Label>Term</Label>
+                  <Combobox
+                    value={selectedTermId}
+                    onValueChange={(v) => {
+                      setSelectedTermId(v)
+                      setPage(1)
+                    }}
+                    options={[
+                      { value: "", label: "All terms" },
+                      ...terms.map((t) => ({
+                        value: t.id,
+                        label: t.name,
+                      })),
+                    ]}
+                    placeholder="All terms"
+                    searchPlaceholder="Search terms..."
+                  />
+                </div>
+                <div>
+                  <Label>Transaction Date From</Label>
+                  <Input
+                    type="date"
+                    value={transactionDateFrom}
+                    onChange={(e) => {
+                      setTransactionDateFrom(e.target.value)
+                      setPage(1)
+                    }}
+                  />
+                </div>
+                <div>
+                  <Label>Transaction Date To</Label>
+                  <Input
+                    type="date"
+                    value={transactionDateTo}
+                    onChange={(e) => {
+                      setTransactionDateTo(e.target.value)
+                      setPage(1)
+                    }}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label>Quantity</Label>
+                    <Label>Page</Label>
                     <Input
                       type="number"
                       min="1"
-                      value={row.qtyOut}
-                      onChange={(e) =>
-                        updateNewItem(index, "qtyOut", parseInt(e.target.value) || 1)
-                      }
+                      value={page}
+                      onChange={(e) => setPage(Math.max(1, parseInt(e.target.value, 10) || 1))}
                     />
                   </div>
-
-                  <div className="flex items-end justify-end">
-                    <Button
-                      onClick={() => removeNewItem(index)}
-                      variant="destructive"
-                      size="sm"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                  <div>
+                    <Label>Limit</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={limit}
+                      onChange={(e) => setLimit(Math.max(1, parseInt(e.target.value, 10) || 20))}
+                    />
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* Existing */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Current Collections ({collections.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center items-center py-10">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : collections.length === 0 ? (
-            <div className="text-center py-8">
-              <Users className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-semibold">No collections found</h3>
-              <p className="text-muted-foreground">Create staff item collections using the form above.</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Staff</TableHead>
-                  <TableHead>Reference</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Items</TableHead>
-                  <TableHead>Notes</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {Array.from(groupedBatches.entries()).map(([key, batch]) => (
-                  <TableRow key={key}>
-                    <TableCell>
-                      <div className="font-medium">{batch.staffName}</div>
-                      <Badge variant="secondary" className="text-xs">
-                        {batch.staffNumber || batch.staffId}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{batch.referenceNo ?? "—"}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      {batch.transactionDate
-                        ? new Date(batch.transactionDate).toLocaleDateString()
-                        : "—"}
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        {batch.rows.map((r) => (
-                          <div
-                            key={r.id}
-                            className="flex items-center justify-between gap-3"
-                          >
-                            <span className="text-sm">{r.itemName}</span>
-                            <Badge variant="outline" className="shrink-0">
-                              {r.qtyOut}
-                            </Badge>
+          <Card>
+            <CardHeader>
+              <CardTitle>Current Collections ({collections.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex justify-center items-center py-10">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : collections.length === 0 ? (
+                <div className="text-center py-8">
+                  <Users className="mx-auto h-12 w-12 text-muted-foreground" />
+                  <h3 className="mt-4 text-lg font-semibold">No collections found</h3>
+                  <p className="text-muted-foreground">
+                    Record collections on the New entry tab or adjust filters.
+                  </p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Staff</TableHead>
+                      <TableHead>Reference</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Items</TableHead>
+                      <TableHead>Notes</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {Array.from(groupedBatches.entries()).map(([key, batch]) => (
+                      <TableRow key={key}>
+                        <TableCell>
+                          <div className="font-medium">{batch.staffName}</div>
+                          
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{batch.referenceNo ?? "—"}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          {batch.transactionDate
+                            ? new Date(batch.transactionDate).toLocaleDateString()
+                            : "—"}
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            {batch.rows.map((r) => (
+                              <div
+                                key={r.id}
+                                className="flex items-center gap-2 min-w-0"
+                              >
+                                <span className="text-sm flex-1 min-w-0 truncate">
+                                  {r.itemName}
+                                </span>
+                                <Badge variant="outline" className="shrink-0">
+                                  {r.qtyOut}
+                                </Badge>
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  title="Delete this item"
+                                  onClick={() => handleDelete(r.id)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell className="max-w-[320px] truncate">
-                      {batch.notes || "—"}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-2">
-                        {batch.rows.map((r) => (
-                          <Button
-                            key={r.id}
-                            onClick={() => handleDelete(r.id)}
-                            size="sm"
-                            variant="destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        ))}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                        </TableCell>
+                        <TableCell className="max-w-[320px] truncate">
+                          {batch.notes || "—"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
@@ -545,4 +585,3 @@ export default function StaffItemCollections() {
     </div>
   )
 }
-
