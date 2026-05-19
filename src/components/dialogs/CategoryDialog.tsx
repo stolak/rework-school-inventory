@@ -91,12 +91,10 @@ export function CategoryDialog({
               <p>{category.description || "—"}</p>
             </div>
 
-            {category.categoryType === "Consumable" ? (
-              <div>
-                <h4 className="font-medium text-muted-foreground">Consumable expense account</h4>
-                <p>{consumableAccountDisplay(category)}</p>
-              </div>
-            ) : null}
+            <div>
+              <h4 className="font-medium text-muted-foreground">Consumable expense account</h4>
+              <p>{consumableAccountDisplay(category)}</p>
+            </div>
 
             {category.itemCount > 0 ? (
               <div>

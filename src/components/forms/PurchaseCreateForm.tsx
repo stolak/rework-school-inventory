@@ -47,6 +47,17 @@ function formatMoneyDisplay(n: number): string {
   return moneyFormatter.format(value);
 }
 
+/** Parse number input: empty string stays empty; 0 is kept as 0. */
+function parseNumberInput(raw: string): number | "" {
+  if (raw === "") return "";
+  const n = Number(raw);
+  return Number.isNaN(n) ? "" : n;
+}
+
+function unitCostAsNumber(value: number | ""): number {
+  return value === "" ? 0 : value;
+}
+
 const schema = z.object({
   storeId: z.string().min(1, "Please select a store"),
   supplierId: z.string().min(1, "Please select a supplier"),
@@ -231,7 +242,7 @@ export function PurchaseCreateForm({
                           min={1}
                           value={field.value}
                           onChange={(e) => {
-                            const qty = Number(e.target.value) || 0;
+                            const qty = Number(e.target.value) ||'';
                             field.onChange(qty);
                             applyLineTotals(index);
                           }}
@@ -255,7 +266,7 @@ export function PurchaseCreateForm({
                           min={0}
                           value={field.value}
                           onChange={(e) => {
-                            const unitCost = Number(e.target.value) || 0;
+                            const unitCost = Number(e.target.value) || '';
                             field.onChange(unitCost);
                             applyLineTotals(index);
                           }}
@@ -347,7 +358,7 @@ export function PurchaseCreateForm({
               <FormItem className="min-w-0 flex-1">
                 <FormLabel>Reference No (Optional)</FormLabel>
                 <FormControl>
-                  <Input placeholder="string" value={field.value ?? ""} onChange={field.onChange} />
+                  <Input placeholder="" value={field.value ?? ""} onChange={field.onChange} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

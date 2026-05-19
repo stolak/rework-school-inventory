@@ -277,7 +277,7 @@ export default function Categories() {
                       <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
                         {category.description || "—"}
                       </p>
-                      {category.categoryType === "Consumable" && category.consumableAccount ? (
+                      {category.consumableAccount ? (
                         <p className="text-xs text-muted-foreground line-clamp-1 mt-1">
                           GL:{" "}
                           {category.consumableAccount.accountNo?.trim()

@@ -120,10 +120,7 @@ export const useCategories = (options?: UseCategoriesOptions) => {
         description: categoryData.description,
         categoryType: categoryData.categoryType,
       };
-      if (
-        categoryData.categoryType === "Consumable" &&
-        categoryData.consumableAccountId != null
-      ) {
+      if (categoryData.consumableAccountId != null) {
         body.consumableAccountId = categoryData.consumableAccountId;
       }
 

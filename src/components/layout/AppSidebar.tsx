@@ -33,6 +33,7 @@ import {
   LayoutDashboard,
   School,
   PieChart,
+  Building2,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
@@ -84,6 +85,7 @@ const sidebarNavSections: SidebarNavSection[] = [
       
       { title: "Units", url: "/uoms", icon: Ruler },
       { title: "Projects", url: "/projects", icon: FolderKanban },
+      { title: "Facility/unit setup", url: "/facility-unit-setup", icon: Building2 },
       { title: "Store setup", url: "/store-setup", icon: Store },
       { title: "Store transfers", url: "/store-transfers", icon: ArrowLeftRight },
     ],

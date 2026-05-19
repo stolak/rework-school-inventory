@@ -391,6 +391,64 @@ export const subCategoryApi = {
   remove: deleteSubCategory,
 };
 
+export type FacilityCreatedBy = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+};
+
+export type Facility = {
+  id: string;
+  name: string;
+  description?: string;
+  status: "Active" | "Inactive" | string;
+  createdAt: string;
+  updatedAt: string;
+  createdById?: string;
+  CreatedBy?: FacilityCreatedBy | null;
+  _count?: { inventoryTransactions?: number };
+};
+
+export const fetchFacilities = (params?: {
+  status?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const sp = new URLSearchParams();
+  if (params?.status) sp.append("status", params.status);
+  if (params?.page != null) sp.append("page", String(params.page));
+  if (params?.limit != null) sp.append("limit", String(params.limit));
+  const qs = sp.toString();
+  return get<ApiResponse<{ facilities: Facility[]; pagination: Pagination }>>(
+    `/api/v1/facilities${qs ? `?${qs}` : ""}`
+  );
+};
+
+export const fetchFacilityById = (id: string) =>
+  get<ApiResponse<Facility>>(`/api/v1/facilities/${id}`);
+
+export const createFacility = (body: { name: string; description?: string }) =>
+  post<ApiResponse<Facility>, typeof body>("/api/v1/facilities", body);
+
+export const updateFacility = (
+  id: string,
+  body: {
+    name?: string;
+    description?: string;
+    status?: "Active" | "Inactive";
+  }
+) => put<ApiResponse<Facility>, typeof body>(`/api/v1/facilities/${id}`, body);
+
+export const deleteFacility = (id: string) => del<any>(`/api/v1/facilities/${id}`);
+
+export const facilityApi = {
+  list: fetchFacilities,
+  getById: fetchFacilityById,
+  create: createFacility,
+  update: updateFacility,
+  remove: deleteFacility,
+};
 
 // UOM-specific helpers
 export const fetchUoms = (params?: { page?: number; limit?: number }) => {

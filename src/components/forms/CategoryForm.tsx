@@ -29,40 +29,16 @@ import {
 
 const categoryTypeValues = ["Consumable", "NonConsumable"] as const;
 
-const categoryBaseSchema = z
-  .object({
-    name: z.string().min(2, "Name must be at least 2 characters."),
-    description: z.string().min(5, "Description must be at least 5 characters."),
-    categoryType: z.enum(categoryTypeValues),
-    consumableAccountId: z.string().optional(),
-  })
-  .superRefine((data, ctx) => {
-    if (data.categoryType === "Consumable" && !data.consumableAccountId?.trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Consumable expense account is required",
-        path: ["consumableAccountId"],
-      });
-    }
-  });
+const categoryBaseSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters."),
+  description: z.string().min(5, "Description must be at least 5 characters."),
+  categoryType: z.enum(categoryTypeValues),
+  consumableAccountId: z.string().optional(),
+});
 
-const categoryEditSchema = z
-  .object({
-    name: z.string().min(2, "Name must be at least 2 characters."),
-    description: z.string().min(5, "Description must be at least 5 characters."),
-    categoryType: z.enum(categoryTypeValues),
-    consumableAccountId: z.string().optional(),
-    status: z.enum(["active", "inactive"]),
-  })
-  .superRefine((data, ctx) => {
-    if (data.categoryType === "Consumable" && !data.consumableAccountId?.trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Consumable expense account is required",
-        path: ["consumableAccountId"],
-      });
-    }
-  });
+const categoryEditSchema = categoryBaseSchema.extend({
+  status: z.enum(["active", "inactive"]),
+});
 
 type CategoryCreateFormData = z.infer<typeof categoryBaseSchema>;
 type CategoryEditFormData = z.infer<typeof categoryEditSchema>;
@@ -120,9 +96,6 @@ export function CategoryForm({
         },
   });
 
-  const categoryType = form.watch("categoryType");
-  const isConsumable = categoryType === "Consumable";
-
   useEffect(() => {
     const consumableId = initialData?.consumableAccountId
       ? String(initialData.consumableAccountId)
@@ -156,18 +129,10 @@ export function CategoryForm({
     initialData?.consumableAccountId,
   ]);
 
-  useEffect(() => {
-    if (!isConsumable) {
-      form.setValue("consumableAccountId", "");
-      form.clearErrors("consumableAccountId");
-    }
-  }, [isConsumable, form]);
-
   const handleSubmit = (data: CategoryCreateFormData | CategoryEditFormData) => {
-    const accountId =
-      data.categoryType === "Consumable" && data.consumableAccountId
-        ? parseInt(data.consumableAccountId, 10)
-        : null;
+    const accountId = data.consumableAccountId?.trim()
+      ? parseInt(data.consumableAccountId, 10)
+      : null;
     const payload: CategoryFormSubmitData = {
       name: data.name,
       description: data.description,
@@ -259,37 +224,33 @@ export function CategoryForm({
           )}
         />
 
-        {isConsumable ? (
-          <FormField
-            control={form.control}
-            name="consumableAccountId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Consumable expense account</FormLabel>
-                {accountsLoading ? (
-                  <p className="text-sm text-muted-foreground">Loading accounts…</p>
-                ) : (
-                  <Combobox
-                    options={accountOptions}
-                    value={field.value ?? ""}
-                    onValueChange={field.onChange}
-                    placeholder="Select GL account…"
-                    searchPlaceholder="Search accounts…"
-                  />
-                )}
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        ) : null}
+        <FormField
+          control={form.control}
+          name="consumableAccountId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Consumable expense account (optional)</FormLabel>
+              {accountsLoading ? (
+                <p className="text-sm text-muted-foreground">Loading accounts…</p>
+              ) : (
+                <Combobox
+                  options={accountOptions}
+                  value={field.value ?? ""}
+                  onValueChange={field.onChange}
+                  placeholder="Select GL account…"
+                  searchPlaceholder="Search accounts…"
+                />
+              )}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <div className="flex justify-end space-x-2">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button type="submit" disabled={isConsumable && accountsLoading}>
-            {isEdit ? "Update category" : "Add category"}
-          </Button>
+          <Button type="submit">{isEdit ? "Update category" : "Add category"}</Button>
         </div>
       </form>
     </Form>

@@ -30,6 +30,23 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
+const nairaFormatter = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 2,
+  minimumFractionDigits: 0,
+});
+
+function formatNaira(amount: number): string {
+  const value = Number.isFinite(amount) ? amount : 0;
+  return `₦${nairaFormatter.format(value)}`;
+}
+
+function inventoryTotalValue(
+  currentStock: string | number | undefined,
+  costPrice: string | number | undefined
+): number {
+  return Number(currentStock ?? 0) * Number(costPrice ?? 0);
+}
+
 export default function Inventory() {
   const [q, setQ] = useState("")
   const [status, setStatus] = useState<"All" | "Active" | "Inactive">("All")
@@ -229,7 +246,12 @@ export default function Inventory() {
 
       {viewMode === "grid" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {items.map((item) => (
+          {items.map((item) => {
+            const stock = Number(item.currentStock ?? 0);
+            const unitCost = Number(item.costPrice ?? 0);
+            const totalValue = inventoryTotalValue(stock, unitCost);
+
+            return (
             <Card key={item.id} className="shadow-card hover:shadow-elevated transition-all duration-300">
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -254,17 +276,29 @@ export default function Inventory() {
                 
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-muted-foreground">Stock Level</p>
-                    <p className="font-medium text-lg">
-                      {item.currentStock ?? 0} {item.uom?.symbol || "units"}
+                    <p className="text-muted-foreground">Stock level</p>
+                    <p className="font-medium text-lg tabular-nums">
+                      {stock} {item.uom?.symbol || "units"}
                     </p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Selling Price</p>
-                    <p className="font-medium text-lg">
-                      ₦{Number(item.sellingPrice ?? 0).toLocaleString()}
+                    <p className="text-muted-foreground">Unit cost</p>
+                    <p className="font-medium text-lg tabular-nums">{formatNaira(unitCost)}</p>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-primary/15 bg-primary/5 px-3 py-2.5 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Total value
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5 tabular-nums truncate">
+                      {stock.toLocaleString()} × {formatNaira(unitCost)}
                     </p>
                   </div>
+                  <p className="text-lg font-semibold tabular-nums text-primary shrink-0">
+                    {formatNaira(totalValue)}
+                  </p>
                 </div>
 
                 <div className="flex gap-2 pt-2">
@@ -296,7 +330,8 @@ export default function Inventory() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div className="rounded-md border bg-background overflow-x-auto">

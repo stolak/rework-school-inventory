@@ -296,9 +296,9 @@ export function InventoryForm({
             name="sku"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>SKU</FormLabel>
+                <FormLabel>SKU(Optional)</FormLabel>
                 <FormControl>
-                  <Input placeholder="Enter SKU" value={field.value ?? ""} onChange={field.onChange} />
+                  <Input placeholder="Enter SKU (optional)" value={field.value ?? ""} onChange={field.onChange} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -410,10 +410,10 @@ export function InventoryForm({
             name="costPrice"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Cost Price (₦)</FormLabel>
+                <FormLabel>Market Price (₦)</FormLabel>
                 <FormControl>
                   <MoneyAmountInput
-                    placeholder="Enter cost price"
+                    placeholder="Enter market price"
                     value={field.value}
                     onChange={field.onChange}
                     onBlur={field.onBlur}
@@ -429,10 +429,10 @@ export function InventoryForm({
             name="sellingPrice"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Selling Price (₦)</FormLabel>
+                <FormLabel>Selling Price (if applicable) (₦)</FormLabel>
                 <FormControl>
                   <MoneyAmountInput
-                    placeholder="Enter selling price"
+                    placeholder="Enter selling price (if applicable)"
                     value={field.value}
                     onChange={field.onChange}
                     onBlur={field.onBlur}
