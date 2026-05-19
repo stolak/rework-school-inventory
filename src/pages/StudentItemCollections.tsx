@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Plus, Save, Trash2, Users } from "lucide-react"
+import { Plus, Save, Trash2, Users, FileBarChart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Combobox } from "@/components/ui/combobox"
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useStudentCollections, type StudentCollection } from "@/hooks/useStudentCollections"
 import { useClasses } from "@/hooks/useClasses"
 import { useInventory } from "@/hooks/useInventory"
@@ -81,12 +82,28 @@ export default function StudentItemCollections() {
   })
   const { toast } = useToast()
 
-  const selectedClass = classes.find(c => c.id === selectedClassId)
-  const selectedSession = sessions.find(s => s.id === selectedSessionId)
-  const selectedTerm = terms.find(t => t.id === selectedTermId)
   const filteredSubClasses = selectedClassId
     ? subClasses.filter(sc => sc.classId === selectedClassId)
     : subClasses
+
+  const getItemOptionsForRow = (rowIndex: number) => {
+    const selectedElsewhere = new Set(
+      newItems
+        .filter((_, i) => i !== rowIndex)
+        .map((row) => row.itemId)
+        .filter(Boolean)
+    )
+    return items
+      .filter(
+        (inventoryItem) =>
+          !selectedElsewhere.has(inventoryItem.id) ||
+          newItems[rowIndex]?.itemId === inventoryItem.id
+      )
+      .map((inventoryItem) => ({
+        value: inventoryItem.id,
+        label: `${inventoryItem.name} - ${inventoryItem.category?.name} - ${inventoryItem.currentStock}`,
+      }))
+  }
 
   const addNewItemRow = () => {
     setNewItems(prev => [
@@ -111,6 +128,7 @@ export default function StudentItemCollections() {
           const inventoryItem = items.find(it => it.id === value)
           updated.itemName = inventoryItem?.name
         }
+        console.log(updated)
         return updated
       })
     )
@@ -145,6 +163,16 @@ export default function StudentItemCollections() {
         title: "Error", 
         description: "Please add at least one valid item",
         variant: "destructive"
+      })
+      return
+    }
+
+    const itemIds = validItems.map((it) => it.itemId)
+    if (new Set(itemIds).size !== itemIds.length) {
+      toast({
+        title: "Error",
+        description: "Each item can only appear once in a batch.",
+        variant: "destructive",
       })
       return
     }
@@ -221,7 +249,11 @@ export default function StudentItemCollections() {
     notes: string | null
     transactionDate: string
     rows: StudentCollection[]
-  }>());
+  }>())
+
+  const selectedStudentForEntry =
+    classStudents.find((s) => s.id === selectedStudentId) ??
+    allStudents.find((s) => s.id === selectedStudentId)
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -233,11 +265,178 @@ export default function StudentItemCollections() {
         <Users className="h-8 w-8 text-primary" />
       </div>
 
-      {/* Class and Session Selection */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filters (optional)</CardTitle>
-        </CardHeader>
+      <Tabs defaultValue="entry" className="space-y-4">
+        <TabsList className="grid w-full max-w-md grid-cols-2 sm:w-auto sm:inline-flex">
+          <TabsTrigger value="entry" className="gap-2">
+            <Plus className="h-4 w-4" />
+            New entry
+          </TabsTrigger>
+          <TabsTrigger value="report" className="gap-2">
+            <FileBarChart className="h-4 w-4" />
+            Report
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="entry" className="space-y-6 mt-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>
+                Record collection batch
+                {selectedStudentForEntry
+                  ? ` — ${selectedStudentForEntry.firstName} ${selectedStudentForEntry.lastName}`
+                  : ""}
+              </CardTitle>
+              {newItems.length > 0 && (
+                <Button onClick={saveBatch} size="sm">
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Batch
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div>
+                  <Label>Class</Label>
+                  <Combobox
+                    value={selectedClassId}
+                    onValueChange={(v) => {
+                      setSelectedClassId(v)
+                      setSelectedSubClassId("")
+                      setSelectedStudentId("")
+                    }}
+                    options={[
+                      { value: "", label: "All classes" },
+                      ...classes.map((class_) => ({
+                        value: class_.id,
+                        label: `${class_.name} (${class_.totalStudents} students)`,
+                      })),
+                    ]}
+                    placeholder="All classes"
+                    searchPlaceholder="Search classes..."
+                  />
+                </div>
+                <div>
+                  <Label>Sub class</Label>
+                  <Combobox
+                    value={selectedSubClassId}
+                    onValueChange={(v) => {
+                      setSelectedSubClassId(v)
+                      setSelectedStudentId("")
+                    }}
+                    options={[
+                      { value: "", label: "All sub classes" },
+                      ...filteredSubClasses.map((sc) => ({
+                        value: sc.id,
+                        label: sc.name,
+                      })),
+                    ]}
+                    placeholder="All sub classes"
+                    searchPlaceholder="Search sub classes..."
+                  />
+                </div>
+                <div>
+                  <Label>Student</Label>
+                  <Combobox
+                    value={selectedStudentId}
+                    onValueChange={setSelectedStudentId}
+                    options={
+                      studentsLoading
+                        ? []
+                        : classStudents.map((student) => ({
+                            value: student.id,
+                            label: `${student.firstName} ${student.lastName} - ${student.admissionNumber}`,
+                          }))
+                    }
+                    placeholder={studentsLoading ? "Loading students..." : "Select student..."}
+                    searchPlaceholder="Search students..."
+                    disabled={studentsLoading}
+                  />
+                </div>
+                <div>
+                  <Label>Transaction Date</Label>
+                  <Input
+                    type="date"
+                    value={transactionDate}
+                    onChange={(e) => setTransactionDate(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label>Notes</Label>
+                  <Input
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Optional notes..."
+                  />
+                </div>
+              </div>
+
+              {newItems.length === 0 ? (
+                <div className="text-center py-8 space-y-4">
+                  <p className="text-muted-foreground">
+                    Add line items to build a collection batch for the selected student.
+                  </p>
+                  <Button onClick={addNewItemRow} variant="outline">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Item
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {newItems.map((row, index) => (
+                    <div
+                      key={index}
+                      className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg"
+                    >
+                      <div className="md:col-span-2">
+                        <Label>Item</Label>
+                        <Combobox
+                          value={row.itemId}
+                          onValueChange={(value) => updateNewItem(index, "itemId", value)}
+                          options={getItemOptionsForRow(index)}
+                          placeholder="Select item..."
+                          searchPlaceholder="Search items..."
+                          emptyText="No items available (already used in this batch)"
+                        />
+                      </div>
+                      <div>
+                        <Label>Quantity</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={row.qtyOut}
+                          onChange={(e) =>
+                            updateNewItem(index, "qtyOut", parseInt(e.target.value, 10) || '')
+                          }
+                        />
+                      </div>
+                      <div className="flex flex-col items-end justify-end gap-2">
+                        <Button
+                          onClick={() => removeNewItem(index)}
+                          variant="destructive"
+                          size="sm"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                        {index === newItems.length - 1 && (
+                          <Button onClick={addNewItemRow} variant="outline" size="sm">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Item
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="report" className="space-y-6 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Filters (optional)</CardTitle>
+            </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             
@@ -364,110 +563,6 @@ export default function StudentItemCollections() {
         </CardContent>
       </Card>
 
-      {/* {selectedClassId && ( */}
-        <>
-          {/* Add New Collection Batch */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>
-                Add New Collections for {selectedClass?.name}
-                {selectedSession ? ` - ${selectedSession.name}` : ""}
-                {selectedTerm ? ` - ${selectedTerm.name}` : ""}
-              </CardTitle>
-              <div className="space-x-2">
-                <Button onClick={addNewItemRow} variant="outline" size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Item
-                </Button>
-                {newItems.length > 0 && (
-                  <Button onClick={saveBatch} size="sm">
-                    <Save className="mr-2 h-4 w-4" />
-                    Save Batch
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div>
-                  <Label>Student</Label>
-                  <Combobox
-                    value={selectedStudentId}
-                    onValueChange={setSelectedStudentId}
-                    options={studentsLoading ? [] : classStudents.map((student) => ({
-                      value: student.id,
-                      label: `${student.firstName} ${student.lastName} - ${student.admissionNumber}`
-                    }))}
-                    placeholder={studentsLoading ? "Loading students..." : "Select student..."}
-                    searchPlaceholder="Search students..."
-                    disabled={studentsLoading}
-                  />
-                </div>
-                <div>
-                  <Label>Transaction Date</Label>
-                  <Input
-                    type="date"
-                    value={transactionDate}
-                    onChange={(e) => setTransactionDate(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label>Notes</Label>
-                  <Input
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Optional notes..."
-                  />
-                </div>
-              </div>
-
-              {newItems.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">Click "Add Item" to start building a batch for the selected student</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {newItems.map((row, index) => (
-                    <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg">
-                      <div className="md:col-span-2">
-                        <Label>Item</Label>
-                        <Combobox
-                          value={row.itemId}
-                          onValueChange={(value) => updateNewItem(index, 'itemId', value)}
-                          options={items.map((inventoryItem) => ({
-                            value: inventoryItem.id,
-                            label: `${inventoryItem.name} - ${inventoryItem.category?.name}`
-                          }))}
-                          placeholder="Select item..."
-                          searchPlaceholder="Search items..."
-                        />
-                      </div>
-                      
-                      <div>
-                        <Label>Quantity</Label>
-                        <Input
-                          type="number"
-                          min="1"
-                          value={row.qtyOut}
-                          onChange={(e) => updateNewItem(index, 'qtyOut', parseInt(e.target.value) || 1)}
-                        />
-                      </div>
-
-                      <div className="flex items-end justify-end">
-                        <Button 
-                          onClick={() => removeNewItem(index)} 
-                          variant="destructive" 
-                          size="sm"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
 
           {/* Existing Collections */}
           <Card>
@@ -483,7 +578,9 @@ export default function StudentItemCollections() {
                 <div className="text-center py-8">
                   <Users className="mx-auto h-12 w-12 text-muted-foreground" />
                   <h3 className="mt-4 text-lg font-semibold">No collections found</h3>
-                  <p className="text-muted-foreground">Add student item collections using the form above.</p>
+                  <p className="text-muted-foreground">
+                    Record collections on the New entry tab or adjust filters.
+                  </p>
                 </div>
               ) : (
                 <Table>
@@ -494,7 +591,6 @@ export default function StudentItemCollections() {
                       <TableHead>Date</TableHead>
                       <TableHead>Items</TableHead>
                       <TableHead>Notes</TableHead>
-                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -519,31 +615,32 @@ export default function StudentItemCollections() {
                         <TableCell>
                           <div className="space-y-1">
                             {batch.rows.map(r => (
-                              <div key={r.id} className="flex items-center justify-between gap-3">
-                                <span className="text-sm">{r.itemName}</span>
+                              <div
+                                key={r.id}
+                                className="flex items-center gap-2 min-w-0"
+                              >
+                                <span className="text-sm flex-1 min-w-0 truncate">
+                                  {r.itemName}
+                                </span>
                                 <Badge variant="outline" className="shrink-0">
                                   {r.qtyOut}
                                 </Badge>
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  title="Delete this item"
+                                  onClick={() => handleDelete(r.id)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
                               </div>
                             ))}
                           </div>
                         </TableCell>
                         <TableCell className="max-w-[320px] truncate">
                           {batch.notes || "—"}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-2">
-                            {batch.rows.map(r => (
-                              <Button
-                                key={r.id}
-                                onClick={() => handleDelete(r.id)}
-                                size="sm"
-                                variant="destructive"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            ))}
-                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -552,8 +649,8 @@ export default function StudentItemCollections() {
               )}
             </CardContent>
           </Card>
-        </>
-      {/* )} */}
+        </TabsContent>
+      </Tabs>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
