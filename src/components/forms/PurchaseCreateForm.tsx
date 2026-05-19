@@ -122,8 +122,8 @@ export function PurchaseCreateForm({
   };
 
   const applyLineTotals = (index: number) => {
-    const qty = form.getValues(`items.${index}.qtyIn`) || 0;
-    const unitCost = form.getValues(`items.${index}.unitCost`) || 0;
+    const qty = Number(form.getValues(`items.${index}.qtyIn`)) || 0;
+    const unitCost = Number(form.getValues(`items.${index}.unitCost`)) || 0;
     form.setValue(`items.${index}.inCost`, lineTotalCost(qty, unitCost), {
       shouldDirty: true,
     });
@@ -264,10 +264,12 @@ export function PurchaseCreateForm({
                           type="number"
                           step="0.01"
                           min={0}
-                          value={field.value}
+                          placeholder="0"
+                          value={field.value ?? ""}
                           onChange={(e) => {
-                            const unitCost = Number(e.target.value) || '';
-                            field.onChange(unitCost);
+                            field.onChange(
+                              e.target.value === "" ? undefined : Number(e.target.value)
+                            );
                             applyLineTotals(index);
                           }}
                         />
@@ -396,7 +398,7 @@ export function PurchaseCreateForm({
             <FormItem>
               <FormLabel>Notes (Optional)</FormLabel>
               <FormControl>
-                <Textarea placeholder="string" value={field.value ?? ""} onChange={field.onChange} />
+                <Textarea placeholder="Enter Remark/note" value={field.value ?? ""} onChange={field.onChange} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -407,7 +409,7 @@ export function PurchaseCreateForm({
             Cancel
           </Button>
           <Button type="submit" disabled={storesLoading || stores.length === 0}>
-            Create Purchases
+            Submit Purchase
           </Button>
         </div>
       </form>
