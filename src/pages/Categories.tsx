@@ -8,6 +8,8 @@ import {
   Eye,
   Edit,
   Trash2,
+  Tag,
+  Ruler,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +21,10 @@ import { useSubCategories, type SubCategory } from "@/hooks/useSubCategories";
 import { CategoryDialog } from "@/components/dialogs/CategoryDialog";
 import type { CategoryFormSubmitData } from "@/components/forms/CategoryForm";
 import { SubCategoryDialog } from "@/components/dialogs/SubCategoryDialog";
+import { BrandDialog } from "@/components/dialogs/BrandDialog";
+import { UomDialog } from "@/components/dialogs/UomDialog";
+import { useBrands, type Brand } from "@/hooks/useBrands";
+import { useUoms, type Uom } from "@/hooks/useUoms";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +39,8 @@ import { cn } from "@/lib/utils";
 
 export default function Categories() {
   const { categories, addCategory, updateCategory, deleteCategory } = useCategories();
+  const { brands, addBrand, updateBrand, deleteBrand } = useBrands();
+  const { uoms, addUom, updateUom, deleteUom } = useUoms();
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
@@ -78,6 +86,20 @@ export default function Categories() {
   const [subDeleteOpen, setSubDeleteOpen] = useState(false);
   const [subCategoryToDelete, setSubCategoryToDelete] = useState<string | null>(null);
 
+  const [brandSearch, setBrandSearch] = useState("");
+  const [brandDialogOpen, setBrandDialogOpen] = useState(false);
+  const [brandDialogMode, setBrandDialogMode] = useState<"add" | "edit" | "view">("add");
+  const [brandForDialog, setBrandForDialog] = useState<Brand | undefined>();
+  const [brandDeleteOpen, setBrandDeleteOpen] = useState(false);
+  const [brandToDelete, setBrandToDelete] = useState<string | null>(null);
+
+  const [uomSearch, setUomSearch] = useState("");
+  const [uomDialogOpen, setUomDialogOpen] = useState(false);
+  const [uomDialogMode, setUomDialogMode] = useState<"add" | "edit" | "view">("add");
+  const [uomForDialog, setUomForDialog] = useState<Uom | undefined>();
+  const [uomDeleteOpen, setUomDeleteOpen] = useState(false);
+  const [uomToDelete, setUomToDelete] = useState<string | null>(null);
+
   const filteredCategories = useMemo(
     () =>
       categories.filter(
@@ -96,6 +118,24 @@ export default function Categories() {
           (s.description ?? "").toLowerCase().includes(subSearch.toLowerCase())
       ),
     [subCategories, subSearch]
+  );
+
+  const filteredBrands = useMemo(
+    () =>
+      brands.filter((brand) =>
+        brand.name.toLowerCase().includes(brandSearch.toLowerCase())
+      ),
+    [brands, brandSearch]
+  );
+
+  const filteredUoms = useMemo(
+    () =>
+      uoms.filter(
+        (uom) =>
+          uom.name.toLowerCase().includes(uomSearch.toLowerCase()) ||
+          uom.symbol.toLowerCase().includes(uomSearch.toLowerCase())
+      ),
+    [uoms, uomSearch]
   );
 
   const handleAddCategory = () => {
@@ -202,6 +242,88 @@ export default function Categories() {
     }
   };
 
+  const handleAddBrand = () => {
+    setBrandDialogMode("add");
+    setBrandForDialog(undefined);
+    setBrandDialogOpen(true);
+  };
+
+  const handleEditBrand = (brand: Brand) => {
+    setBrandDialogMode("edit");
+    setBrandForDialog(brand);
+    setBrandDialogOpen(true);
+  };
+
+  const handleViewBrand = (brand: Brand) => {
+    setBrandDialogMode("view");
+    setBrandForDialog(brand);
+    setBrandDialogOpen(true);
+  };
+
+  const handleDeleteBrand = (id: string) => {
+    setBrandToDelete(id);
+    setBrandDeleteOpen(true);
+  };
+
+  const confirmDeleteBrand = async () => {
+    if (!brandToDelete) return;
+    try {
+      await deleteBrand(brandToDelete);
+    } finally {
+      setBrandToDelete(null);
+      setBrandDeleteOpen(false);
+    }
+  };
+
+  const handleBrandSubmit = async (data: { name: string }) => {
+    if (brandDialogMode === "add") {
+      await addBrand(data);
+    } else if (brandDialogMode === "edit" && brandForDialog) {
+      await updateBrand(brandForDialog.id, data);
+    }
+  };
+
+  const handleAddUom = () => {
+    setUomDialogMode("add");
+    setUomForDialog(undefined);
+    setUomDialogOpen(true);
+  };
+
+  const handleEditUom = (uom: Uom) => {
+    setUomDialogMode("edit");
+    setUomForDialog(uom);
+    setUomDialogOpen(true);
+  };
+
+  const handleViewUom = (uom: Uom) => {
+    setUomDialogMode("view");
+    setUomForDialog(uom);
+    setUomDialogOpen(true);
+  };
+
+  const handleDeleteUom = (id: string) => {
+    setUomToDelete(id);
+    setUomDeleteOpen(true);
+  };
+
+  const confirmDeleteUom = async () => {
+    if (!uomToDelete) return;
+    try {
+      await deleteUom(uomToDelete);
+    } finally {
+      setUomToDelete(null);
+      setUomDeleteOpen(false);
+    }
+  };
+
+  const handleUomSubmit = async (data: { name: string; symbol: string }) => {
+    if (uomDialogMode === "add") {
+      await addUom(data);
+    } else if (uomDialogMode === "edit" && uomForDialog) {
+      await updateUom(uomForDialog.id, data);
+    }
+  };
+
   const categoryStatusBadge = (status: string) => (
     <Badge variant={status === "active" ? "default" : "secondary"}>{status}</Badge>
   );
@@ -211,15 +333,15 @@ export default function Categories() {
       <div>
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <Package2 className="h-8 w-8" />
-          Categories &amp; sub-categories
+          Inventory basic setup
         </h1>
-        <p className="text-muted-foreground mt-1 max-w-2xl">
-          Pick a category on the left, then add or edit its sub-categories on the right. Inventory
-          items use both levels.
+        <p className="text-muted-foreground mt-1 max-w-3xl">
+          Manage categories and sub-categories, brands, and units of measurement in one place.
+          Inventory items use all of these reference values.
         </p>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 min-h-[520px]">
+      <div className="flex flex-col xl:flex-row gap-6 min-h-[520px]">
         <Card className="shadow-card lg:w-[min(100%,380px)] shrink-0 flex flex-col">
           <CardHeader className="pb-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -232,7 +354,7 @@ export default function Categories() {
               </div>
               <Button type="button" size="sm" className="shrink-0" onClick={handleAddCategory}>
                 <Plus className="mr-2 h-4 w-4" />
-                Add category
+                Add 
               </Button>
             </div>
             <div className="relative pt-2">
@@ -371,7 +493,7 @@ export default function Categories() {
                 className="shrink-0"
               >
                 <Plus className="mr-2 h-4 w-4" />
-                Add sub-category
+                Add 
               </Button>
             </div>
             <div className="relative pt-2">
@@ -385,53 +507,230 @@ export default function Categories() {
               />
             </div>
           </CardHeader>
-          <CardContent className="pt-0 flex-1 min-h-0">
+          <CardContent className="pt-0 flex-1 min-h-0 flex flex-col">
             {!selectedCategoryId ? (
               <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
                 Choose a category from the list.
               </div>
+            ) : filteredSubCategories.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-10">
+                No sub-categories yet for this category.
+              </p>
             ) : (
-              <>
-                <ScrollArea className="h-[min(420px,calc(100vh-280px))]">
-                  <div className="grid gap-4 sm:grid-cols-2 pr-3">
-                    {filteredSubCategories.map((sub) => (
-                      <Card
+              <ScrollArea className="h-[min(420px,calc(100vh-280px))] pr-3">
+                <div className="space-y-1.5">
+                  {filteredSubCategories.map((sub) => (
+                      <div
                         key={sub.id}
-                        className="border-muted/80 hover:border-muted transition-colors"
+                        className={cn(
+                          "flex items-stretch rounded-lg border gap-0 overflow-hidden transition-colors",
+                          "border-transparent bg-muted/40 hover:bg-accent/40"
+                        )}
                       >
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-base">{sub.name}</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2 text-sm">
-                          <div>
-                            <p className="text-xs text-muted-foreground">Description</p>
-                            <p className="line-clamp-2">{sub.description || "—"}</p>
-                          </div>
-                          <div className="flex justify-end gap-1 pt-1">
-                            <Button size="sm" variant="outline" onClick={() => handleViewSub(sub)}>
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => handleEditSub(sub)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => handleDeleteSub(sub.id)}>
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
+                        <div className="flex-1 min-w-0 px-3 py-2.5">
+                          <p className="font-medium leading-snug">{sub.name}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-3 mt-1">
+                            {sub.description?.trim() ? sub.description : "No description"}
+                          </p>
+                        </div>
+                        <div className="flex flex-col justify-center gap-0.5 py-1.5 pr-1.5 pl-0.5 shrink-0 border-l border-border/50 bg-background/40">
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            title="View details"
+                            onClick={() => handleViewSub(sub)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            title="Edit sub-category"
+                            onClick={() => handleEditSub(sub)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            title="Delete sub-category"
+                            onClick={() => handleDeleteSub(sub.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
                     ))}
-                  </div>
-                </ScrollArea>
-                {filteredSubCategories.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-10">
-                    No sub-categories yet for this category.
-                  </p>
-                )}
-              </>
+                </div>
+              </ScrollArea>
             )}
           </CardContent>
         </Card>
+
+        <div className="flex flex-col gap-6 xl:w-[min(100%,340px)] shrink-0">
+          <Card className="shadow-card flex flex-col">
+            <CardHeader className="pb-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Tag className="h-5 w-5" />
+                    Brands
+                  </CardTitle>
+                  <CardDescription>Product or item brands</CardDescription>
+                </div>
+                <Button type="button" size="sm" className="shrink-0" onClick={handleAddBrand}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add 
+                </Button>
+              </div>
+              <div className="relative pt-2">
+                <Search className="absolute left-2 top-4 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  placeholder="Search brands…"
+                  value={brandSearch}
+                  onChange={(e) => setBrandSearch(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <ScrollArea className="h-[min(200px,28vh)] pr-3">
+                <div className="space-y-1.5">
+                  {filteredBrands.map((brand) => (
+                    <div
+                      key={brand.id}
+                      className="flex items-center gap-1 rounded-lg border border-transparent bg-muted/40 px-2 py-2 hover:bg-accent/40"
+                    >
+                      <span className="flex-1 min-w-0 text-sm font-medium truncate">
+                        {brand.name}
+                      </span>
+                      <div className="flex shrink-0 gap-0.5">
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8"
+                          title="View"
+                          onClick={() => handleViewBrand(brand)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8"
+                          title="Edit"
+                          onClick={() => handleEditBrand(brand)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          title="Delete"
+                          onClick={() => handleDeleteBrand(brand.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+              {filteredBrands.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-6">No brands match.</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-card flex flex-col">
+            <CardHeader className="pb-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Ruler className="h-5 w-5" />
+                    Units of measurement
+                  </CardTitle>
+                  <CardDescription>UOM for inventory quantities</CardDescription>
+                </div>
+                <Button type="button" size="sm" className="shrink-0" onClick={handleAddUom}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add 
+                </Button>
+              </div>
+              <div className="relative pt-2">
+                <Search className="absolute left-2 top-4 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  placeholder="Search units…"
+                  value={uomSearch}
+                  onChange={(e) => setUomSearch(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <ScrollArea className="h-[min(200px,28vh)] pr-3">
+                <div className="space-y-1.5">
+                  {filteredUoms.map((uom) => (
+                    <div
+                      key={uom.id}
+                      className="flex items-center gap-1 rounded-lg border border-transparent bg-muted/40 px-2 py-2 hover:bg-accent/40"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{uom.name}</p>
+                        <p className="text-xs text-muted-foreground">{uom.symbol}</p>
+                      </div>
+                      <div className="flex shrink-0 gap-0.5">
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8"
+                          title="View"
+                          onClick={() => handleViewUom(uom)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8"
+                          title="Edit"
+                          onClick={() => handleEditUom(uom)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          title="Delete"
+                          onClick={() => handleDeleteUom(uom.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+              {filteredUoms.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-6">No units match.</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <CategoryDialog
@@ -486,6 +785,52 @@ export default function Categories() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDeleteSub}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <BrandDialog
+        open={brandDialogOpen}
+        onOpenChange={setBrandDialogOpen}
+        mode={brandDialogMode}
+        brand={brandForDialog}
+        onSubmit={handleBrandSubmit}
+      />
+
+      <UomDialog
+        open={uomDialogOpen}
+        onOpenChange={setUomDialogOpen}
+        mode={uomDialogMode}
+        uom={uomForDialog}
+        onSubmit={handleUomSubmit}
+      />
+
+      <AlertDialog open={brandDeleteOpen} onOpenChange={setBrandDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete brand?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This cannot be undone. This will permanently delete the brand.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteBrand}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={uomDeleteOpen} onOpenChange={setUomDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete unit?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This cannot be undone. This will permanently delete the unit of measurement.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteUom}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
