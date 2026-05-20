@@ -17,8 +17,9 @@ import { useSchoolSessions } from "@/hooks/useSchoolSessions"
 import { useTerms } from "@/hooks/useTerms"
 import { useFacilities } from "@/hooks/useFacilities"
 import { useStaff } from "@/hooks/useStaff"
-import { useStores } from "@/hooks/useStores"
+import { useMyStores } from "@/hooks/useMyStores"
 import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -70,12 +71,21 @@ export default function FacilityItemDistribution() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [collectionToDelete, setCollectionToDelete] = useState<string | null>(null)
 
-  const { items } = useInventory()
+  const { items: filterItems } = useInventory({ page: 1, limit: 500 })
+  const { items: storeItems, isLoading: storeItemsLoading } = useInventory({
+    storeId: storeId || undefined,
+    page: 1,
+    limit: 500,
+    enabled: !!storeId,
+  })
   const { sessions } = useSchoolSessions({ status: "Active", page: 1, limit: 500 })
   const { terms } = useTerms({ page: 1, limit: 200, status: "Active" })
   const { facilities, isLoading: facilitiesLoading } = useFacilities()
   const { staff } = useStaff({ page: 1, limit: 500 })
-  const { stores: activeStores } = useStores({ status: "Active", page: 1, limit: 500 })
+  const { stores: myStores, isLoading: myStoresLoading } = useMyStores({
+    page: 1,
+    limit: 100,
+  })
   const { toast } = useToast()
 
   const {
@@ -110,7 +120,7 @@ export default function FacilityItemDistribution() {
         .map((row) => row.itemId)
         .filter(Boolean)
     )
-    return items
+    return storeItems
       .filter(
         (inventoryItem) =>
           !selectedElsewhere.has(inventoryItem.id) ||
@@ -120,6 +130,21 @@ export default function FacilityItemDistribution() {
         value: inventoryItem.id,
         label: `${inventoryItem.name} - ${inventoryItem.category?.name} - ${inventoryItem.currentStock}`,
       }))
+  }
+
+  const getItemCurrentStock = (itemId: string) => {
+    const item = storeItems.find((it) => it.id === itemId)
+    return Number(item?.currentStock ?? 0)
+  }
+
+  const rowExceedsStoreStock = (row: NewLineItem) => {
+    if (!row.itemId || row.qtyOut <= 0) return false
+    return row.qtyOut > getItemCurrentStock(row.itemId)
+  }
+
+  const handleStoreChange = (id: string) => {
+    setStoreId(id)
+    setNewItems([])
   }
 
   const addNewItemRow = () => {
@@ -142,7 +167,7 @@ export default function FacilityItemDistribution() {
         if (i !== index) return row
         const updated = { ...row, [field]: value } as NewLineItem
         if (field === "itemId") {
-          const inventoryItem = items.find((it) => it.id === value)
+          const inventoryItem = storeItems.find((it) => it.id === value)
           updated.itemName = inventoryItem?.name
         }
         return updated
@@ -195,6 +220,16 @@ export default function FacilityItemDistribution() {
       toast({
         title: "Error",
         description: "Each item can only appear once in a batch.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (validItems.some(rowExceedsStoreStock)) {
+      toast({
+        title: "Error",
+        description:
+          "One or more lines exceed available stock at the selected store.",
         variant: "destructive",
       })
       return
@@ -278,7 +313,7 @@ export default function FacilityItemDistribution() {
     rows: FacilityCollection[]
   }>())
 
-  const selectedStoreForEntry = activeStores.find((s) => s.id === storeId)
+  const selectedStoreForEntry = myStores.find((s) => s.id === storeId)
   const selectedFacilityForEntry = facilities.find((f) => f.id === facilityId)
   const selectedStaffForEntry = staff.find((s) => s.id === staffId)
 
@@ -331,17 +366,25 @@ export default function FacilityItemDistribution() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div>
-                  <Label>Source store</Label>
-                  <Combobox
-                    value={storeId}
-                    onValueChange={setStoreId}
-                    options={activeStores.map((s) => ({
-                      value: s.id,
-                      label: s.name,
-                    }))}
-                    placeholder="Select store..."
-                    searchPlaceholder="Search stores..."
-                  />
+                  <Label>Store (your stores)</Label>
+                  {myStoresLoading ? (
+                    <p className="text-sm text-muted-foreground py-2">Loading stores…</p>
+                  ) : myStores.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-2">
+                      No stores assigned to your account. Ask an admin to grant store access.
+                    </p>
+                  ) : (
+                    <Combobox
+                      value={storeId}
+                      onValueChange={handleStoreChange}
+                      options={myStores.map((s) => ({
+                        value: s.id,
+                        label: `${s.name}${s.isStoreManager ? " (manager)" : ""}`,
+                      }))}
+                      placeholder="Select store..."
+                      searchPlaceholder="Search stores..."
+                    />
+                  )}
                 </div>
                 <div>
                   <Label>Facility</Label>
@@ -402,22 +445,43 @@ export default function FacilityItemDistribution() {
                 </div>
               </div>
 
-              {newItems.length === 0 ? (
+              {!storeId ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">
+                    Select a store to load items available for distribution.
+                  </p>
+                </div>
+              ) : newItems.length === 0 ? (
                 <div className="text-center py-8 space-y-4">
                   <p className="text-muted-foreground">
-                    Add line items to distribute inventory to the selected facility.
+                    {storeItemsLoading
+                      ? "Loading store inventory…"
+                      : "Add line items to distribute inventory to the selected facility."}
                   </p>
-                  <Button onClick={addNewItemRow} variant="outline">
+                  <Button
+                    onClick={addNewItemRow}
+                    variant="outline"
+                    disabled={storeItemsLoading}
+                  >
                     <Plus className="mr-2 h-4 w-4" />
                     Add Item
                   </Button>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {newItems.map((row, index) => (
+                  {newItems.map((row, index) => {
+                    const availableStock = row.itemId
+                      ? getItemCurrentStock(row.itemId)
+                      : 0
+                    const exceedsStock = rowExceedsStoreStock(row)
+
+                    return (
                     <div
                       key={index}
-                      className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg"
+                      className={cn(
+                        "grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg",
+                        exceedsStock && "border-destructive bg-destructive/5"
+                      )}
                     >
                       <div className="md:col-span-2">
                         <Label>Item</Label>
@@ -425,9 +489,16 @@ export default function FacilityItemDistribution() {
                           value={row.itemId}
                           onValueChange={(value) => updateNewItem(index, "itemId", value)}
                           options={getItemOptionsForRow(index)}
-                          placeholder="Select item..."
+                          placeholder={
+                            storeItemsLoading ? "Loading items…" : "Select item..."
+                          }
                           searchPlaceholder="Search items..."
-                          emptyText="No items available (already used in this batch)"
+                          emptyText={
+                            storeItemsLoading
+                              ? "Loading items…"
+                              : "No items available (already used in this batch)"
+                          }
+                          disabled={storeItemsLoading}
                         />
                       </div>
                       <div>
@@ -436,10 +507,32 @@ export default function FacilityItemDistribution() {
                           type="number"
                           min="1"
                           value={row.qtyOut}
-                          onChange={(e) =>
-                            updateNewItem(index, "qtyOut", parseInt(e.target.value, 10) || 1)
-                          }
+                          className={cn(
+                            exceedsStock && "border-destructive focus-visible:ring-destructive"
+                          )}
+                          onChange={(e) => {
+                            const parsed = parseInt(e.target.value, 10)
+                            updateNewItem(
+                              index,
+                              "qtyOut",
+                              Number.isNaN(parsed) ? 1 : parsed
+                            )
+                          }}
                         />
+                        {row.itemId && (
+                          <p
+                            className={cn(
+                              "text-xs mt-1",
+                              exceedsStock
+                                ? "text-destructive font-medium"
+                                : "text-muted-foreground"
+                            )}
+                          >
+                            {exceedsStock
+                              ? `Exceeds store stock — available: ${availableStock}`
+                              : `Available in store: ${availableStock}`}
+                          </p>
+                        )}
                       </div>
                       <div className="flex flex-col items-end justify-end gap-2">
                         <Button
@@ -457,7 +550,8 @@ export default function FacilityItemDistribution() {
                         )}
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </CardContent>
@@ -481,7 +575,7 @@ export default function FacilityItemDistribution() {
                     }}
                     options={[
                       { value: "", label: "All items" },
-                      ...items.map((item) => ({
+                      ...filterItems.map((item) => ({
                         value: item.id,
                         label: item.name,
                       })),

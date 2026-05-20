@@ -13,7 +13,9 @@ import { useInventory } from "@/hooks/useInventory"
 import { useSchoolSessions } from "@/hooks/useSchoolSessions"
 import { useTerms } from "@/hooks/useTerms"
 import { useStaff } from "@/hooks/useStaff"
+import { useMyStores } from "@/hooks/useMyStores"
 import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,6 +53,8 @@ export default function StaffItemCollections() {
   const [limit, setLimit] = useState<number>(20)
 
   const [selectedStaffId, setSelectedStaffId] = useState<string>("")
+  const [storeId, setStoreId] = useState<string>("")
+  const [referenceNo, setReferenceNo] = useState<string>("")
   const [transactionDate, setTransactionDate] = useState<string>(
     new Date().toISOString().slice(0, 10)
   )
@@ -61,9 +65,18 @@ export default function StaffItemCollections() {
   const [collectionToDelete, setCollectionToDelete] = useState<string | null>(null)
 
   const { staff, isLoading: staffLoading } = useStaff({ page: 1, limit: 500 })
-  const { items } = useInventory()
+  const { items: storeItems, isLoading: storeItemsLoading } = useInventory({
+    storeId: storeId || undefined,
+    page: 1,
+    limit: 500,
+    enabled: !!storeId,
+  })
   const { sessions } = useSchoolSessions({ status: "Active", page: 1, limit: 500 })
   const { terms } = useTerms({ page: 1, limit: 200, status: "Active" })
+  const { stores: myStores, isLoading: myStoresLoading } = useMyStores({
+    page: 1,
+    limit: 100,
+  })
   const { toast } = useToast()
 
   const { collections, createBulkCollection, deleteCollection, isLoading } =
@@ -87,7 +100,7 @@ export default function StaffItemCollections() {
         .map((row) => row.itemId)
         .filter(Boolean)
     )
-    return items
+    return storeItems
       .filter(
         (inventoryItem) =>
           !selectedElsewhere.has(inventoryItem.id) ||
@@ -97,6 +110,21 @@ export default function StaffItemCollections() {
         value: inventoryItem.id,
         label: `${inventoryItem.name} - ${inventoryItem.category?.name} - ${inventoryItem.currentStock}`,
       }))
+  }
+
+  const getItemCurrentStock = (itemId: string) => {
+    const item = storeItems.find((it) => it.id === itemId)
+    return Number(item?.currentStock ?? 0)
+  }
+
+  const rowExceedsStoreStock = (row: NewCollectionItem) => {
+    if (!row.itemId || row.qtyOut <= 0) return false
+    return row.qtyOut > getItemCurrentStock(row.itemId)
+  }
+
+  const handleStoreChange = (id: string) => {
+    setStoreId(id)
+    setNewItems([])
   }
 
   const addNewItemRow = () => {
@@ -119,7 +147,7 @@ export default function StaffItemCollections() {
         if (i !== index) return row
         const updated = { ...row, [field]: value } as NewCollectionItem
         if (field === "itemId") {
-          const inventoryItem = items.find((it) => it.id === value)
+          const inventoryItem = storeItems.find((it) => it.id === value)
           updated.itemName = inventoryItem?.name
         }
         return updated
@@ -132,6 +160,15 @@ export default function StaffItemCollections() {
   }
 
   const saveBatch = async () => {
+    if (!storeId) {
+      toast({
+        title: "Error",
+        description: "Please select a store first",
+        variant: "destructive",
+      })
+      return
+    }
+
     if (!selectedStaffId) {
       toast({
         title: "Error",
@@ -161,6 +198,16 @@ export default function StaffItemCollections() {
       return
     }
 
+    if (validItems.some(rowExceedsStoreStock)) {
+      toast({
+        title: "Error",
+        description:
+          "One or more lines exceed available stock at the selected store.",
+        variant: "destructive",
+      })
+      return
+    }
+
     toast({
       title: "Saving...",
       description: "Please wait while we save the staff collection batch",
@@ -169,6 +216,8 @@ export default function StaffItemCollections() {
     try {
       await createBulkCollection({
         staffId: selectedStaffId,
+        storeId,
+        referenceNo: referenceNo?.trim() ? referenceNo.trim() : undefined,
         notes: notes?.trim() ? notes.trim() : undefined,
         transactionDate,
         items: validItems.map((it) => ({ itemId: it.itemId, qtyOut: it.qtyOut })),
@@ -179,6 +228,7 @@ export default function StaffItemCollections() {
       })
       setNewItems([])
       setNotes("")
+      setReferenceNo("")
     } catch (err) {
       toast({
         title: "Error",
@@ -216,6 +266,7 @@ export default function StaffItemCollections() {
         staffName: row.staffName || "Unknown Staff",
         staffNumber: row.staffNumber,
         referenceNo: row.referenceNo,
+        storeName: row.storeName,
         notes: row.notes,
         transactionDate: row.transactionDate,
         rows: [] as StaffCollection[],
@@ -228,12 +279,21 @@ export default function StaffItemCollections() {
     staffName: string
     staffNumber?: string
     referenceNo: string | null
+    storeName?: string
     notes: string | null
     transactionDate: string
     rows: StaffCollection[]
   }>())
 
+  const selectedStoreForEntry = myStores.find((s) => s.id === storeId)
   const selectedStaffForEntry = staff.find((s) => s.id === selectedStaffId)
+
+  const entryTitleSuffix = [
+    selectedStoreForEntry?.name,
+    selectedStaffForEntry ? staffLabel(selectedStaffForEntry) : null,
+  ]
+    .filter(Boolean)
+    .join(" · ")
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -262,7 +322,7 @@ export default function StaffItemCollections() {
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>
                 Record collection batch
-                {selectedStaffForEntry ? ` — ${staffLabel(selectedStaffForEntry)}` : ""}
+                {entryTitleSuffix ? ` — ${entryTitleSuffix}` : ""}
               </CardTitle>
               {newItems.length > 0 && (
                 <Button onClick={saveBatch} size="sm">
@@ -273,6 +333,27 @@ export default function StaffItemCollections() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div>
+                  <Label>Store (your stores)</Label>
+                  {myStoresLoading ? (
+                    <p className="text-sm text-muted-foreground py-2">Loading stores…</p>
+                  ) : myStores.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-2">
+                      No stores assigned to your account. Ask an admin to grant store access.
+                    </p>
+                  ) : (
+                    <Combobox
+                      value={storeId}
+                      onValueChange={handleStoreChange}
+                      options={myStores.map((s) => ({
+                        value: s.id,
+                        label: `${s.name}${s.isStoreManager ? " (manager)" : ""}`,
+                      }))}
+                      placeholder="Select store..."
+                      searchPlaceholder="Search stores..."
+                    />
+                  )}
+                </div>
                 <div>
                   <Label>Staff</Label>
                   <Combobox
@@ -289,6 +370,14 @@ export default function StaffItemCollections() {
                     placeholder={staffLoading ? "Loading staff..." : "Select staff..."}
                     searchPlaceholder="Search staff..."
                     disabled={staffLoading}
+                  />
+                </div>
+                <div>
+                  <Label>Reference no. (optional)</Label>
+                  <Input
+                    value={referenceNo}
+                    onChange={(e) => setReferenceNo(e.target.value)}
+                    placeholder="Optional reference..."
                   />
                 </div>
                 <div>
@@ -309,22 +398,43 @@ export default function StaffItemCollections() {
                 </div>
               </div>
 
-              {newItems.length === 0 ? (
+              {!storeId ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">
+                    Select a store to load items available for distribution.
+                  </p>
+                </div>
+              ) : newItems.length === 0 ? (
                 <div className="text-center py-8 space-y-4">
                   <p className="text-muted-foreground">
-                    Add line items to build a collection batch for the selected staff member.
+                    {storeItemsLoading
+                      ? "Loading store inventory…"
+                      : "Add line items to build a collection batch for the selected staff member."}
                   </p>
-                  <Button onClick={addNewItemRow} variant="outline">
+                  <Button
+                    onClick={addNewItemRow}
+                    variant="outline"
+                    disabled={storeItemsLoading}
+                  >
                     <Plus className="mr-2 h-4 w-4" />
                     Add Item
                   </Button>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {newItems.map((row, index) => (
+                  {newItems.map((row, index) => {
+                    const availableStock = row.itemId
+                      ? getItemCurrentStock(row.itemId)
+                      : 0
+                    const exceedsStock = rowExceedsStoreStock(row)
+
+                    return (
                     <div
                       key={index}
-                      className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg"
+                      className={cn(
+                        "grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg",
+                        exceedsStock && "border-destructive bg-destructive/5"
+                      )}
                     >
                       <div className="md:col-span-2">
                         <Label>Item</Label>
@@ -332,9 +442,16 @@ export default function StaffItemCollections() {
                           value={row.itemId}
                           onValueChange={(value) => updateNewItem(index, "itemId", value)}
                           options={getItemOptionsForRow(index)}
-                          placeholder="Select item..."
+                          placeholder={
+                            storeItemsLoading ? "Loading items…" : "Select item..."
+                          }
                           searchPlaceholder="Search items..."
-                          emptyText="No items available (already used in this batch)"
+                          emptyText={
+                            storeItemsLoading
+                              ? "Loading items…"
+                              : "No items available (already used in this batch)"
+                          }
+                          disabled={storeItemsLoading}
                         />
                       </div>
                       <div>
@@ -343,10 +460,32 @@ export default function StaffItemCollections() {
                           type="number"
                           min="1"
                           value={row.qtyOut}
-                          onChange={(e) =>
-                            updateNewItem(index, "qtyOut", parseInt(e.target.value, 10) || '')
-                          }
+                          className={cn(
+                            exceedsStock && "border-destructive focus-visible:ring-destructive"
+                          )}
+                          onChange={(e) => {
+                            const parsed = parseInt(e.target.value, 10)
+                            updateNewItem(
+                              index,
+                              "qtyOut",
+                              Number.isNaN(parsed) ? 1 : parsed
+                            )
+                          }}
                         />
+                        {row.itemId && (
+                          <p
+                            className={cn(
+                              "text-xs mt-1",
+                              exceedsStock
+                                ? "text-destructive font-medium"
+                                : "text-muted-foreground"
+                            )}
+                          >
+                            {exceedsStock
+                              ? `Out of stock for collection — available: ${availableStock}`
+                              : `Available in store: ${availableStock}`}
+                          </p>
+                        )}
                       </div>
                       <div className="flex flex-col items-end justify-end gap-2">
                         <Button
@@ -364,7 +503,8 @@ export default function StaffItemCollections() {
                         )}
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </CardContent>
@@ -506,6 +646,7 @@ export default function StaffItemCollections() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Staff</TableHead>
+                      <TableHead>Store</TableHead>
                       <TableHead>Reference</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Items</TableHead>
@@ -517,7 +658,14 @@ export default function StaffItemCollections() {
                       <TableRow key={key}>
                         <TableCell>
                           <div className="font-medium">{batch.staffName}</div>
-                          
+                          {batch.staffNumber && (
+                            <Badge variant="secondary" className="text-xs">
+                              {batch.staffNumber}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="max-w-[140px] truncate">
+                          {batch.storeName ?? "—"}
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">{batch.referenceNo ?? "—"}</Badge>

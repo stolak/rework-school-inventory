@@ -17,6 +17,7 @@ import { useSubClasses } from "@/hooks/useSubClasses"
 import { useTerms } from "@/hooks/useTerms"
 import { useMyStores } from "@/hooks/useMyStores"
 import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -117,6 +118,16 @@ export default function StudentItemCollections() {
       }))
   }
 
+  const getItemCurrentStock = (itemId: string) => {
+    const item = storeItems.find((it) => it.id === itemId)
+    return Number(item?.currentStock ?? 0)
+  }
+
+  const rowExceedsStoreStock = (row: NewCollectionItem) => {
+    if (!row.itemId || row.qtyOut <= 0) return false
+    return row.qtyOut > getItemCurrentStock(row.itemId)
+  }
+
   const handleStoreChange = (id: string) => {
     setStoreId(id)
     setNewItems([])
@@ -197,6 +208,16 @@ export default function StudentItemCollections() {
       toast({
         title: "Error",
         description: "Each item can only appear once in a batch.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (validItems.some(rowExceedsStoreStock)) {
+      toast({
+        title: "Error",
+        description:
+          "One or more lines exceed available stock at the selected store.",
         variant: "destructive",
       })
       return
@@ -461,10 +482,19 @@ export default function StudentItemCollections() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {newItems.map((row, index) => (
+                  {newItems.map((row, index) => {
+                    const availableStock = row.itemId
+                      ? getItemCurrentStock(row.itemId)
+                      : 0
+                    const exceedsStock = rowExceedsStoreStock(row)
+
+                    return (
                     <div
                       key={index}
-                      className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg"
+                      className={cn(
+                        "grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg",
+                        exceedsStock && "border-destructive bg-destructive/5"
+                      )}
                     >
                       <div className="md:col-span-2">
                         <Label>Item</Label>
@@ -490,10 +520,32 @@ export default function StudentItemCollections() {
                           type="number"
                           min="1"
                           value={row.qtyOut}
-                          onChange={(e) =>
-                            updateNewItem(index, "qtyOut", parseInt(e.target.value, 10) || '')
-                          }
+                          className={cn(
+                            exceedsStock && "border-destructive focus-visible:ring-destructive"
+                          )}
+                          onChange={(e) => {
+                            const parsed = parseInt(e.target.value, 10)
+                            updateNewItem(
+                              index,
+                              "qtyOut",
+                              Number.isNaN(parsed) ? 1 : parsed
+                            )
+                          }}
                         />
+                        {row.itemId && (
+                          <p
+                            className={cn(
+                              "text-xs mt-1",
+                              exceedsStock
+                                ? "text-destructive font-medium"
+                                : "text-muted-foreground"
+                            )}
+                          >
+                            {exceedsStock
+                              ? `Out of stock for collection — available: ${availableStock}`
+                              : `Available in store: ${availableStock}`}
+                          </p>
+                        )}
                       </div>
                       <div className="flex flex-col items-end justify-end gap-2">
                         <Button
@@ -511,7 +563,8 @@ export default function StudentItemCollections() {
                         )}
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </CardContent>

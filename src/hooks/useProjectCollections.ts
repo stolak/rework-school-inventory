@@ -19,6 +19,7 @@ export interface ProjectCollection {
   itemName?: string;
   projectName?: string;
   staffLabel?: string;
+  storeName?: string;
   createdByName?: string;
 }
 
@@ -67,6 +68,7 @@ export function useProjectCollections(params?: {
       itemName: r.item?.name || "Unknown item",
       projectName: r.project?.name,
       staffLabel,
+      storeName: r.store?.name,
       createdByName: r.createdBy
         ? `${r.createdBy.firstName ?? ""} ${r.createdBy.lastName ?? ""}`.trim()
         : undefined,
@@ -109,6 +111,8 @@ export function useProjectCollections(params?: {
     notes?: string;
     projectId: string;
     staffId: string;
+    storeId: string;
+    referenceNo?: string;
     transactionDate: string;
     items: { itemId: string; qtyOut: number }[];
   }) => bulkCreateMutation.mutateAsync(payload);

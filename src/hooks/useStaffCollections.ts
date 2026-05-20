@@ -18,6 +18,7 @@ export interface StaffCollection {
   itemName?: string;
   staffName?: string;
   staffNumber?: string;
+  storeName?: string;
 }
 
 export function useStaffCollections(params?: {
@@ -57,6 +58,7 @@ export function useStaffCollections(params?: {
     itemName: c.item?.name || "Unknown Item",
     staffName: c.staff?.name || "Unknown Staff",
     staffNumber: c.staff?.StaffNumber ?? undefined,
+    storeName: c.store?.name,
   }));
 
   const bulkCreateMutation = useMutation({
@@ -97,6 +99,8 @@ export function useStaffCollections(params?: {
 
   const createBulkCollection = async (payload: {
     staffId: string;
+    storeId: string;
+    referenceNo?: string;
     notes?: string;
     transactionDate: string;
     items: { itemId: string; qtyOut: number }[];

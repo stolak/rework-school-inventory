@@ -27,6 +27,7 @@ import { useMyStores } from "@/hooks/useMyStores"
 import { useStores } from "@/hooks/useStores"
 import { useStoreTransfers, type StoreTransferRowView } from "@/hooks/useStoreTransfers"
 import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
 
 interface LineItem {
   itemId: string
@@ -61,7 +62,13 @@ export default function StoreItemTransfer() {
   const [notes, setNotes] = useState("")
   const [lineItems, setLineItems] = useState<LineItem[]>([])
 
-  const { items: inventoryItems } = useInventory({ page: 1, limit: 500 })
+  const { items: filterItems } = useInventory({ page: 1, limit: 500 })
+  const { items: storeItems, isLoading: storeItemsLoading } = useInventory({
+    storeId: sourceStoreId || undefined,
+    page: 1,
+    limit: 500,
+    enabled: !!sourceStoreId,
+  })
   const { stores: myStores, isLoading: myStoresLoading } = useMyStores({
     page: 1,
     limit: 100,
@@ -102,7 +109,7 @@ export default function StoreItemTransfer() {
         .map((row) => row.itemId)
         .filter(Boolean)
     )
-    return inventoryItems
+    return storeItems
       .filter(
         (inventoryItem) =>
           !selectedElsewhere.has(inventoryItem.id) ||
@@ -112,6 +119,16 @@ export default function StoreItemTransfer() {
         value: inventoryItem.id,
         label: `${inventoryItem.name}${inventoryItem.sku ? ` — ${inventoryItem.sku}` : ""} - ${inventoryItem.currentStock ?? 0}`,
       }))
+  }
+
+  const getItemCurrentStock = (itemId: string) => {
+    const item = storeItems.find((it) => it.id === itemId)
+    return Number(item?.currentStock ?? 0)
+  }
+
+  const rowExceedsStoreStock = (row: LineItem) => {
+    if (!row.itemId || row.qty <= 0) return false
+    return row.qty > getItemCurrentStock(row.itemId)
   }
 
   const addLine = () => {
@@ -134,6 +151,7 @@ export default function StoreItemTransfer() {
 
   const handleSourceChange = (id: string) => {
     setSourceStoreId(id)
+    setLineItems([])
     if (destStoreId === id) setDestStoreId("")
   }
 
@@ -170,6 +188,16 @@ export default function StoreItemTransfer() {
       toast({
         title: "Error",
         description: "Each item can only appear once in a transfer.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (valid.some(rowExceedsStoreStock)) {
+      toast({
+        title: "Error",
+        description:
+          "One or more lines exceed available stock at the source store.",
         variant: "destructive",
       })
       return
@@ -342,22 +370,44 @@ export default function StoreItemTransfer() {
                 </div>
               </div>
 
-              {lineItems.length === 0 ? (
+              {!sourceStoreId ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">
+                    Select a source store to load items available for transfer.
+                  </p>
+                </div>
+              ) : lineItems.length === 0 ? (
                 <div className="text-center py-8 space-y-4">
                   <p className="text-muted-foreground">
-                    Add line items to transfer out of the selected source store.
+                    {storeItemsLoading
+                      ? "Loading store inventory…"
+                      : "Add line items to transfer out of the selected source store."}
                   </p>
-                  <Button type="button" onClick={addLine} variant="outline">
+                  <Button
+                    type="button"
+                    onClick={addLine}
+                    variant="outline"
+                    disabled={storeItemsLoading}
+                  >
                     <Plus className="mr-2 h-4 w-4" />
                     Add Item
                   </Button>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {lineItems.map((row, index) => (
+                  {lineItems.map((row, index) => {
+                    const availableStock = row.itemId
+                      ? getItemCurrentStock(row.itemId)
+                      : 0
+                    const exceedsStock = rowExceedsStoreStock(row)
+
+                    return (
                     <div
                       key={index}
-                      className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg"
+                      className={cn(
+                        "grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg",
+                        exceedsStock && "border-destructive bg-destructive/5"
+                      )}
                     >
                       <div className="md:col-span-2">
                         <Label>Item</Label>
@@ -365,9 +415,16 @@ export default function StoreItemTransfer() {
                           value={row.itemId}
                           onValueChange={(v) => updateLine(index, "itemId", v)}
                           options={getItemOptionsForRow(index)}
-                          placeholder="Select item…"
+                          placeholder={
+                            storeItemsLoading ? "Loading items…" : "Select item…"
+                          }
                           searchPlaceholder="Search…"
-                          emptyText="No items available (already used in this transfer)"
+                          emptyText={
+                            storeItemsLoading
+                              ? "Loading items…"
+                              : "No items available (already used in this transfer)"
+                          }
+                          disabled={storeItemsLoading}
                         />
                       </div>
                       <div>
@@ -376,14 +433,32 @@ export default function StoreItemTransfer() {
                           type="number"
                           min={1}
                           value={row.qty}
-                          onChange={(e) =>
+                          className={cn(
+                            exceedsStock && "border-destructive focus-visible:ring-destructive"
+                          )}
+                          onChange={(e) => {
+                            const parsed = parseInt(e.target.value, 10)
                             updateLine(
                               index,
                               "qty",
-                              parseInt(e.target.value, 10) || 1
+                              Number.isNaN(parsed) ? 1 : parsed
                             )
-                          }
+                          }}
                         />
+                        {row.itemId && (
+                          <p
+                            className={cn(
+                              "text-xs mt-1",
+                              exceedsStock
+                                ? "text-destructive font-medium"
+                                : "text-muted-foreground"
+                            )}
+                          >
+                            {exceedsStock
+                              ? `Exceeds store stock — available: ${availableStock}`
+                              : `Available in store: ${availableStock}`}
+                          </p>
+                        )}
                       </div>
                       <div className="flex flex-col items-end justify-end gap-2">
                         <Button
@@ -408,7 +483,8 @@ export default function StoreItemTransfer() {
                         )}
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </CardContent>
@@ -470,7 +546,7 @@ export default function StoreItemTransfer() {
                     }}
                     options={[
                       { value: "", label: "All items" },
-                      ...inventoryItems.map((it) => ({
+                      ...filterItems.map((it) => ({
                         value: it.id,
                         label: it.name,
                       })),

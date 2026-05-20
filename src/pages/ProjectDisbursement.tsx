@@ -17,7 +17,9 @@ import { useSchoolSessions } from "@/hooks/useSchoolSessions"
 import { useTerms } from "@/hooks/useTerms"
 import { useProjects } from "@/hooks/useProjects"
 import { useStaff } from "@/hooks/useStaff"
+import { useMyStores } from "@/hooks/useMyStores"
 import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,8 +58,10 @@ export default function ProjectDisbursement() {
   const [page, setPage] = useState<number>(1)
   const [limit, setLimit] = useState<number>(20)
 
+  const [storeId, setStoreId] = useState<string>("")
   const [projectId, setProjectId] = useState<string>("")
   const [staffId, setStaffId] = useState<string>("")
+  const [referenceNo, setReferenceNo] = useState<string>("")
   const [transactionDate, setTransactionDate] = useState<string>(
     new Date().toISOString().slice(0, 10)
   )
@@ -67,11 +71,21 @@ export default function ProjectDisbursement() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [collectionToDelete, setCollectionToDelete] = useState<string | null>(null)
 
-  const { items } = useInventory()
+  const { items: filterItems } = useInventory({ page: 1, limit: 500 })
+  const { items: storeItems, isLoading: storeItemsLoading } = useInventory({
+    storeId: storeId || undefined,
+    page: 1,
+    limit: 500,
+    enabled: !!storeId,
+  })
   const { sessions } = useSchoolSessions({ status: "Active", page: 1, limit: 500 })
   const { terms } = useTerms({ page: 1, limit: 200, status: "Active" })
   const { projects } = useProjects({ page: 1, limit: 500 })
   const { staff } = useStaff({ page: 1, limit: 500 })
+  const { stores: myStores, isLoading: myStoresLoading } = useMyStores({
+    page: 1,
+    limit: 100,
+  })
   const { toast } = useToast()
 
   const {
@@ -106,7 +120,7 @@ export default function ProjectDisbursement() {
         .map((row) => row.itemId)
         .filter(Boolean)
     )
-    return items
+    return storeItems
       .filter(
         (inventoryItem) =>
           !selectedElsewhere.has(inventoryItem.id) ||
@@ -116,6 +130,21 @@ export default function ProjectDisbursement() {
         value: inventoryItem.id,
         label: `${inventoryItem.name} - ${inventoryItem.category?.name} - ${inventoryItem.currentStock}`,
       }))
+  }
+
+  const getItemCurrentStock = (itemId: string) => {
+    const item = storeItems.find((it) => it.id === itemId)
+    return Number(item?.currentStock ?? 0)
+  }
+
+  const rowExceedsStoreStock = (row: NewLineItem) => {
+    if (!row.itemId || row.qtyOut <= 0) return false
+    return row.qtyOut > getItemCurrentStock(row.itemId)
+  }
+
+  const handleStoreChange = (id: string) => {
+    setStoreId(id)
+    setNewItems([])
   }
 
   const addNewItemRow = () => {
@@ -138,7 +167,7 @@ export default function ProjectDisbursement() {
         if (i !== index) return row
         const updated = { ...row, [field]: value } as NewLineItem
         if (field === "itemId") {
-          const inventoryItem = items.find((it) => it.id === value)
+          const inventoryItem = storeItems.find((it) => it.id === value)
           updated.itemName = inventoryItem?.name
         }
         return updated
@@ -151,6 +180,14 @@ export default function ProjectDisbursement() {
   }
 
   const saveBatch = async () => {
+    if (!storeId) {
+      toast({
+        title: "Error",
+        description: "Please select a store first",
+        variant: "destructive",
+      })
+      return
+    }
     if (!projectId) {
       toast({
         title: "Error",
@@ -188,6 +225,16 @@ export default function ProjectDisbursement() {
       return
     }
 
+    if (validItems.some(rowExceedsStoreStock)) {
+      toast({
+        title: "Error",
+        description:
+          "One or more lines exceed available stock at the selected store.",
+        variant: "destructive",
+      })
+      return
+    }
+
     toast({
       title: "Saving...",
       description: "Please wait while we save the disbursement batch",
@@ -198,6 +245,8 @@ export default function ProjectDisbursement() {
         notes: notes?.trim() ? notes.trim() : undefined,
         projectId,
         staffId,
+        storeId,
+        referenceNo: referenceNo?.trim() ? referenceNo.trim() : undefined,
         transactionDate,
         items: validItems.map((it) => ({ itemId: it.itemId, qtyOut: it.qtyOut })),
       })
@@ -207,6 +256,7 @@ export default function ProjectDisbursement() {
       })
       setNewItems([])
       setNotes("")
+      setReferenceNo("")
     } catch (err) {
       toast({
         title: "Error",
@@ -246,6 +296,7 @@ export default function ProjectDisbursement() {
         createdByName: row.createdByName,
         projectName: row.projectName,
         staffLabel: row.staffLabel,
+        storeName: row.storeName,
         rows: [] as ProjectCollection[],
       })
     }
@@ -258,13 +309,16 @@ export default function ProjectDisbursement() {
     createdByName?: string
     projectName?: string
     staffLabel?: string
+    storeName?: string
     rows: ProjectCollection[]
   }>())
 
+  const selectedStoreForEntry = myStores.find((s) => s.id === storeId)
   const selectedProjectForEntry = projects.find((p) => p.id === projectId)
   const selectedStaffForEntry = staff.find((s) => s.id === staffId)
 
   const entryTitleSuffix = [
+    selectedStoreForEntry?.name,
     selectedProjectForEntry?.name,
     selectedStaffForEntry ? staffLabel(selectedStaffForEntry) : null,
   ]
@@ -310,7 +364,28 @@ export default function ProjectDisbursement() {
               )}
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div>
+                  <Label>Store (your stores)</Label>
+                  {myStoresLoading ? (
+                    <p className="text-sm text-muted-foreground py-2">Loading stores…</p>
+                  ) : myStores.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-2">
+                      No stores assigned to your account. Ask an admin to grant store access.
+                    </p>
+                  ) : (
+                    <Combobox
+                      value={storeId}
+                      onValueChange={handleStoreChange}
+                      options={myStores.map((s) => ({
+                        value: s.id,
+                        label: `${s.name}${s.isStoreManager ? " (manager)" : ""}`,
+                      }))}
+                      placeholder="Select store..."
+                      searchPlaceholder="Search stores..."
+                    />
+                  )}
+                </div>
                 <div>
                   <Label>Project</Label>
                   <Combobox
@@ -338,6 +413,14 @@ export default function ProjectDisbursement() {
                   />
                 </div>
                 <div>
+                  <Label>Reference no. (optional)</Label>
+                  <Input
+                    value={referenceNo}
+                    onChange={(e) => setReferenceNo(e.target.value)}
+                    placeholder="Optional reference..."
+                  />
+                </div>
+                <div>
                   <Label>Transaction Date</Label>
                   <Input
                     type="date"
@@ -355,22 +438,43 @@ export default function ProjectDisbursement() {
                 </div>
               </div>
 
-              {newItems.length === 0 ? (
+              {!storeId ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">
+                    Select a store to load items available for disbursement.
+                  </p>
+                </div>
+              ) : newItems.length === 0 ? (
                 <div className="text-center py-8 space-y-4">
                   <p className="text-muted-foreground">
-                    Add line items to build a disbursement batch for the selected project.
+                    {storeItemsLoading
+                      ? "Loading store inventory…"
+                      : "Add line items to build a disbursement batch for the selected project."}
                   </p>
-                  <Button onClick={addNewItemRow} variant="outline">
+                  <Button
+                    onClick={addNewItemRow}
+                    variant="outline"
+                    disabled={storeItemsLoading}
+                  >
                     <Plus className="mr-2 h-4 w-4" />
                     Add Item
                   </Button>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {newItems.map((row, index) => (
+                  {newItems.map((row, index) => {
+                    const availableStock = row.itemId
+                      ? getItemCurrentStock(row.itemId)
+                      : 0
+                    const exceedsStock = rowExceedsStoreStock(row)
+
+                    return (
                     <div
                       key={index}
-                      className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg"
+                      className={cn(
+                        "grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg",
+                        exceedsStock && "border-destructive bg-destructive/5"
+                      )}
                     >
                       <div className="md:col-span-2">
                         <Label>Item</Label>
@@ -378,9 +482,16 @@ export default function ProjectDisbursement() {
                           value={row.itemId}
                           onValueChange={(value) => updateNewItem(index, "itemId", value)}
                           options={getItemOptionsForRow(index)}
-                          placeholder="Select item..."
+                          placeholder={
+                            storeItemsLoading ? "Loading items…" : "Select item..."
+                          }
                           searchPlaceholder="Search items..."
-                          emptyText="No items available (already used in this batch)"
+                          emptyText={
+                            storeItemsLoading
+                              ? "Loading items…"
+                              : "No items available (already used in this batch)"
+                          }
+                          disabled={storeItemsLoading}
                         />
                       </div>
                       <div>
@@ -389,10 +500,32 @@ export default function ProjectDisbursement() {
                           type="number"
                           min="1"
                           value={row.qtyOut}
-                          onChange={(e) =>
-                            updateNewItem(index, "qtyOut", parseInt(e.target.value, 10) || '')
-                          }
+                          className={cn(
+                            exceedsStock && "border-destructive focus-visible:ring-destructive"
+                          )}
+                          onChange={(e) => {
+                            const parsed = parseInt(e.target.value, 10)
+                            updateNewItem(
+                              index,
+                              "qtyOut",
+                              Number.isNaN(parsed) ? 1 : parsed
+                            )
+                          }}
                         />
+                        {row.itemId && (
+                          <p
+                            className={cn(
+                              "text-xs mt-1",
+                              exceedsStock
+                                ? "text-destructive font-medium"
+                                : "text-muted-foreground"
+                            )}
+                          >
+                            {exceedsStock
+                              ? `Exceeds store stock — available: ${availableStock}`
+                              : `Available in store: ${availableStock}`}
+                          </p>
+                        )}
                       </div>
                       <div className="flex flex-col items-end justify-end gap-2">
                         <Button
@@ -410,7 +543,8 @@ export default function ProjectDisbursement() {
                         )}
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </CardContent>
@@ -434,7 +568,7 @@ export default function ProjectDisbursement() {
                     }}
                     options={[
                       { value: "", label: "All items" },
-                      ...items.map((item) => ({
+                      ...filterItems.map((item) => ({
                         value: item.id,
                         label: item.name,
                       })),
@@ -592,6 +726,7 @@ export default function ProjectDisbursement() {
                     <TableRow>
                       <TableHead>Reference</TableHead>
                       <TableHead>Date</TableHead>
+                      <TableHead>Store</TableHead>
                       <TableHead>Project</TableHead>
                       <TableHead>Staff</TableHead>
                       <TableHead>Items</TableHead>
@@ -609,6 +744,9 @@ export default function ProjectDisbursement() {
                           {batch.transactionDate
                             ? new Date(batch.transactionDate).toLocaleDateString()
                             : "—"}
+                        </TableCell>
+                        <TableCell className="max-w-[140px] truncate">
+                          {batch.storeName ?? "—"}
                         </TableCell>
                         <TableCell className="max-w-[160px] truncate">
                           {batch.projectName ?? "—"}

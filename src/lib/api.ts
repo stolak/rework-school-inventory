@@ -701,11 +701,13 @@ export type StaffCollectionRow = {
   staffId: string | null;
   sessionId: string | null;
   termId: string | null;
+  storeId?: string | null;
   transactionDate: string;
   createdById: string;
   createdAt: string;
   updatedAt: string;
   item?: { name?: string } | null;
+  store?: { id: string; name?: string } | null;
   staff?: {
     id: string;
     StaffNumber?: string | null;
@@ -749,6 +751,8 @@ export const fetchStaffCollections = (params?: {
 
 export const createStaffCollectionsBulk = (body: {
   staffId: string;
+  storeId: string;
+  referenceNo?: string;
   notes?: string;
   transactionDate: string;
   items: { itemId: string; qtyOut: number }[];
@@ -902,11 +906,13 @@ export type ProjectCollectionRow = {
   staffId: string | null;
   sessionId: string | null;
   termId: string | null;
+  storeId?: string | null;
   transactionDate: string;
   createdById: string;
   createdAt: string;
   updatedAt: string;
   item?: { name?: string } | null;
+  store?: { id: string; name?: string } | null;
   project?: { id: string; name?: string } | null;
   staff?: {
     id: string;
@@ -953,6 +959,8 @@ export const createProjectCollectionsBulk = (body: {
   notes?: string;
   projectId: string;
   staffId: string;
+  storeId: string;
+  referenceNo?: string;
   transactionDate: string;
   items: { itemId: string; qtyOut: number }[];
 }) =>
