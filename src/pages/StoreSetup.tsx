@@ -55,6 +55,10 @@ export default function StoreSetup() {
     limit: 200,
   });
 
+  const [listStatusFilter, setListStatusFilter] = useState<
+    "All" | "Active" | "Inactive"
+  >("All");
+
   const {
     stores,
     createStore,
@@ -66,6 +70,7 @@ export default function StoreSetup() {
   } = useStores({
     page: 1,
     limit: 100,
+    status: listStatusFilter === "All" ? undefined : listStatusFilter,
   });
 
   const { toast } = useToast();
@@ -198,7 +203,7 @@ export default function StoreSetup() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleCreateStore} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="store-name">Store name</Label>
                 <Input
@@ -208,22 +213,8 @@ export default function StoreSetup() {
                   placeholder="e.g. Main campus shop"
                 />
               </div>
+             
               <div className="space-y-2">
-                <Label>Status</Label>
-                <Select
-                  value={status}
-                  onValueChange={(v) => setStatus(v as "Active" | "Inactive")}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Active">Active</SelectItem>
-                    <SelectItem value="Inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="store-desc">Description</Label>
                 <Input
                   id="store-desc"
@@ -232,7 +223,7 @@ export default function StoreSetup() {
                   placeholder="Optional description"
                 />
               </div>
-              <div className="space-y-2 md:col-span-2">
+              <div className="space-y-2">
                 <Label>Store manager (Admin user)</Label>
                 {usersLoading ? (
                   <p className="text-sm text-muted-foreground">Loading users…</p>
@@ -265,8 +256,8 @@ export default function StoreSetup() {
       <Card>
         <CardHeader>
           <CardTitle>Stores ({filteredStores.length})</CardTitle>
-          <div className="pt-2">
-            <div className="relative max-w-sm">
+          <div className="pt-2 flex flex-col sm:flex-row gap-3 sm:items-center">
+            <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search stores, managers, or users with access…"
@@ -275,6 +266,21 @@ export default function StoreSetup() {
                 className="pl-8"
               />
             </div>
+            <Select
+              value={listStatusFilter}
+              onValueChange={(v) =>
+                setListStatusFilter(v as "All" | "Active" | "Inactive")
+              }
+            >
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All status</SelectItem>
+                <SelectItem value="Active">Active</SelectItem>
+                <SelectItem value="Inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
         <CardContent>

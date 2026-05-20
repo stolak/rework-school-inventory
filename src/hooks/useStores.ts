@@ -40,7 +40,7 @@ function normalizeStore(s: StoreRow): StoreListItem {
 export function useStores(params?: {
   page?: number;
   limit?: number;
-  status?: string;
+  status?: "Active" | "Inactive";
 }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();

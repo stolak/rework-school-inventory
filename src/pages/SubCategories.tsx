@@ -1,6 +1,6 @@
 import { Navigate } from "react-router-dom";
 
-/** Legacy route: sub-categories are managed on the Categories page. */
+/** Legacy route: sub-categories are managed on the Inventory page. */
 export default function SubCategories() {
-  return <Navigate to="/categories" replace />;
+  return <Navigate to="/inventory?tab=setup" replace />;
 }

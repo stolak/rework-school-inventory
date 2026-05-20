@@ -273,21 +273,7 @@ export default function Purchases() {
 
       {/* Backend: itemId, supplierId, status, transactionDateFrom/To, page, limit */}
       <div className="flex flex-col xl:flex-row flex-wrap gap-4">
-          <div className="w-full sm:w-[220px]">
-            <Combobox
-              value={itemId}
-              onValueChange={setItemId}
-              options={[
-                { value: "", label: "All items" },
-                ...inventoryItems.map((it) => ({
-                  value: it.id,
-                  label: `${it.name}${it.sku ? ` — ${it.sku}` : ""}`,
-                })),
-              ]}
-              placeholder="Item"
-              searchPlaceholder="Search items..."
-            />
-          </div>
+         
           <div className="w-full sm:w-[220px]">
             <Combobox
               value={supplierId}

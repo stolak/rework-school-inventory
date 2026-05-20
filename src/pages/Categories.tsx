@@ -36,8 +36,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { Navigate } from "react-router-dom";
 
-export default function Categories() {
+export function InventoryBasicSetupSection() {
   const { categories, addCategory, updateCategory, deleteCategory } = useCategories();
   const { brands, addBrand, updateBrand, deleteBrand } = useBrands();
   const { uoms, addUom, updateUom, deleteUom } = useUoms();
@@ -329,18 +330,7 @@ export default function Categories() {
   );
 
   return (
-    <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
-      <div>
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <Package2 className="h-8 w-8" />
-          Inventory basic setup
-        </h1>
-        <p className="text-muted-foreground mt-1 max-w-3xl">
-          Manage categories and sub-categories, brands, and units of measurement in one place.
-          Inventory items use all of these reference values.
-        </p>
-      </div>
-
+    <>
       <div className="flex flex-col xl:flex-row gap-6 min-h-[520px]">
         <Card className="shadow-card lg:w-[min(100%,380px)] shrink-0 flex flex-col">
           <CardHeader className="pb-3">
@@ -834,6 +824,11 @@ export default function Categories() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
+}
+
+/** Legacy route: basic setup lives on the Inventory page. */
+export default function Categories() {
+  return <Navigate to="/inventory?tab=setup" replace />;
 }

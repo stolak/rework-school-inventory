@@ -79,7 +79,6 @@ const sidebarNavSections: SidebarNavSection[] = [
       { title: "Facility item distribution", url: "/facility-item-distribution", icon: Building2 },
       { title: "Sales", url: "/sales", icon: ShoppingBag },
       { title: "Suppliers", url: "/suppliers", icon: Users },
-      { title: "Inventory basic setup", url: "/categories", icon: Layers },
       { title: "Projects", url: "/projects", icon: FolderKanban },
       { title: "Facility/unit setup", url: "/facility-unit-setup", icon: Building2 },
       { title: "Store setup", url: "/store-setup", icon: Store },
