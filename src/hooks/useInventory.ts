@@ -33,8 +33,10 @@ export function useInventory(params?: {
   categoryId?: string;
   subCategoryId?: string;
   brandId?: string;
+  storeId?: string;
   page?: number;
   limit?: number;
+  enabled?: boolean;
 }) {
   const queryClient = useQueryClient();
 
@@ -46,6 +48,7 @@ export function useInventory(params?: {
       params?.categoryId ?? null,
       params?.subCategoryId ?? null,
       params?.brandId ?? null,
+      params?.storeId ?? null,
       params?.page ?? 1,
       params?.limit ?? 100,
     ],
@@ -56,11 +59,13 @@ export function useInventory(params?: {
         categoryId: params?.categoryId,
         subCategoryId: params?.subCategoryId,
         brandId: params?.brandId,
+        storeId: params?.storeId,
         page: params?.page ?? 1,
         limit: params?.limit ?? 100,
       });
       return res.data.inventoryItems;
     },
+    enabled: params?.enabled !== false,
   });
 
   const addMutation = useMutation({

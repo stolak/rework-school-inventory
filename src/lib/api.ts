@@ -645,11 +645,13 @@ export type StudentCollectionRow = {
   sessionId: string | null;
   termId: string | null;
   subclassId: string | null;
+  storeId?: string | null;
   transactionDate: string;
   createdById: string;
   createdAt: string;
   updatedAt: string;
   item?: { name?: string } | null;
+  store?: { id: string; name?: string } | null;
   student?: {
     id: string;
     admissionNumber?: string | null;
@@ -1097,6 +1099,8 @@ export const fetchStudentCollections = (params?: {
 
 export const createStudentCollectionsBulk = (body: {
   studentId: string;
+  storeId: string;
+  referenceNo?: string;
   notes?: string;
   transactionDate: string;
   items: { itemId: string; qtyOut: number }[];
@@ -1178,6 +1182,7 @@ export const fetchInventoryItems = (params?: {
   uomId?: string;
   page?: number;
   limit?: number;
+  storeId?: string;
 }) => {
   const searchParams = new URLSearchParams();
   Object.entries(params || {}).forEach(([key, value]) => {

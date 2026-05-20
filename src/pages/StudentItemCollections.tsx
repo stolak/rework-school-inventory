@@ -15,6 +15,7 @@ import { useSchoolSessions } from "@/hooks/useSchoolSessions"
 import { useStudents } from "@/hooks/useStudents"
 import { useSubClasses } from "@/hooks/useSubClasses"
 import { useTerms } from "@/hooks/useTerms"
+import { useMyStores } from "@/hooks/useMyStores"
 import { useToast } from "@/hooks/use-toast"
 import {
   AlertDialog,
@@ -43,6 +44,8 @@ export default function StudentItemCollections() {
   const [limit, setLimit] = useState<number>(20)
 
   const [selectedStudentId, setSelectedStudentId] = useState<string>("")
+  const [storeId, setStoreId] = useState<string>("")
+  const [referenceNo, setReferenceNo] = useState<string>("")
   const [transactionDate, setTransactionDate] = useState<string>(
     new Date().toISOString().slice(0, 10)
   )
@@ -62,7 +65,12 @@ export default function StudentItemCollections() {
     limit,
   })
   const { classes } = useClasses()
-  const { items } = useInventory()
+  const { items: storeItems, isLoading: storeItemsLoading } = useInventory({
+    storeId: storeId || undefined,
+    page: 1,
+    limit: 500,
+    enabled: !!storeId,
+  })
   const { sessions } = useSchoolSessions({ status: "Active", page: 1, limit: 500 })
   const { subClasses } = useSubClasses({ page: 1, limit: 500 })
   const { terms } = useTerms({ page: 1, limit: 200, status: "Active" })
@@ -80,6 +88,10 @@ export default function StudentItemCollections() {
     page: 1,
     limit: 500,
   })
+  const { stores: myStores, isLoading: myStoresLoading } = useMyStores({
+    page: 1,
+    limit: 100,
+  })
   const { toast } = useToast()
 
   const filteredSubClasses = selectedClassId
@@ -93,7 +105,7 @@ export default function StudentItemCollections() {
         .map((row) => row.itemId)
         .filter(Boolean)
     )
-    return items
+    return storeItems
       .filter(
         (inventoryItem) =>
           !selectedElsewhere.has(inventoryItem.id) ||
@@ -103,6 +115,11 @@ export default function StudentItemCollections() {
         value: inventoryItem.id,
         label: `${inventoryItem.name} - ${inventoryItem.category?.name} - ${inventoryItem.currentStock}`,
       }))
+  }
+
+  const handleStoreChange = (id: string) => {
+    setStoreId(id)
+    setNewItems([])
   }
 
   const addNewItemRow = () => {
@@ -125,10 +142,9 @@ export default function StudentItemCollections() {
         if (i !== index) return row
         const updated = { ...row, [field]: value } as NewCollectionItem
         if (field === "itemId") {
-          const inventoryItem = items.find(it => it.id === value)
+          const inventoryItem = storeItems.find((it) => it.id === value)
           updated.itemName = inventoryItem?.name
         }
-        console.log(updated)
         return updated
       })
     )
@@ -147,6 +163,15 @@ export default function StudentItemCollections() {
     //   })
     //   return
     // }
+
+    if (!storeId) {
+      toast({
+        title: "Error",
+        description: "Please select a store first",
+        variant: "destructive",
+      })
+      return
+    }
 
     if (!selectedStudentId) {
       toast({
@@ -185,6 +210,8 @@ export default function StudentItemCollections() {
     try {
       await createBulkCollection({
         studentId: selectedStudentId,
+        storeId,
+        referenceNo: referenceNo?.trim() ? referenceNo.trim() : undefined,
         notes: notes?.trim() ? notes.trim() : undefined,
         transactionDate,
         items: validItems.map(it => ({ itemId: it.itemId, qtyOut: it.qtyOut })),
@@ -195,6 +222,7 @@ export default function StudentItemCollections() {
       });
       setNewItems([])
       setNotes("")
+      setReferenceNo("")
     } catch (err) {
       toast({
         title: "Error",
@@ -234,6 +262,7 @@ export default function StudentItemCollections() {
         studentName: row.studentName || "Unknown Student",
         admissionNumber: row.students?.admission_number,
         referenceNo: row.referenceNo,
+        storeName: row.storeName,
         notes: row.notes,
         transactionDate: row.transactionDate,
         rows: [] as StudentCollection[],
@@ -246,14 +275,25 @@ export default function StudentItemCollections() {
     studentName: string
     admissionNumber?: string
     referenceNo: string | null
+    storeName?: string
     notes: string | null
     transactionDate: string
     rows: StudentCollection[]
   }>())
 
+  const selectedStoreForEntry = myStores.find((s) => s.id === storeId)
   const selectedStudentForEntry =
     classStudents.find((s) => s.id === selectedStudentId) ??
     allStudents.find((s) => s.id === selectedStudentId)
+
+  const entryTitleSuffix = [
+    selectedStoreForEntry?.name,
+    selectedStudentForEntry
+      ? `${selectedStudentForEntry.firstName} ${selectedStudentForEntry.lastName}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ")
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -282,9 +322,7 @@ export default function StudentItemCollections() {
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>
                 Record collection batch
-                {selectedStudentForEntry
-                  ? ` — ${selectedStudentForEntry.firstName} ${selectedStudentForEntry.lastName}`
-                  : ""}
+                {entryTitleSuffix ? ` — ${entryTitleSuffix}` : ""}
               </CardTitle>
               {newItems.length > 0 && (
                 <Button onClick={saveBatch} size="sm">
@@ -295,6 +333,27 @@ export default function StudentItemCollections() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div>
+                  <Label>Store (your stores)</Label>
+                  {myStoresLoading ? (
+                    <p className="text-sm text-muted-foreground py-2">Loading stores…</p>
+                  ) : myStores.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-2">
+                      No stores assigned to your account. Ask an admin to grant store access.
+                    </p>
+                  ) : (
+                    <Combobox
+                      value={storeId}
+                      onValueChange={handleStoreChange}
+                      options={myStores.map((s) => ({
+                        value: s.id,
+                        label: `${s.name}${s.isStoreManager ? " (manager)" : ""}`,
+                      }))}
+                      placeholder="Select store..."
+                      searchPlaceholder="Search stores..."
+                    />
+                  )}
+                </div>
                 <div>
                   <Label>Class</Label>
                   <Combobox
@@ -353,6 +412,14 @@ export default function StudentItemCollections() {
                   />
                 </div>
                 <div>
+                  <Label>Reference no. (optional)</Label>
+                  <Input
+                    value={referenceNo}
+                    onChange={(e) => setReferenceNo(e.target.value)}
+                    placeholder="Optional reference..."
+                  />
+                </div>
+                <div>
                   <Label>Transaction Date</Label>
                   <Input
                     type="date"
@@ -370,12 +437,24 @@ export default function StudentItemCollections() {
                 </div>
               </div>
 
-              {newItems.length === 0 ? (
+              {!storeId ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">
+                    Select a store to load items available for distribution.
+                  </p>
+                </div>
+              ) : newItems.length === 0 ? (
                 <div className="text-center py-8 space-y-4">
                   <p className="text-muted-foreground">
-                    Add line items to build a collection batch for the selected student.
+                    {storeItemsLoading
+                      ? "Loading store inventory…"
+                      : "Add line items to build a collection batch for the selected student."}
                   </p>
-                  <Button onClick={addNewItemRow} variant="outline">
+                  <Button
+                    onClick={addNewItemRow}
+                    variant="outline"
+                    disabled={storeItemsLoading}
+                  >
                     <Plus className="mr-2 h-4 w-4" />
                     Add Item
                   </Button>
@@ -393,9 +472,16 @@ export default function StudentItemCollections() {
                           value={row.itemId}
                           onValueChange={(value) => updateNewItem(index, "itemId", value)}
                           options={getItemOptionsForRow(index)}
-                          placeholder="Select item..."
+                          placeholder={
+                            storeItemsLoading ? "Loading items…" : "Select item..."
+                          }
                           searchPlaceholder="Search items..."
-                          emptyText="No items available (already used in this batch)"
+                          emptyText={
+                            storeItemsLoading
+                              ? "Loading items…"
+                              : "No items available (already used in this batch)"
+                          }
+                          disabled={storeItemsLoading}
                         />
                       </div>
                       <div>
@@ -587,6 +673,7 @@ export default function StudentItemCollections() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Student</TableHead>
+                      <TableHead>Store</TableHead>
                       <TableHead>Reference</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Items</TableHead>
@@ -601,6 +688,9 @@ export default function StudentItemCollections() {
                           <Badge variant="secondary" className="text-xs">
                             {batch.admissionNumber || batch.studentId}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="max-w-[140px] truncate">
+                          {batch.storeName ?? "—"}
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">

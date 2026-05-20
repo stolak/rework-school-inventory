@@ -20,6 +20,7 @@ export interface StudentCollection {
   // Populated fields for display
   studentName?: string;
   itemName?: string;
+  storeName?: string;
   createdByName?: string;
 
   /**
@@ -98,6 +99,7 @@ export function useStudentCollections(params?: {
           "Unknown Student"
         : "Unknown Student",
       itemName: collection.item?.name || "Unknown Item",
+      storeName: collection.store?.name,
       createdByName: collection.createdBy
         ? `${collection.createdBy.firstName ?? ""} ${collection.createdBy.lastName ?? ""}`.trim()
         : undefined,
@@ -191,6 +193,8 @@ export function useStudentCollections(params?: {
 
   const createBulkCollection = async (payload: {
     studentId: string;
+    storeId: string;
+    referenceNo?: string;
     notes?: string;
     transactionDate: string;
     items: { itemId: string; qtyOut: number }[];
