@@ -18,6 +18,9 @@ export interface Donation {
   storeName?: string;
   itemName?: string;
   createdByName?: string;
+  isAcknowledged?: boolean;
+  acknowledgedAt?: string | null;
+  acknowledgedByName?: string;
 }
 
 export function useDonations(params?: {
@@ -58,6 +61,12 @@ export function useDonations(params?: {
     itemName: d.item?.name || "Unknown Item",
     createdByName: d.createdBy
       ? `${d.createdBy.firstName ?? ""} ${d.createdBy.lastName ?? ""}`.trim()
+      : undefined,
+    isAcknowledged: Boolean(d.isAcknowledged),
+    acknowledgedAt: d.acknowledgedAt ?? null,
+    acknowledgedByName: d.acknowledgedByUser
+      ? `${d.acknowledgedByUser.firstName ?? ""} ${d.acknowledgedByUser.lastName ?? ""}`.trim() ||
+        d.acknowledgedByUser.email
       : undefined,
   }));
 
@@ -102,12 +111,37 @@ export function useDonations(params?: {
 
   const deleteDonation = async (id: string) => deleteMutation.mutateAsync(id);
 
+  const acknowledgeMutation = useMutation({
+    mutationFn: donationsApi.acknowledgeReceive,
+    onSuccess: (res: any) => {
+      queryClient.invalidateQueries({ queryKey: ["donations"] });
+      toast({
+        title: "Success",
+        description:
+          res?.message || "Inventory receipt acknowledged successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description:
+          error.message || "Failed to acknowledge inventory receipt",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const acknowledgeReceive = async (referenceNo: string) =>
+    acknowledgeMutation.mutateAsync({ referenceNo });
+
   return {
     donations,
     isLoading,
     error,
     createBulkDonations,
     deleteDonation,
+    acknowledgeReceive,
+    isAcknowledging: acknowledgeMutation.isPending,
     pagination: raw?.data?.pagination,
   };
 }

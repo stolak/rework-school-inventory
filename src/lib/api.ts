@@ -788,7 +788,33 @@ export type DonationRow = {
   item?: { name?: string } | null;
   store?: { id: string; name?: string } | null;
   createdBy?: { firstName?: string; lastName?: string } | null;
+  isAcknowledged?: boolean;
+  acknowledgedAt?: string | null;
+  acknowledgedBy?: string | null;
+  acknowledgedByUser?: {
+    id?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  } | null;
 };
+
+export type InventoryReceiveAcknowledgementResult = {
+  referenceNo: string;
+  storeId: string;
+  store?: { id: string; name?: string } | null;
+  acknowledgedAt: string;
+  acknowledgedBy: string;
+  transactionCount: number;
+};
+
+export const createInventoryReceiveAcknowledgement = (body: {
+  referenceNo: string;
+}) =>
+  post<
+    ApiResponse<InventoryReceiveAcknowledgementResult>,
+    typeof body
+  >("/api/v1/inventory-receive-acknowledgements", body);
 
 export const fetchDonations = (params?: {
   page?: number;
@@ -833,10 +859,15 @@ export const createDonationsBulk = (body: {
 export const deleteDonation = (id: string) =>
   del<ApiResponse<unknown>>(`/api/v1/donations/${id}`);
 
+export const inventoryReceiveAcknowledgementsApi = {
+  create: createInventoryReceiveAcknowledgement,
+};
+
 export const donationsApi = {
   list: fetchDonations,
   bulkCreate: createDonationsBulk,
   remove: deleteDonation,
+  acknowledgeReceive: createInventoryReceiveAcknowledgement,
 };
 
 // Projects

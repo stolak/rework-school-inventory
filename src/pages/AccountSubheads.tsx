@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
-import { Plus, Search, Edit, Trash2, ListTree } from "lucide-react";
+import { Plus, Search, Edit, Trash2, ListTree, Landmark } from "lucide-react";
+import { Navigate, useSearchParams } from "react-router-dom";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AccountChartSetupSection } from "@/pages/AccountChartSetup";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,7 +38,7 @@ import {
 /** Combobox value that loads all subheads (no `headId` query param). */
 const ALL_HEADS_VALUE = "__all__";
 
-export default function AccountSubheads() {
+export function AccountSubheadsSection() {
   const { data: accountHeads = [], isLoading: headsLoading, isError: headsError } =
     useAccountHeads();
   const [selectedHeadIdStr, setSelectedHeadIdStr] = useState<string>(ALL_HEADS_VALUE);
@@ -163,17 +166,11 @@ export default function AccountSubheads() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <ListTree className="h-8 w-8" />
-            Account subheads
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Manage subheads under each account head
-          </p>
-        </div>
+        <p className="text-sm text-muted-foreground max-w-xl">
+          Manage subheads under each account head (code, rank, payment method).
+        </p>
         <Button
           onClick={handleAdd}
           disabled={!canAddSubhead}
@@ -367,6 +364,62 @@ export default function AccountSubheads() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+export default function AccountSetup() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get("tab") === "charts" ? "charts" : "subheads";
+
+  const handleTabChange = (value: string) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value === "subheads") {
+          next.delete("tab");
+        } else {
+          next.set("tab", value);
+        }
+        return next;
+      },
+      { replace: true }
+    );
+  };
+
+  return (
+    <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+      <div>
+        <h1 className="text-3xl font-bold flex items-center gap-2">
+          <ListTree className="h-8 w-8" />
+          Account setup
+        </h1>
+        <p className="text-muted-foreground mt-1 max-w-3xl">
+          Configure account subheads and ledger chart accounts for billing and
+          reporting.
+        </p>
+      </div>
+
+      <Tabs value={tab} onValueChange={handleTabChange} className="space-y-4">
+        <TabsList className="grid w-full max-w-md grid-cols-2 sm:w-auto sm:inline-flex">
+          <TabsTrigger value="subheads" className="gap-2">
+            <ListTree className="h-4 w-4" />
+            Subheads
+          </TabsTrigger>
+          <TabsTrigger value="charts" className="gap-2">
+            <Landmark className="h-4 w-4" />
+            Chart accounts
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="subheads" className="mt-6">
+          <AccountSubheadsSection />
+        </TabsContent>
+
+        <TabsContent value="charts" className="mt-6">
+          <AccountChartSetupSection />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

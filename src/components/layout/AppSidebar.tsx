@@ -72,7 +72,6 @@ const sidebarNavSections: SidebarNavSection[] = [
     sectionIcon: LayoutDashboard,
     items: [
       { title: "Dashboard", url: "/", icon: Home },
-      { title: "Inventory", url: "/inventory", icon: Package },
       { title: "Purchases", url: "/purchases", icon: ShoppingCart },
       { title: "Donations", url: "/donations", icon: Gift },
       { title: "Project disbursement", url: "/project-disbursement", icon: PackageMinus },
@@ -123,9 +122,7 @@ const sidebarNavSections: SidebarNavSection[] = [
     tooltip: "Accounting",
     sectionIcon: Landmark,
     items: [
-      { title: "Account subheads", url: "/account-subheads", icon: ListTree },
-      { title: "Default settings", url: "/default-settings", icon: SlidersHorizontal },
-      { title: "Account chart setup", url: "/account-chart-setup", icon: Landmark },
+      { title: "Account setup", url: "/account-subheads", icon: ListTree },
       { title: "Billing & discounts", url: "/billing-items", icon: Receipt },
       { title: "Student billing", url: "/student-billing", icon: Banknote },
       { title: "Class default billing", url: "/class-default-billings", icon: Layers },
@@ -135,6 +132,15 @@ const sidebarNavSections: SidebarNavSection[] = [
         url: "/student-journal-transfers",
         icon: ArrowLeftRight,
       },
+    ],
+  },
+  {
+    title: "Setup",
+    tooltip: "Setup",
+    sectionIcon: LayoutDashboard,
+    items: [
+      { title: "Inventory", url: "/inventory", icon: Package },
+      { title: "Default account settings", url: "/default-account-settings", icon: Landmark },
     ],
   },
 ]

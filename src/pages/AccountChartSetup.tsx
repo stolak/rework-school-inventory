@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Navigate } from "react-router-dom";
 import { Plus, Search, Edit, Trash2, Landmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,7 +48,7 @@ function parseId(s: string): number | undefined {
   return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
-export default function AccountChartSetup() {
+export function AccountChartSetupSection() {
   const { data: groups = [], isLoading: groupsLoading } = useAccountGroups();
 
   const [groupStr, setGroupStr] = useState<string>(ANY_VALUE);
@@ -254,17 +255,12 @@ export default function AccountChartSetup() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Landmark className="h-8 w-8" />
-            Account chart setup
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Define ledger accounts linked to account subheads
-          </p>
-        </div>
+        <p className="text-sm text-muted-foreground max-w-xl">
+          Define ledger accounts (account numbers and descriptions) linked to
+          subheads.
+        </p>
         <Button onClick={handleAdd} className="shrink-0">
           <Plus className="mr-2 h-4 w-4" />
           Add account
@@ -449,4 +445,9 @@ export default function AccountChartSetup() {
       </AlertDialog>
     </div>
   );
+}
+
+/** Legacy route: chart setup lives on the Account setup page. */
+export default function AccountChartSetup() {
+  return <Navigate to="/account-subheads?tab=charts" replace />;
 }

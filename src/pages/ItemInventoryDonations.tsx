@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { Plus, Save, Trash2, Gift, FileBarChart } from "lucide-react"
+import { Plus, Save, Trash2, Gift, FileBarChart, CheckCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Combobox } from "@/components/ui/combobox"
@@ -24,6 +24,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 interface NewDonationItem {
   itemId: string
@@ -60,6 +67,15 @@ export default function ItemInventoryDonations() {
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [donationToDelete, setDonationToDelete] = useState<string | null>(null)
+  const [acknowledgeDialogOpen, setAcknowledgeDialogOpen] = useState(false)
+  const [referenceToAcknowledge, setReferenceToAcknowledge] = useState<string | null>(
+    null
+  )
+  const [notesDialogOpen, setNotesDialogOpen] = useState(false)
+  const [notesDialogBatch, setNotesDialogBatch] = useState<{
+    referenceNo: string | null
+    notes: string
+  } | null>(null)
 
   const { items } = useInventory()
   const { sessions } = useSchoolSessions({ status: "Active", page: 1, limit: 500 })
@@ -67,7 +83,14 @@ export default function ItemInventoryDonations() {
   const { stores: activeStores } = useStores({ status: "Active", page: 1, limit: 100 })
   const { toast } = useToast()
 
-  const { donations, createBulkDonations, deleteDonation, isLoading } = useDonations({
+  const {
+    donations,
+    createBulkDonations,
+    deleteDonation,
+    acknowledgeReceive,
+    isAcknowledging,
+    isLoading,
+  } = useDonations({
     itemId: filterItemId || undefined,
     storeId: filterStoreId || undefined,
     sessionId: selectedSessionId || undefined,
@@ -175,6 +198,41 @@ export default function ItemInventoryDonations() {
     }
   }
 
+  const handleAcknowledgeClick = (referenceNo: string | null) => {
+    if (!referenceNo?.trim()) {
+      toast({
+        title: "Error",
+        description: "This batch has no reference number to acknowledge.",
+        variant: "destructive",
+      })
+      return
+    }
+    setReferenceToAcknowledge(referenceNo.trim())
+    setAcknowledgeDialogOpen(true)
+  }
+
+  const openNotesDialog = (batch: {
+    referenceNo: string | null
+    notes: string | null
+  }) => {
+    const text = batch.notes?.trim()
+    if (!text) return
+    setNotesDialogBatch({ referenceNo: batch.referenceNo, notes: text })
+    setNotesDialogOpen(true)
+  }
+
+  const confirmAcknowledge = async () => {
+    if (!referenceToAcknowledge) return
+    try {
+      await acknowledgeReceive(referenceToAcknowledge)
+      setReferenceToAcknowledge(null)
+      setAcknowledgeDialogOpen(false)
+    } catch {
+      setReferenceToAcknowledge(null)
+      setAcknowledgeDialogOpen(false)
+    }
+  }
+
   const groupedBatches = donations.reduce((acc, row) => {
     const ref = row.referenceNo ?? row.id
     const key = ref
@@ -186,10 +244,17 @@ export default function ItemInventoryDonations() {
         transactionDate: row.transactionDate,
         createdByName: row.createdByName,
         storeName: row.storeName,
+        isAcknowledged: Boolean(row.isAcknowledged),
+        acknowledgedAt: row.acknowledgedAt ?? null,
+        acknowledgedByName: row.acknowledgedByName,
         rows: [] as Donation[],
       })
     }
-    acc.get(key)!.rows.push(row)
+    const batch = acc.get(key)!
+    batch.rows.push(row)
+    if (!row.isAcknowledged) {
+      batch.isAcknowledged = false
+    }
     return acc
   }, new Map<string, {
     referenceNo: string | null
@@ -197,6 +262,9 @@ export default function ItemInventoryDonations() {
     transactionDate: string
     createdByName?: string
     storeName?: string
+    isAcknowledged: boolean
+    acknowledgedAt: string | null
+    acknowledgedByName?: string
     rows: Donation[]
   }>())
 
@@ -498,7 +566,7 @@ export default function ItemInventoryDonations() {
                       <TableHead>Items</TableHead>
                       <TableHead>Notes</TableHead>
                       <TableHead>Recorded By</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableHead className="text-right">Acknowledge</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -520,35 +588,99 @@ export default function ItemInventoryDonations() {
                             {batch.rows.map((r) => (
                               <div
                                 key={r.id}
-                                className="flex items-center justify-between gap-3"
+                                className="flex items-center gap-2 min-w-0"
                               >
-                                <span className="text-sm">{r.itemName}</span>
+                                <span className="text-sm flex-1 min-w-0 truncate">
+                                  {r.itemName}
+                                </span>
                                 <Badge variant="outline" className="shrink-0">
                                   {r.qtyIn} in
                                 </Badge>
+                                {r.isAcknowledged ? (
+                                  <></>
+                                ) : (
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    title="Delete this item"
+                                    onClick={() => handleDelete(r.id)}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                                
                               </div>
                             ))}
                           </div>
                         </TableCell>
-                        <TableCell className="max-w-[240px] truncate">
-                          {batch.notes || "—"}
+                        <TableCell className="max-w-[240px]">
+                          {batch.notes?.trim() ? (
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span
+                                className="text-sm truncate flex-1 min-w-0"
+                                title={batch.notes}
+                              >
+                                {batch.notes}
+                              </span>
+                              <Button
+                                type="button"
+                                variant="link"
+                                size="sm"
+                                className="h-auto p-0 shrink-0 text-xs"
+                                onClick={() => openNotesDialog(batch)}
+                              >
+                                View full
+                              </Button>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {batch.createdByName || "—"}
                         </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-2">
-                            {batch.rows.map((r) => (
-                              <Button
-                                key={r.id}
-                                onClick={() => handleDelete(r.id)}
-                                size="sm"
-                                variant="destructive"
+                        <TableCell className="text-right align-top">
+                          {batch.isAcknowledged ? (
+                            <div className="space-y-1 flex flex-col items-end">
+                              <Badge
+                                variant="secondary"
+                                className="bg-success/10 text-success shrink-0"
                               >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            ))}
-                          </div>
+                                Acknowledged
+                              </Badge>
+                              {batch.acknowledgedAt && (
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(batch.acknowledgedAt).toLocaleString()}
+                                </p>
+                              )}
+                              {batch.acknowledgedByName && (
+                                <p className="text-xs text-muted-foreground max-w-[140px] truncate">
+                                  {batch.acknowledgedByName}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="shrink-0"
+                              disabled={
+                                !batch.referenceNo ||
+                                (isAcknowledging &&
+                                  referenceToAcknowledge === batch.referenceNo)
+                              }
+                              onClick={() => handleAcknowledgeClick(batch.referenceNo)}
+                            >
+                              <CheckCheck className="mr-2 h-4 w-4" />
+                              {isAcknowledging &&
+                              referenceToAcknowledge === batch.referenceNo
+                                ? "Acknowledging…"
+                                : "Acknowledge receipt"}
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -571,6 +703,46 @@ export default function ItemInventoryDonations() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Donation notes</DialogTitle>
+            {notesDialogBatch?.referenceNo && (
+              <DialogDescription>
+                Reference: {notesDialogBatch.referenceNo}
+              </DialogDescription>
+            )}
+          </DialogHeader>
+          <p className="text-sm whitespace-pre-wrap break-words">
+            {notesDialogBatch?.notes ?? ""}
+          </p>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={acknowledgeDialogOpen} onOpenChange={setAcknowledgeDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Acknowledge receipt?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will acknowledge all donation lines for reference{" "}
+              <span className="font-medium text-foreground">
+                {referenceToAcknowledge ?? "—"}
+              </span>{" "}
+              at the store. Stock receipt will be marked as confirmed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmAcknowledge}
+              disabled={isAcknowledging}
+            >
+              Acknowledge
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
