@@ -1224,17 +1224,17 @@ export type StudentItemsReceivedReportRow = {
 
 export const fetchStudentItemsReceivedReport = (params: {
   classId: string;
-  subclassId: string;
   sessionId: string;
-  termId: string;
+  subclassId?: string;
+  termId?: string;
   itemIds: string[];
 }) => {
   const queryParams = new URLSearchParams({
     classId: params.classId,
-    subclassId: params.subclassId,
     sessionId: params.sessionId,
-    termId: params.termId,
   });
+  if (params.subclassId) queryParams.append("subclassId", params.subclassId);
+  if (params.termId) queryParams.append("termId", params.termId);
   return post<
     ApiResponse<StudentItemsReceivedReportRow[]>,
     { itemIds: string[] }

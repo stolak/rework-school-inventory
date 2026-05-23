@@ -87,7 +87,10 @@ export default function StudentItemsReceivedReport() {
   }, [subClasses, classId]);
 
   const subclassOptions = useMemo(
-    () => filteredSubclasses.map((sc) => ({ value: sc.id, label: sc.name })),
+    () => [
+      { value: "", label: "All subclasses" },
+      ...filteredSubclasses.map((sc) => ({ value: sc.id, label: sc.name })),
+    ],
     [filteredSubclasses]
   );
 
@@ -97,7 +100,10 @@ export default function StudentItemsReceivedReport() {
   );
 
   const termOptions = useMemo(
-    () => terms.map((t) => ({ value: t.id, label: t.name })),
+    () => [
+      { value: "", label: "All terms" },
+      ...terms.map((t) => ({ value: t.id, label: t.name })),
+    ],
     [terms]
   );
 
@@ -114,9 +120,7 @@ export default function StudentItemsReceivedReport() {
 
   const filtersReady =
     Boolean(sessionId) &&
-    Boolean(termId) &&
     Boolean(classId) &&
-    Boolean(subclassId) &&
     selectedItemIds.length > 0;
 
   const reportParams = useMemo(
@@ -124,10 +128,10 @@ export default function StudentItemsReceivedReport() {
       filtersReady
         ? {
             classId,
-            subclassId,
             sessionId,
-            termId,
             itemIds: selectedItemIds,
+            ...(subclassId ? { subclassId } : {}),
+            ...(termId ? { termId } : {}),
           }
         : null,
     [filtersReady, classId, subclassId, sessionId, termId, selectedItemIds]
@@ -201,10 +205,13 @@ export default function StudentItemsReceivedReport() {
 
   const filterSummary = useMemo(() => {
     const sessionLabel = sessions.find((s) => s.id === sessionId)?.name ?? "—";
-    const termLabel = terms.find((t) => t.id === termId)?.name ?? "—";
+    const termLabel = termId
+      ? terms.find((t) => t.id === termId)?.name ?? "—"
+      : "All terms";
     const classLabel = classes.find((c) => c.id === classId)?.name ?? "—";
-    const subclassLabel =
-      subClasses.find((sc) => sc.id === subclassId)?.name ?? "—";
+    const subclassLabel = subclassId
+      ? subClasses.find((sc) => sc.id === subclassId)?.name ?? "—"
+      : "All subclasses";
     return { sessionLabel, termLabel, classLabel, subclassLabel };
   }, [
     sessionId,
@@ -222,7 +229,7 @@ export default function StudentItemsReceivedReport() {
       toast({
         title: "Missing filters",
         description:
-          "Select session, term, class, subclass, and at least one item.",
+          "Select session, class, and at least one item.",
         variant: "destructive",
       });
       return;
@@ -279,8 +286,8 @@ export default function StudentItemsReceivedReport() {
           </h1>
           <p className="text-muted-foreground mt-1 max-w-3xl">
             Matrix report: students in rows, selected items as columns, showing
-            quantity received per student for the chosen class, subclass,
-            session, and term.
+            quantity received per student for the chosen class, session, and
+            items. Term and subclass can be narrowed or left as All.
           </p>
         </div>
         {hasSearched && filtersReady && (
@@ -299,8 +306,9 @@ export default function StudentItemsReceivedReport() {
         <CardHeader>
           <CardTitle>Filters</CardTitle>
           <CardDescription>
-            Session and term default from the configured default billing period
-            when available. Class, subclass, and items are required.
+            Session defaults from the configured default billing period when
+            available. Term and subclass are optional (use All to include every
+            term or subclass). Class and items are required.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -316,12 +324,12 @@ export default function StudentItemsReceivedReport() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Term</Label>
+              <Label>Term (optional)</Label>
               <Combobox
                 options={termOptions}
                 value={termId}
                 onValueChange={setTermId}
-                placeholder="Select term…"
+                placeholder="All terms"
                 searchPlaceholder="Search terms…"
               />
             </div>
@@ -339,13 +347,13 @@ export default function StudentItemsReceivedReport() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Subclass</Label>
+              <Label>Subclass (optional)</Label>
               <Combobox
                 options={subclassOptions}
                 value={subclassId}
                 onValueChange={setSubclassId}
                 placeholder={
-                  classId ? "Select subclass…" : "Select class first"
+                  classId ? "All subclasses" : "Select class first"
                 }
                 searchPlaceholder="Search subclasses…"
                 disabled={!classId}
