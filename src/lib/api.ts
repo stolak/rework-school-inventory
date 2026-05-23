@@ -1203,10 +1203,52 @@ export const updateStudentCollection = (
 export const deleteStudentCollection = (id: string) =>
   del<ApiResponse<unknown>>(`/api/v1/student-collections/${id}`);
 
+export type StudentItemsReceivedReportStudentInfo = {
+  id: string;
+  firstName: string;
+  middleName?: string | null;
+  lastName: string;
+  admissionNumber: string;
+};
+
+export type StudentItemsReceivedReportItemCell = {
+  itemId: string;
+  itemName: string;
+  qtyReceived: number;
+};
+
+export type StudentItemsReceivedReportRow = {
+  studentInfo: StudentItemsReceivedReportStudentInfo;
+  items: StudentItemsReceivedReportItemCell[];
+};
+
+export const fetchStudentItemsReceivedReport = (params: {
+  classId: string;
+  subclassId: string;
+  sessionId: string;
+  termId: string;
+  itemIds: string[];
+}) => {
+  const queryParams = new URLSearchParams({
+    classId: params.classId,
+    subclassId: params.subclassId,
+    sessionId: params.sessionId,
+    termId: params.termId,
+  });
+  return post<
+    ApiResponse<StudentItemsReceivedReportRow[]>,
+    { itemIds: string[] }
+  >(
+    `/api/v1/student-collections/report/items-received?${queryParams.toString()}`,
+    { itemIds: params.itemIds }
+  );
+};
+
 export const studentCollectionsApi = {
   list: fetchStudentCollections,
   bulkCreate: createStudentCollectionsBulk,
   summary: fetchStudentCollectionsSummary,
+  itemsReceivedReport: fetchStudentItemsReceivedReport,
   update: updateStudentCollection,
   remove: deleteStudentCollection,
 };

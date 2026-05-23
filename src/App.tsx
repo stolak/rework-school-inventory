@@ -37,6 +37,7 @@ import StoreSetup from "./pages/StoreSetup";
 import FacilityUnitSetup from "./pages/FacilityUnitSetup";
 import StoreItemTransfer from "./pages/StoreItemTransfer";
 import StudentInventoryReport from "./pages/StudentInventoryReport";
+import StudentItemsReceivedReport from "./pages/StudentItemsReceivedReport";
 import InventoryCollectionsReport from "./pages/InventoryCollectionsReport";
 import ItemBalanceReport from "./pages/ItemBalanceReport";
 import ItemTransactionLogReport from "./pages/ItemTransactionLogReport";
@@ -105,6 +106,10 @@ const AppContent = () => {
           <Route path="/facility-unit-setup" element={<FacilityUnitSetup />} />
           <Route path="/store-transfers" element={<StoreItemTransfer />} />
           <Route path="/reports/student-inventory" element={<StudentInventoryReport />} />
+          <Route
+            path="/reports/student-items-received"
+            element={<StudentItemsReceivedReport />}
+          />
           <Route path="/reports/inventory-collections" element={<InventoryCollectionsReport />} />
           <Route path="/reports/item-balances" element={<ItemBalanceReport />} />
           <Route path="/reports/item-transaction-log" element={<ItemTransactionLogReport />} />

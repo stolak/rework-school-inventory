@@ -102,6 +102,11 @@ const sidebarNavSections: SidebarNavSection[] = [
     sectionIcon: PieChart,
     items: [
       { title: "Student collections summary", url: "/reports/student-inventory", icon: FileBarChart },
+      {
+        title: "Student items received",
+        url: "/reports/student-items-received",
+        icon: FileBarChart,
+      },
       { title: "Inventory Collections Report", url: "/reports/inventory-collections", icon: BarChart },
       { title: "Item balance report", url: "/reports/item-balances", icon: Scale },
       { title: "Item transaction log", url: "/reports/item-transaction-log", icon: History },
