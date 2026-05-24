@@ -174,6 +174,7 @@ export default function StudentItemsReceivedReport() {
     });
   }, [reportRows, selectedItemIds, items]);
 
+  
   const qtyByStudentAndItem = useMemo(() => {
     const map = new Map<string, Map<string, number>>();
     for (const row of reportRows) {
@@ -185,8 +186,8 @@ export default function StudentItemsReceivedReport() {
     }
     return map;
   }, [reportRows]);
-
-  const columnTotals = useMemo(() => {
+  /** Per-item column totals and grand total across all students and items. */
+  const { itemTotals, totalAllItems } = useMemo(() => {
     const totals = new Map<string, number>();
     for (const col of itemColumns) {
       totals.set(col.id, 0);
@@ -200,7 +201,11 @@ export default function StudentItemsReceivedReport() {
         );
       }
     }
-    return totals;
+    let grand = 0;
+    for (const sum of totals.values()) {
+      grand += sum;
+    }
+    return { itemTotals: totals, totalAllItems: grand };
   }, [reportRows, itemColumns, qtyByStudentAndItem]);
 
   const filterSummary = useMemo(() => {
@@ -259,7 +264,7 @@ export default function StudentItemsReceivedReport() {
     });
     const totalLine = [
       '"Total"',
-      ...itemColumns.map((col) => String(columnTotals.get(col.id) ?? 0)),
+      ...itemColumns.map((col) => String(itemTotals.get(col.id) ?? 0)),
     ].join(",");
     const csv = [headers.map((h) => `"${h}"`).join(","), ...lines, totalLine].join(
       "\n"
@@ -511,7 +516,7 @@ export default function StudentItemsReceivedReport() {
                           key={col.id}
                           className="text-center tabular-nums"
                         >
-                          {columnTotals.get(col.id) ?? 0}
+                          {itemTotals.get(col.id) ?? 0}
                         </TableCell>
                       ))}
                     </TableRow>
@@ -521,9 +526,10 @@ export default function StudentItemsReceivedReport() {
             )}
             {reportRows.length > 0 && (
               <p className="text-sm text-muted-foreground mt-3 print:hidden">
-                {reportRows.length} student
-                {reportRows.length !== 1 ? "s" : ""} · {itemColumns.length}{" "}
-                item{itemColumns.length !== 1 ? "s" : ""}
+                {reportRows.length} student{reportRows.length > 1 ? "s" : ""} · {" "}
+                
+                 {totalAllItems}  item{totalAllItems > 1 ? "s" : ""} {" "}
+                distributed
               </p>
             )}
           </CardContent>
