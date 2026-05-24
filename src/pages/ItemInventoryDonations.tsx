@@ -14,6 +14,7 @@ import { useSchoolSessions } from "@/hooks/useSchoolSessions"
 import { useTerms } from "@/hooks/useTerms"
 import { useStores } from "@/hooks/useStores"
 import { useToast } from "@/hooks/use-toast"
+import { TablePaginationBar } from "@/components/ui/table-pagination-bar"
 import {
   AlertDialog,
   AlertDialogAction,

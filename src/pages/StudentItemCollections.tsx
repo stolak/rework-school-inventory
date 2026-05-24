@@ -18,6 +18,7 @@ import { useTerms } from "@/hooks/useTerms"
 import { useMyStores } from "@/hooks/useMyStores"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { TablePaginationBar } from "@/components/ui/table-pagination-bar"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,7 +43,7 @@ export default function StudentItemCollections() {
   const [selectedSessionId, setSelectedSessionId] = useState<string>("")
   const [selectedTermId, setSelectedTermId] = useState<string>("")
   const [page, setPage] = useState<number>(1)
-  const [limit, setLimit] = useState<number>(20)
+  const [limit, setLimit] = useState<number>(10)
 
   const [selectedStudentId, setSelectedStudentId] = useState<string>("")
   const [storeId, setStoreId] = useState<string>("")
@@ -56,7 +57,7 @@ export default function StudentItemCollections() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [collectionToDelete, setCollectionToDelete] = useState<string | null>(null)
 
-  const { collections, createBulkCollection, deleteCollection, isLoading } = useStudentCollections({
+  const { collections, pagination, createBulkCollection, deleteCollection, isLoading } = useStudentCollections({
     studentId: filterStudentId || undefined,
     classId: selectedClassId || undefined,
     subclassId: selectedSubClassId || undefined,
@@ -704,17 +705,20 @@ export default function StudentItemCollections() {
 
 
           {/* Existing Collections */}
-          <Card>
+          <Card className="overflow-hidden">
             <CardHeader>
-              <CardTitle>Current Collections ({collections.length})</CardTitle>
+              <CardTitle>
+                Current Collections
+                {pagination ? ` (${pagination.total})` : ` (${collections.length})`}
+              </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               {isLoading ? (
-                <div className="flex justify-center items-center py-10">
+                <div className="flex justify-center items-center py-10 px-6">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
               ) : collections.length === 0 ? (
-                <div className="text-center py-8">
+                <div className="text-center py-8 px-6">
                   <Users className="mx-auto h-12 w-12 text-muted-foreground" />
                   <h3 className="mt-4 text-lg font-semibold">No collections found</h3>
                   <p className="text-muted-foreground">
@@ -722,6 +726,7 @@ export default function StudentItemCollections() {
                   </p>
                 </div>
               ) : (
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -789,6 +794,19 @@ export default function StudentItemCollections() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
+              )}
+              {pagination && !isLoading && (
+                <TablePaginationBar
+                  pagination={pagination}
+                  totalLabel="Total collections"
+                  pageSize={limit}
+                  onPageChange={setPage}
+                  onPageSizeChange={(nextLimit) => {
+                    setLimit(nextLimit)
+                    setPage(1)
+                  }}
+                />
               )}
             </CardContent>
           </Card>

@@ -20,13 +20,7 @@ import {
   groupedPurchaseTotalCost,
   groupedPurchaseTotalQty,
 } from "@/hooks/usePurchases"
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination"
+import { TablePaginationBar } from "@/components/ui/table-pagination-bar"
 import { useToast } from "@/hooks/use-toast"
 import {
   AlertDialog,
@@ -62,10 +56,11 @@ export default function Purchases() {
   const [groupToDelete, setGroupToDelete] = useState<GroupedPurchase | null>(null)
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid")
   const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(10)
 
   useEffect(() => {
     setPage(1)
-  }, [supplierId, storeId, startDate, endDate])
+  }, [supplierId, storeId, startDate, endDate, limit])
 
   const listQuery = useMemo(
     () => ({
@@ -74,9 +69,9 @@ export default function Purchases() {
       transactionDateFrom: startDate ? format(startDate, "yyyy-MM-dd") : undefined,
       transactionDateTo: endDate ? format(endDate, "yyyy-MM-dd") : undefined,
       page,
-      limit: 20,
+      limit,
     }),
-    [supplierId, storeId, startDate, endDate, page]
+    [supplierId, storeId, startDate, endDate, page, limit]
   )
 
   const { items: inventoryItems } = useInventory({ page: 1, limit: 100 })
@@ -198,11 +193,6 @@ export default function Purchases() {
   )
   const completedOrders = filteredGroups.filter((g) => g.status === "completed").length
   const pendingOrders = filteredGroups.filter((g) => g.status === "pending").length
-
-  const canPrevPage = pagination ? pagination.page > 1 : page > 1
-  const canNextPage = pagination
-    ? pagination.page < pagination.totalPages
-    : false
 
   return (
     <div className="p-6 space-y-6">
@@ -469,7 +459,8 @@ export default function Purchases() {
           ))}
         </div>
       ) : (
-        <div className="rounded-md border bg-background overflow-x-auto">
+        <div className="rounded-md border bg-background overflow-hidden">
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -542,40 +533,21 @@ export default function Purchases() {
               ))}
             </TableBody>
           </Table>
+          </div>
+          {!isLoading && pagination && (
+            <TablePaginationBar
+              pagination={pagination}
+              totalLabel="Total purchase orders"
+              pageSize={limit}
+              onPageChange={setPage}
+              onPageSizeChange={(nextLimit) => {
+                setLimit(nextLimit)
+                setPage(1)
+              }}
+            />
+          )}
         </div>
       )}
-
-      {!isLoading && pagination && pagination.totalPages > 1 ? (
-        <Pagination className="justify-end">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault()
-                  if (canPrevPage) setPage((p) => Math.max(1, p - 1))
-                }}
-                className={!canPrevPage ? "pointer-events-none opacity-50" : undefined}
-              />
-            </PaginationItem>
-            <PaginationItem>
-              <span className="px-3 text-sm text-muted-foreground">
-                Page {pagination.page} of {pagination.totalPages}
-              </span>
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationNext
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault()
-                  if (canNextPage) setPage((p) => p + 1)
-                }}
-                className={!canNextPage ? "pointer-events-none opacity-50" : undefined}
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      ) : null}
 
       {!isLoading && filteredGroups.length === 0 && (
         <div className="text-center py-10">

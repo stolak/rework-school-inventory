@@ -27,6 +27,7 @@ import { useMyStores } from "@/hooks/useMyStores"
 import { useStores } from "@/hooks/useStores"
 import { useStoreTransfers, type StoreTransferRowView } from "@/hooks/useStoreTransfers"
 import { useToast } from "@/hooks/use-toast"
+import { TablePaginationBar } from "@/components/ui/table-pagination-bar"
 import { cn } from "@/lib/utils"
 
 interface LineItem {
@@ -52,7 +53,7 @@ export default function StoreItemTransfer() {
   const [transactionDateFrom, setTransactionDateFrom] = useState(defaultFrom)
   const [transactionDateTo, setTransactionDateTo] = useState(defaultTo)
   const [page, setPage] = useState(1)
-  const [limit, setLimit] = useState(20)
+  const [limit, setLimit] = useState(10)
 
   const [sourceStoreId, setSourceStoreId] = useState("")
   const [destStoreId, setDestStoreId] = useState("")
@@ -80,7 +81,7 @@ export default function StoreItemTransfer() {
   })
   const { toast } = useToast()
 
-  const { transfers, createTransfer, isCreating, isLoading } = useStoreTransfers({
+  const { transfers, pagination, createTransfer, isCreating, isLoading } = useStoreTransfers({
     itemId: filterItemId || undefined,
     sourceStoreId: filterSourceId || undefined,
     destStoreId: filterDestId || undefined,
@@ -597,45 +598,24 @@ export default function StoreItemTransfer() {
                     }}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label>Page</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={page}
-                      onChange={(e) =>
-                        setPage(Math.max(1, parseInt(e.target.value, 10) || 1))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label>Limit</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={limit}
-                      onChange={(e) =>
-                        setLimit(Math.max(1, parseInt(e.target.value, 10) || 20))
-                      }
-                    />
-                  </div>
-                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="overflow-hidden">
             <CardHeader>
-              <CardTitle>Transfer history ({transfers.length})</CardTitle>
+              <CardTitle>
+                Transfer history
+                {pagination ? ` (${pagination.total})` : ` (${transfers.length})`}
+              </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               {isLoading ? (
-                <div className="flex justify-center py-12">
+                <div className="flex justify-center py-12 px-6">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                 </div>
               ) : transfers.length === 0 ? (
-                <div className="text-center py-8">
+                <div className="text-center py-8 px-6">
                   <ArrowLeftRight className="mx-auto h-12 w-12 text-muted-foreground" />
                   <h3 className="mt-4 text-lg font-semibold">No transfers found</h3>
                   <p className="text-muted-foreground">
@@ -643,7 +623,7 @@ export default function StoreItemTransfer() {
                   </p>
                 </div>
               ) : (
-                <div className="rounded-md border overflow-x-auto">
+                <div className="overflow-x-auto border-b">
                   <Table>
                     <TableHeader>
                       <TableRow>

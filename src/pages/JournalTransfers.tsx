@@ -24,13 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { TablePaginationBar } from "@/components/ui/table-pagination-bar";
 import {
   Dialog,
   DialogContent,
@@ -270,24 +264,19 @@ export default function JournalTransfers() {
   }, [grouped, historySearch]);
 
   const [selectedReferenceNo, setSelectedReferenceNo] = useState<string>("");
-  const [detailsPageStr, setDetailsPageStr] = useState("1");
-  const detailsPage = Math.max(1, parseInt(detailsPageStr || "1", 10) || 1);
+  const [detailsPage, setDetailsPage] = useState(1);
+  const [detailsLimit, setDetailsLimit] = useState(10);
 
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   const detailsQuery = useTempJournalTransfersList({
     referenceNo: selectedReferenceNo || undefined,
     page: detailsPage,
-    limit: 100,
+    limit: detailsLimit,
   });
 
   const detailRows = detailsQuery.data?.tempJournalTransfers ?? [];
   const detailsPagination = detailsQuery.data?.pagination ?? null;
-  const detailsCanPrev = detailsPagination ? detailsPagination.page > 1 : detailsPage > 1;
-  const detailsCanNext = detailsPagination
-    ? detailsPagination.page < detailsPagination.totalPages
-    : false;
-
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -637,7 +626,7 @@ export default function JournalTransfers() {
                             variant="outline"
                             onClick={() => {
                               setSelectedReferenceNo(g.referenceNo);
-                              setDetailsPageStr("1");
+                              setDetailsPage(1);
                               setDetailsOpen(true);
                             }}
                           >
@@ -658,7 +647,7 @@ export default function JournalTransfers() {
               setDetailsOpen(open);
               if (!open) {
                 setSelectedReferenceNo("");
-                setDetailsPageStr("1");
+                setDetailsPage(1);
               }
             }}
           >
@@ -679,12 +668,6 @@ export default function JournalTransfers() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <div className="text-sm text-muted-foreground">
-                    {detailsPagination
-                      ? `Page ${detailsPagination.page} of ${detailsPagination.totalPages} • Total ${detailsPagination.total}`
-                      : `Showing ${detailRows.length} rows`}
-                  </div>
-
                   <div className="max-h-[60vh] overflow-auto rounded-md border">
                     <Table>
                       <TableHeader>
@@ -729,31 +712,17 @@ export default function JournalTransfers() {
                     </Table>
                   </div>
 
-                  {detailsPagination && detailsPagination.totalPages > 1 && (
-                    <Pagination>
-                      <PaginationContent>
-                        <PaginationItem>
-                          <PaginationPrevious
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              if (!detailsCanPrev) return;
-                              setDetailsPageStr(String(Math.max(1, detailsPage - 1)));
-                            }}
-                          />
-                        </PaginationItem>
-                        <PaginationItem>
-                          <PaginationNext
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              if (!detailsCanNext) return;
-                              setDetailsPageStr(String(detailsPage + 1));
-                            }}
-                          />
-                        </PaginationItem>
-                      </PaginationContent>
-                    </Pagination>
+                  {detailsPagination && (
+                    <TablePaginationBar
+                      pagination={detailsPagination}
+                      totalLabel="Total entries"
+                      pageSize={detailsLimit}
+                      onPageChange={setDetailsPage}
+                      onPageSizeChange={(limit) => {
+                        setDetailsLimit(limit);
+                        setDetailsPage(1);
+                      }}
+                    />
                   )}
                 </div>
               )}

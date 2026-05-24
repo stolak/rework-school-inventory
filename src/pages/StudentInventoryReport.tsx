@@ -20,6 +20,7 @@ import { useTerms } from "@/hooks/useTerms"
 import { useInventory } from "@/hooks/useInventory"
 import { useToast } from "@/hooks/use-toast"
 import { useQuery } from "@tanstack/react-query"
+import { TablePaginationBar } from "@/components/ui/table-pagination-bar"
 import { studentCollectionsApi, type StudentCollectionRow, type StudentCollectionSummaryRow } from "@/lib/api"
 
 export default function StudentInventoryReport() {
@@ -44,6 +45,8 @@ export default function StudentInventoryReport() {
   const [hasSearched, setHasSearched] = useState(true)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [detailsItemId, setDetailsItemId] = useState<string | null>(null)
+  const [detailsPage, setDetailsPage] = useState(1)
+  const [detailsLimit, setDetailsLimit] = useState(10)
 
   const { classes } = useClasses()
   const { sessions } = useSchoolSessions({ status: "Active", page: 1, limit: 500 })
@@ -97,8 +100,8 @@ export default function StudentInventoryReport() {
     termId: selectedTermId || undefined,
     transactionDateFrom: transactionDateFrom || undefined,
     transactionDateTo: transactionDateTo || undefined,
-    page: 1,
-    limit: 100,
+    page: detailsPage,
+    limit: detailsLimit,
   }), [
     detailsItemId,
     selectedStudentId,
@@ -108,6 +111,8 @@ export default function StudentInventoryReport() {
     selectedTermId,
     transactionDateFrom,
     transactionDateTo,
+    detailsPage,
+    detailsLimit,
   ])
 
   const { data: detailsData, isLoading: isDetailsLoading } = useQuery({
@@ -438,6 +443,7 @@ export default function StudentInventoryReport() {
                             variant="outline"
                             onClick={() => {
                               setDetailsItemId(row.itemId)
+                              setDetailsPage(1)
                               setDetailsOpen(true)
                             }}
                           >
@@ -458,7 +464,10 @@ export default function StudentInventoryReport() {
         open={detailsOpen}
         onOpenChange={(open) => {
           setDetailsOpen(open)
-          if (!open) setDetailsItemId(null)
+          if (!open) {
+            setDetailsItemId(null)
+            setDetailsPage(1)
+          }
         }}
       >
         <DialogContent className="max-w-4xl">
@@ -480,14 +489,6 @@ export default function StudentInventoryReport() {
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-muted-foreground">
-                  {detailsPagination
-                    ? `Page ${detailsPagination.page} of ${detailsPagination.totalPages} • Total ${detailsPagination.total}`
-                    : `Showing ${detailRows.length} rows`}
-                </div>
-              </div>
-
               <div className="max-h-[60vh] overflow-auto rounded-md border">
                 <Table>
                   <TableHeader>
@@ -537,6 +538,18 @@ export default function StudentInventoryReport() {
                   </TableBody>
                 </Table>
               </div>
+              {detailsPagination && (
+                <TablePaginationBar
+                  pagination={detailsPagination}
+                  totalLabel="Total collections"
+                  pageSize={detailsLimit}
+                  onPageChange={setDetailsPage}
+                  onPageSizeChange={(limit) => {
+                    setDetailsLimit(limit)
+                    setDetailsPage(1)
+                  }}
+                />
+              )}
             </div>
           )}
         </DialogContent>

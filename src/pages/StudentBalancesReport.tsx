@@ -23,13 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { TablePaginationBar } from "@/components/ui/table-pagination-bar";
 import {
   accountTransactionsApi,
   type StudentBalanceRow,
@@ -51,11 +45,6 @@ const STUDENT_STATUSES: StudentBalanceStatus[] = [
   "Suspended",
   "Archived",
 ];
-
-function toInt(s: string, fallback: number) {
-  const n = parseInt(s, 10);
-  return Number.isFinite(n) && n > 0 ? n : fallback;
-}
 
 function parseAmount(v: string | number): number {
   const n = typeof v === "number" ? v : parseFloat(String(v).replace(/,/g, ""));
@@ -99,15 +88,12 @@ export default function StudentBalancesReport() {
     : "All classes";
   const [orderBy, setOrderBy] = useState<"classId" | "balance">("classId");
   const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("asc");
-  const [pageStr, setPageStr] = useState("1");
-  const [limitStr, setLimitStr] = useState("20");
-
-  const page = toInt(pageStr, 1);
-  const limit = toInt(limitStr, 20);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
   useEffect(() => {
-    setPageStr("1");
-  }, [asAtDate, classId, status, orderBy, orderDirection, limitStr]);
+    setPage(1);
+  }, [asAtDate, classId, status, orderBy, orderDirection]);
 
   const queryParams = useMemo(() => {
     if (!asAtDate) return null;
@@ -147,11 +133,6 @@ export default function StudentBalancesReport() {
       { sumCredit: 0, sumDebit: 0, balance: 0 }
     );
   }, [rows]);
-
-  const canPrevPage = pagination ? pagination.page > 1 : page > 1;
-  const canNextPage = pagination
-    ? pagination.page < pagination.totalPages
-    : false;
 
   const asAtDisplay = data?.asAtDate
     ? new Date(data.asAtDate).toLocaleString()
@@ -260,19 +241,6 @@ export default function StudentBalancesReport() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label>Per page</Label>
-            <Select value={limitStr} onValueChange={setLimitStr}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="20">20</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-                <SelectItem value="100">100</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </CardContent>
       </Card>
 
@@ -302,7 +270,8 @@ export default function StudentBalancesReport() {
                 No students match these filters.
               </p>
             ) : (
-              <div className="rounded-md border overflow-x-auto">
+              <div className="rounded-md border overflow-hidden">
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -373,45 +342,21 @@ export default function StudentBalancesReport() {
                     </TableRow>
                   </TableBody>
                 </Table>
+                </div>
+                {pagination && (
+                  <TablePaginationBar
+                    pagination={pagination}
+                    totalLabel="Total students"
+                    pageSize={limit}
+                    onPageChange={setPage}
+                    onPageSizeChange={(nextLimit) => {
+                      setLimit(nextLimit);
+                      setPage(1);
+                    }}
+                  />
+                )}
               </div>
             )}
-
-            {pagination && pagination.totalPages > 1 ? (
-              <Pagination className="justify-end">
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (canPrevPage) setPageStr(String(Math.max(1, page - 1)));
-                      }}
-                      className={!canPrevPage ? "pointer-events-none opacity-50" : undefined}
-                    />
-                  </PaginationItem>
-                  <PaginationItem>
-                    <span className="px-3 text-sm text-muted-foreground">
-                      Page {pagination.page} of {pagination.totalPages} · Total{" "}
-                      {pagination.total}
-                    </span>
-                  </PaginationItem>
-                  <PaginationItem>
-                    <PaginationNext
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (canNextPage) setPageStr(String(page + 1));
-                      }}
-                      className={!canNextPage ? "pointer-events-none opacity-50" : undefined}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            ) : pagination ? (
-              <p className="text-sm text-muted-foreground text-right">
-                Page {pagination.page} of {pagination.totalPages} · Total {pagination.total}
-              </p>
-            ) : null}
           </CardContent>
         </Card>
       )}

@@ -15,13 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { TablePaginationBar } from "@/components/ui/table-pagination-bar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -272,8 +266,8 @@ export default function StudentBilling() {
   }, [defaultBillingPeriod, sessions, terms]);
 
   useEffect(() => {
-    setBillingPageStr("1");
-    setDiscountPageStr("1");
+    setBillingPage(1);
+    setDiscountPage(1);
   }, [studentId, classId, subclassId, sessionId, termId]);
 
   const studentOptions = useMemo(
@@ -348,11 +342,10 @@ export default function StudentBilling() {
     return m;
   }, [concessionDiscounts]);
 
-  const [billingPageStr, setBillingPageStr] = useState("1");
-  const billingPage = Math.max(1, parseInt(billingPageStr || "1", 10) || 1);
-  const [discountPageStr, setDiscountPageStr] = useState("1");
-  const discountPage = Math.max(1, parseInt(discountPageStr || "1", 10) || 1);
-  const tableLimit = 100;
+  const [billingPage, setBillingPage] = useState(1);
+  const [billingLimit, setBillingLimit] = useState(10);
+  const [discountPage, setDiscountPage] = useState(1);
+  const [discountLimit, setDiscountLimit] = useState(10);
 
   const [billingSelectedIds, setBillingSelectedIds] = useState<number[]>([]);
   const [discountSelectedIds, setDiscountSelectedIds] = useState<number[]>([]);
@@ -364,11 +357,11 @@ export default function StudentBilling() {
 
   useEffect(() => {
     setBillingSelectedIds([]);
-  }, [billingPageStr]);
+  }, [billingPage]);
 
   useEffect(() => {
     setDiscountSelectedIds([]);
-  }, [discountPageStr]);
+  }, [discountPage]);
 
   const contextComplete =
     Boolean(studentId) &&
@@ -396,13 +389,13 @@ export default function StudentBilling() {
 
   const billingListParams = useMemo(() => {
     if (!listParamsBase) return null;
-    return { ...listParamsBase, page: billingPage, limit: tableLimit };
-  }, [listParamsBase, billingPage]);
+    return { ...listParamsBase, page: billingPage, limit: billingLimit };
+  }, [listParamsBase, billingPage, billingLimit]);
 
   const discountListParams = useMemo(() => {
     if (!listParamsBase) return null;
-    return { ...listParamsBase, page: discountPage, limit: tableLimit };
-  }, [listParamsBase, discountPage]);
+    return { ...listParamsBase, page: discountPage, limit: discountLimit };
+  }, [listParamsBase, discountPage, discountLimit]);
 
   /** Full aggregate for amount due (not limited to current table page). */
   const summaryParams = useMemo(() => {
@@ -743,7 +736,7 @@ export default function StudentBilling() {
       entries,
     });
     setBillingDraftLines([{ id: crypto.randomUUID(), billingId: "", amount: "" }]);
-    setBillingPageStr("1");
+    setBillingPage(1);
   };
 
   const handleBulkPostDiscount = async () => {
@@ -772,7 +765,7 @@ export default function StudentBilling() {
     setDiscountDraftLines([
       { id: crypto.randomUUID(), concessionDiscountId: "", amount: "" },
     ]);
-    setDiscountPageStr("1");
+    setDiscountPage(1);
   };
 
   const [deleteBillingTarget, setDeleteBillingTarget] = useState<StudentBillingRow | null>(null);
@@ -894,16 +887,6 @@ export default function StudentBilling() {
     await bulkPostDiscountLines({ ids });
     setDiscountSelectedIds([]);
   };
-
-  const billingCanPrev = billingPagination ? billingPagination.page > 1 : billingPage > 1;
-  const billingCanNext = billingPagination
-    ? billingPagination.page < billingPagination.totalPages
-    : false;
-
-  const discountCanPrev = discountPagination ? discountPagination.page > 1 : discountPage > 1;
-  const discountCanNext = discountPagination
-    ? discountPagination.page < discountPagination.totalPages
-    : false;
 
   const summaryLoading =
     contextComplete && (billingSummaryQuery.isLoading || discountSummaryQuery.isLoading);
@@ -1259,38 +1242,17 @@ export default function StudentBilling() {
                 </TableBody>
               </Table>
 
-              {billingPagination && billingPagination.totalPages > 1 && (
-                <div className="flex flex-col gap-3 border-t px-4 py-4 sm:flex-row sm:items-center sm:justify-end bg-muted/30">
-                  <Pagination>
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious
-                          href="#"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            if (!billingCanPrev) return;
-                            setBillingPageStr(String(Math.max(1, billingPage - 1)));
-                          }}
-                        />
-                      </PaginationItem>
-                      <PaginationItem>
-                        <span className="px-3 text-sm text-muted-foreground">
-                          Page {billingPagination.page} of {billingPagination.totalPages}
-                        </span>
-                      </PaginationItem>
-                      <PaginationItem>
-                        <PaginationNext
-                          href="#"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            if (!billingCanNext) return;
-                            setBillingPageStr(String(billingPage + 1));
-                          }}
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
-                </div>
+              {billingPagination && (
+                <TablePaginationBar
+                  pagination={billingPagination}
+                  totalLabel="Total billing lines"
+                  pageSize={billingLimit}
+                  onPageChange={setBillingPage}
+                  onPageSizeChange={(limit) => {
+                    setBillingLimit(limit);
+                    setBillingPage(1);
+                  }}
+                />
               )}
             </>
           )}
@@ -1553,38 +1515,17 @@ export default function StudentBilling() {
                 </TableBody>
               </Table>
 
-              {discountPagination && discountPagination.totalPages > 1 && (
-                <div className="flex flex-col gap-3 border-t px-4 py-4 sm:flex-row sm:items-center sm:justify-end bg-muted/30">
-                  <Pagination>
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious
-                          href="#"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            if (!discountCanPrev) return;
-                            setDiscountPageStr(String(Math.max(1, discountPage - 1)));
-                          }}
-                        />
-                      </PaginationItem>
-                      <PaginationItem>
-                        <span className="px-3 text-sm text-muted-foreground">
-                          Page {discountPagination.page} of {discountPagination.totalPages}
-                        </span>
-                      </PaginationItem>
-                      <PaginationItem>
-                        <PaginationNext
-                          href="#"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            if (!discountCanNext) return;
-                            setDiscountPageStr(String(discountPage + 1));
-                          }}
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
-                </div>
+              {discountPagination && (
+                <TablePaginationBar
+                  pagination={discountPagination}
+                  totalLabel="Total discount lines"
+                  pageSize={discountLimit}
+                  onPageChange={setDiscountPage}
+                  onPageSizeChange={(limit) => {
+                    setDiscountLimit(limit);
+                    setDiscountPage(1);
+                  }}
+                />
               )}
             </>
           )}

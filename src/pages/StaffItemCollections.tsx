@@ -15,6 +15,7 @@ import { useTerms } from "@/hooks/useTerms"
 import { useStaff } from "@/hooks/useStaff"
 import { useMyStores } from "@/hooks/useMyStores"
 import { useToast } from "@/hooks/use-toast"
+import { TablePaginationBar } from "@/components/ui/table-pagination-bar"
 import { cn } from "@/lib/utils"
 import {
   AlertDialog,
@@ -50,7 +51,7 @@ export default function StaffItemCollections() {
   const [transactionDateFrom, setTransactionDateFrom] = useState<string>(defaultFrom)
   const [transactionDateTo, setTransactionDateTo] = useState<string>(defaultTo)
   const [page, setPage] = useState<number>(1)
-  const [limit, setLimit] = useState<number>(20)
+  const [limit, setLimit] = useState<number>(10)
 
   const [selectedStaffId, setSelectedStaffId] = useState<string>("")
   const [storeId, setStoreId] = useState<string>("")
@@ -79,7 +80,7 @@ export default function StaffItemCollections() {
   })
   const { toast } = useToast()
 
-  const { collections, createBulkCollection, deleteCollection, isLoading } =
+  const { collections, pagination, createBulkCollection, deleteCollection, isLoading } =
     useStaffCollections({
       staffId: filterStaffId || undefined,
       sessionId: selectedSessionId || undefined,
@@ -600,41 +601,24 @@ export default function StaffItemCollections() {
                     }}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Page</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={page}
-                      onChange={(e) => setPage(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                    />
-                  </div>
-                  <div>
-                    <Label>Limit</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={limit}
-                      onChange={(e) => setLimit(Math.max(1, parseInt(e.target.value, 10) || 20))}
-                    />
-                  </div>
-                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="overflow-hidden">
             <CardHeader>
-              <CardTitle>Current Collections ({collections.length})</CardTitle>
+              <CardTitle>
+                Current Collections
+                {pagination ? ` (${pagination.total})` : ` (${collections.length})`}
+              </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               {isLoading ? (
-                <div className="flex justify-center items-center py-10">
+                <div className="flex justify-center items-center py-10 px-6">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
               ) : collections.length === 0 ? (
-                <div className="text-center py-8">
+                <div className="text-center py-8 px-6">
                   <Users className="mx-auto h-12 w-12 text-muted-foreground" />
                   <h3 className="mt-4 text-lg font-semibold">No collections found</h3>
                   <p className="text-muted-foreground">
@@ -642,6 +626,7 @@ export default function StaffItemCollections() {
                   </p>
                 </div>
               ) : (
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -709,6 +694,19 @@ export default function StaffItemCollections() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
+              )}
+              {pagination && !isLoading && (
+                <TablePaginationBar
+                  pagination={pagination}
+                  totalLabel="Total collections"
+                  pageSize={limit}
+                  onPageChange={setPage}
+                  onPageSizeChange={(nextLimit) => {
+                    setLimit(nextLimit)
+                    setPage(1)
+                  }}
+                />
               )}
             </CardContent>
           </Card>

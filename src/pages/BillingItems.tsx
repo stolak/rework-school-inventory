@@ -22,13 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { TablePaginationBar } from "@/components/ui/table-pagination-bar";
 import { BillingItemDialog } from "@/components/dialogs/BillingItemDialog";
 import { ConcessionDiscountDialog } from "@/components/dialogs/ConcessionDiscountDialog";
 import {
@@ -60,28 +54,15 @@ import {
 const ALL = "__all__";
 const STATUS_ALL = "All";
 
-function toInt(s: string, fallback: number) {
-  const n = parseInt(s, 10);
-  return Number.isFinite(n) && n > 0 ? n : fallback;
-}
-
-function toIntCd(s: string, fallback: number) {
-  const n = parseInt(s, 10);
-  return Number.isFinite(n) ? n : fallback;
-}
-
 export default function BillingItems() {
   const { data: categories = [], isLoading: categoriesLoading } =
     useBillingItemCategories();
 
   const [biCategoryStr, setBiCategoryStr] = useState<string>(ALL);
   const [biStatusFilter, setBiStatusFilter] = useState<string>("Active");
-  const [biPageStr, setBiPageStr] = useState<string>("1");
-  const [biLimitStr, setBiLimitStr] = useState<string>("100");
+  const [biPage, setBiPage] = useState(1);
+  const [biLimit, setBiLimit] = useState(10);
   const [biSearchTerm, setBiSearchTerm] = useState("");
-
-  const biPage = toInt(biPageStr, 1);
-  const biLimit = toInt(biLimitStr, 100);
 
   const biListParams = useMemo(
     () => ({
@@ -103,12 +84,9 @@ export default function BillingItems() {
   } = useBillingItems(biListParams);
 
   const [cdStatusFilter, setCdStatusFilter] = useState<string>("Active");
-  const [cdPageStr, setCdPageStr] = useState<string>("1");
-  const [cdLimitStr, setCdLimitStr] = useState<string>("100");
+  const [cdPage, setCdPage] = useState(1);
+  const [cdLimit, setCdLimit] = useState(10);
   const [cdSearchTerm, setCdSearchTerm] = useState("");
-
-  const cdPage = Math.max(1, toIntCd(cdPageStr, 1));
-  const cdLimit = Math.max(1, toIntCd(cdLimitStr, 100));
 
   const {
     concessionDiscounts,
@@ -313,12 +291,6 @@ export default function BillingItems() {
     }
   };
 
-  const biCanPrev = biPagination ? biPagination.page > 1 : biPage > 1;
-  const biCanNext = biPagination ? biPagination.page < biPagination.totalPages : false;
-
-  const cdCanPrev = cdPagination ? cdPagination.page > 1 : false;
-  const cdCanNext = cdPagination ? cdPagination.page < cdPagination.totalPages : false;
-
   return (
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
       <div>
@@ -367,7 +339,7 @@ export default function BillingItems() {
                   value={biCategoryStr}
                   onValueChange={(v) => {
                     setBiCategoryStr(v);
-                    setBiPageStr("1");
+                    setBiPage(1);
                   }}
                   placeholder={categoriesLoading ? "Loading…" : "All categories"}
                   searchPlaceholder="Search categories…"
@@ -380,7 +352,7 @@ export default function BillingItems() {
                   value={biStatusFilter}
                   onValueChange={(v) => {
                     setBiStatusFilter(v);
-                    setBiPageStr("1");
+                    setBiPage(1);
                   }}
                 >
                   <SelectTrigger>
@@ -393,42 +365,17 @@ export default function BillingItems() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Page</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={biPageStr}
-                  onChange={(e) => setBiPageStr(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Limit</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={biLimitStr}
-                  onChange={(e) => setBiLimitStr(e.target.value)}
-                />
-              </div>
             </CardContent>
           </Card>
 
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="relative flex-1 max-w-sm min-w-[200px]">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search code, name, category, account…"
-                value={biSearchTerm}
-                onChange={(e) => setBiSearchTerm(e.target.value)}
-                className="pl-8"
-              />
-            </div>
-            <div className="text-sm text-muted-foreground">
-              {biPagination
-                ? `Page ${biPagination.page} of ${biPagination.totalPages} • Total ${biPagination.total}`
-                : undefined}
-            </div>
+          <div className="relative max-w-sm min-w-[200px]">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search code, name, category, account…"
+              value={biSearchTerm}
+              onChange={(e) => setBiSearchTerm(e.target.value)}
+              className="pl-8"
+            />
           </div>
 
           <Card className="shadow-card overflow-hidden">
@@ -490,35 +437,20 @@ export default function BillingItems() {
                   No billing items match the current filters.
                 </div>
               )}
+              {biPagination && !biLoading && (
+                <TablePaginationBar
+                  pagination={biPagination}
+                  totalLabel="Total billing items"
+                  pageSize={biLimit}
+                  onPageChange={setBiPage}
+                  onPageSizeChange={(limit) => {
+                    setBiLimit(limit);
+                    setBiPage(1);
+                  }}
+                />
+              )}
             </CardContent>
           </Card>
-
-          {biPagination && (
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (!biCanPrev) return;
-                      setBiPageStr(String(Math.max(1, biPage - 1)));
-                    }}
-                  />
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (!biCanNext) return;
-                      setBiPageStr(String(biPage + 1));
-                    }}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          )}
         </TabsContent>
 
         <TabsContent value="discounts" className="space-y-6 mt-6">
@@ -543,7 +475,7 @@ export default function BillingItems() {
                   value={cdStatusFilter}
                   onValueChange={(v) => {
                     setCdStatusFilter(v);
-                    setCdPageStr("1");
+                    setCdPage(1);
                   }}
                 >
                   <SelectTrigger>
@@ -556,25 +488,7 @@ export default function BillingItems() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Page</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={cdPageStr}
-                  onChange={(e) => setCdPageStr(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Limit</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={cdLimitStr}
-                  onChange={(e) => setCdLimitStr(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
+              <div className="space-y-2 sm:col-span-2 lg:col-span-3">
                 <Label>Search</Label>
                 <div className="relative">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -649,37 +563,20 @@ export default function BillingItems() {
                   No concession discounts found.
                 </div>
               )}
+              {cdPagination && !cdLoading && (
+                <TablePaginationBar
+                  pagination={cdPagination}
+                  totalLabel="Total discounts"
+                  pageSize={cdLimit}
+                  onPageChange={setCdPage}
+                  onPageSizeChange={(limit) => {
+                    setCdLimit(limit);
+                    setCdPage(1);
+                  }}
+                />
+              )}
             </CardContent>
           </Card>
-
-          <div className="flex items-center justify-center">
-            {cdPagination && cdPagination.totalPages > 1 && (
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (!cdCanPrev) return;
-                        setCdPageStr(String(cdPagination.page - 1));
-                      }}
-                    />
-                  </PaginationItem>
-                  <PaginationItem>
-                    <PaginationNext
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (!cdCanNext) return;
-                        setCdPageStr(String(cdPagination.page + 1));
-                      }}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            )}
-          </div>
         </TabsContent>
       </Tabs>
 
