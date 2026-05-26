@@ -9,6 +9,7 @@ import {
   GraduationCap,
   Layers,
   UserCheck,
+  UserCog,
   FileBarChart,
   BarChart,
   Gift,
@@ -148,6 +149,7 @@ const sidebarNavSections: SidebarNavSection[] = [
     items: [
       { title: "Inventory", url: "/inventory", icon: Package },
       { title: "Default account settings", url: "/default-account-settings", icon: Landmark },
+      { title: "User management", url: "/users", icon: UserCog },
       { title: "Role management", url: "/app-roles", icon: Shield },
       { title: "Menu management", url: "/menus", icon: LayoutList },
     ],

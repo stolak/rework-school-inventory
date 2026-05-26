@@ -12,11 +12,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { AppRole, AppRolePrivilege } from "@/lib/api";
+import type { UserPrivilege } from "@/lib/api";
+import type { ManagedUser } from "@/hooks/useUserManagement";
 import type { Privilege } from "@/hooks/usePrivileges";
 
-interface RolePrivilegesPanelProps {
-  role: AppRole;
+interface UserPrivilegesPanelProps {
+  user: ManagedUser;
   allPrivileges: Privilege[];
   privilegesLoading: boolean;
   accessPending: boolean;
@@ -24,17 +25,17 @@ interface RolePrivilegesPanelProps {
   onRemove: (privilegeId: string) => void | Promise<unknown>;
 }
 
-export function RolePrivilegesPanel({
-  role,
+export function UserPrivilegesPanel({
+  user,
   allPrivileges,
   privilegesLoading,
   accessPending,
   onAssign,
   onRemove,
-}: RolePrivilegesPanelProps) {
+}: UserPrivilegesPanelProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  const assigned: AppRolePrivilege[] = role.privileges ?? [];
+  const assigned: UserPrivilege[] = user.privileges ?? [];
   const assignedIds = useMemo(
     () => new Set(assigned.map((p) => p.id)),
     [assigned],
@@ -66,14 +67,15 @@ export function RolePrivilegesPanel({
       <div>
         <h4 className="text-sm font-medium mb-1 flex items-center gap-2">
           <Shield className="h-4 w-4" />
-          Assigned privileges
+          Direct privileges
         </h4>
         <p className="text-xs text-muted-foreground mb-3">
-          Permissions granted to users with the &ldquo;{role.name}&rdquo; role.
+          Extra permissions for {user.displayName} beyond their application
+          role.
         </p>
         {assigned.length === 0 ? (
           <p className="text-sm text-muted-foreground py-2">
-            No privileges assigned yet.
+            No direct privileges assigned.
           </p>
         ) : (
           <div className="rounded-md border">
@@ -123,7 +125,7 @@ export function RolePrivilegesPanel({
         <div>
           <h4 className="text-sm font-medium">Assign privileges</h4>
           <p className="text-xs text-muted-foreground">
-            Select one or more privileges, then assign them to this role.
+            Select privileges to add directly to this user.
           </p>
         </div>
         {privilegesLoading ? (
@@ -133,7 +135,7 @@ export function RolePrivilegesPanel({
           </p>
         ) : unassigned.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            All available privileges are already assigned to this role.
+            All available privileges are already assigned to this user.
           </p>
         ) : (
           <>
@@ -142,7 +144,7 @@ export function RolePrivilegesPanel({
                 {unassigned.map((p) => (
                   <div key={p.id} className="flex items-start gap-3">
                     <Checkbox
-                      id={`priv-${role.id}-${p.id}`}
+                      id={`user-priv-${user.id}-${p.id}`}
                       checked={selectedIds.includes(p.id)}
                       onCheckedChange={(checked) =>
                         toggleSelection(p.id, checked === true)
@@ -151,7 +153,7 @@ export function RolePrivilegesPanel({
                     />
                     <div className="grid gap-0.5 leading-none">
                       <Label
-                        htmlFor={`priv-${role.id}-${p.id}`}
+                        htmlFor={`user-priv-${user.id}-${p.id}`}
                         className="font-mono text-sm cursor-pointer"
                       >
                         {p.name}

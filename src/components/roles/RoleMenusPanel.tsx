@@ -20,8 +20,8 @@ interface RoleMenusPanelProps {
   allMenus: AppMenu[];
   menusLoading: boolean;
   accessPending: boolean;
-  onAssign: (menuIds: string[]) => Promise<void>;
-  onRemove: (menuId: string) => Promise<void>;
+  onAssign: (menuIds: string[]) => void | Promise<unknown>;
+  onRemove: (menuId: string) => void | Promise<unknown>;
 }
 
 function menuStatusBadge(status: string) {

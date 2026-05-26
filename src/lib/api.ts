@@ -1731,6 +1731,18 @@ export const subClassApi = {
 };
 
 // Users API
+export type UserPrivilege = {
+  id: string;
+  name: string;
+  description: string;
+};
+
+export type UserAppRole = {
+  id: string;
+  name: string;
+  status: string;
+};
+
 export type UserRow = {
   id: string;
   email: string;
@@ -1742,12 +1754,20 @@ export type UserRow = {
   status?: string;
   isActive?: boolean;
   isVerified?: boolean;
+  isEmailVerified?: boolean;
+  isPhoneVerified?: boolean;
+  isDeleted?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  privileges?: UserPrivilege[];
+  appRole?: UserAppRole | null;
+  appRoles?: UserAppRole[];
 };
 
 export const fetchUsers = (params?: {
   userType?: string;
+  roleId?: string;
+  status?: string;
   page?: number;
   limit?: number;
 }) => {
@@ -1755,13 +1775,33 @@ export const fetchUsers = (params?: {
   queryParams.append("page", String(params?.page ?? 1));
   queryParams.append("limit", String(params?.limit ?? 100));
   if (params?.userType) queryParams.append("userType", params.userType);
+  if (params?.roleId) queryParams.append("roleId", params.roleId);
+  if (params?.status) queryParams.append("status", params.status);
   return get<ApiResponse<{ users: UserRow[]; pagination: Pagination }>>(
     `/api/v1/users?${queryParams.toString()}`
   );
 };
 
+export const assignUserPrivileges = (userId: string, privilegeIds: string[]) =>
+  post<ApiResponse<UserRow>>(`/api/v1/users/${userId}/privileges`, {
+    privilegeIds,
+  });
+
+export const removeUserPrivilege = (userId: string, privilegeId: string) =>
+  del<ApiResponse<UserRow>>(`/api/v1/users/${userId}/privileges/${privilegeId}`);
+
+export const assignUserRole = (userId: string, roleId: string) =>
+  post<ApiResponse<UserRow>>(`/api/v1/users/${userId}/roles`, { roleId });
+
+export const removeUserRole = (userId: string, roleId: string) =>
+  del<ApiResponse<UserRow>>(`/api/v1/users/${userId}/roles/${roleId}`);
+
 export const usersApi = {
   list: fetchUsers,
+  assignPrivileges: assignUserPrivileges,
+  removePrivilege: removeUserPrivilege,
+  assignRole: assignUserRole,
+  removeRole: removeUserRole,
 };
 
 // Stores API

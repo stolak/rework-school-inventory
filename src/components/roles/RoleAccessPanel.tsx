@@ -12,10 +12,10 @@ interface RoleAccessPanelProps {
   allMenus: AppMenu[];
   menusLoading: boolean;
   accessPending: boolean;
-  onAssignPrivileges: (privilegeIds: string[]) => Promise<void>;
-  onRemovePrivilege: (privilegeId: string) => Promise<void>;
-  onAssignMenus: (menuIds: string[]) => Promise<void>;
-  onRemoveMenu: (menuId: string) => Promise<void>;
+  onAssignPrivileges: (privilegeIds: string[]) => void | Promise<unknown>;
+  onRemovePrivilege: (privilegeId: string) => void | Promise<unknown>;
+  onAssignMenus: (menuIds: string[]) => void | Promise<unknown>;
+  onRemoveMenu: (menuId: string) => void | Promise<unknown>;
 }
 
 export function RoleAccessPanel({
