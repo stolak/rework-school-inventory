@@ -94,6 +94,7 @@ const sidebarNavSections: SidebarNavSection[] = [
     items: [
       { title: "Classes & sub-classes", url: "/classes", icon: GraduationCap },
       { title: "Students", url: "/students", icon: Users },
+      { title: "Staff", url: "/staff", icon: UserCog },
       { title: "Sessions & terms", url: "/sessions", icon: BookOpen },
       { title: "Student Collections", url: "/student-collections", icon: UserCheck },
       { title: "Staff Collections", url: "/staff-collections", icon: UserCheck },

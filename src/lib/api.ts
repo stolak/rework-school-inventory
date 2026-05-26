@@ -662,32 +662,91 @@ export type StudentCollectionRow = {
 };
 
 // Staff (new API)
+export type StaffPosition =
+  | "class_teacher"
+  | "assistant_teacher"
+  | "subject_teacher"
+  | "principal"
+  | "vice_principal"
+  | "teacher"
+  | "admin"
+  | "other";
+
+export type StaffStatus = "Active" | "Inactive" | "Archived";
+
 export type Staff = {
   id: string;
   StaffNumber?: string | null;
   email?: string | null;
   name?: string | null;
+  position?: StaffPosition | string | null;
   role?: string | null;
-  status?: string | null;
+  status?: StaffStatus | string | null;
   profileImageUrl?: string | null;
+  createdById?: string | null;
   createdAt?: string;
   updatedAt?: string;
   userId?: string | null;
-  user?: { id: string; email?: string | null; firstName?: string | null; lastName?: string | null } | null;
+  user?: {
+    id: string;
+    email?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+    isActive?: boolean;
+  } | null;
+  createdBy?: { firstName?: string; lastName?: string } | null;
 };
 
-export const fetchStaff = (params?: { page?: number; limit?: number }) => {
+export const fetchStaff = (params?: {
+  q?: string;
+  position?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+}) => {
   const queryParams = new URLSearchParams();
   queryParams.append("page", String(params?.page ?? 1));
   queryParams.append("limit", String(params?.limit ?? 100));
+  if (params?.q) queryParams.append("q", params.q);
+  if (params?.position) queryParams.append("position", params.position);
+  if (params?.status) queryParams.append("status", params.status);
   const qs = queryParams.toString();
   return get<ApiResponse<{ staff: Staff[]; pagination: Pagination }>>(
-    `/api/v1/staff${qs ? `?${qs}` : ""}`
+    `/api/v1/staff${qs ? `?${qs}` : ""}`,
   );
 };
 
+export const createStaff = (body: {
+  StaffNumber: string;
+  email: string;
+  name: string;
+  position: StaffPosition | string;
+  status: StaffStatus;
+  profileImageUrl?: string;
+  password: string;
+  phoneNumber?: string;
+  isActive?: boolean;
+  isVerified?: boolean;
+  isEmailVerified?: boolean;
+  appRoleId: string;
+  userType: string;
+}) => post<ApiResponse<Staff>>("/api/v1/staff", body);
+
+export const updateStaff = (
+  id: string,
+  body: {
+    StaffNumber?: string;
+    name?: string;
+    position?: StaffPosition | string;
+    status?: StaffStatus;
+    profileImageUrl?: string;
+  },
+) => put<ApiResponse<Staff>>(`/api/v1/staff/${id}`, body);
+
 export const staffApi = {
   list: fetchStaff,
+  create: createStaff,
+  update: updateStaff,
 };
 
 // Staff Collections (new API)
