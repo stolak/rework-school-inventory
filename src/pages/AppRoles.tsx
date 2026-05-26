@@ -3,6 +3,7 @@ import {
   ChevronDown,
   ChevronRight,
   Edit,
+  LayoutList,
   Loader2,
   Save,
   Search,
@@ -35,9 +36,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { RoleDialog } from "@/components/dialogs/RoleDialog";
-import { RolePrivilegesPanel } from "@/components/roles/RolePrivilegesPanel";
+import { RoleAccessPanel } from "@/components/roles/RoleAccessPanel";
 import { useAppRoles } from "@/hooks/useAppRoles";
 import { usePrivileges } from "@/hooks/usePrivileges";
+import { useMenus } from "@/hooks/useMenus";
 import type { AppRole } from "@/lib/api";
 
 type StatusFilter = "all" | "active" | "inactive";
@@ -74,8 +76,7 @@ export default function AppRoles() {
     "active",
   );
 
-  const listStatus =
-    statusFilter === "all" ? undefined : statusFilter;
+  const listStatus = statusFilter === "all" ? undefined : statusFilter;
 
   const {
     roles,
@@ -84,13 +85,19 @@ export default function AppRoles() {
     updateRole,
     assignPrivileges,
     removePrivilege,
+    assignMenus,
+    removeMenu,
     isCreating,
     isUpdating,
-    isPrivilegePending,
+    isAccessPending,
   } = useAppRoles({ status: listStatus });
 
   const { privileges: allPrivileges, isLoading: privilegesLoading } =
     usePrivileges();
+
+  const { menus: allMenus, isLoading: menusLoading } = useMenus({
+    status: "Active",
+  });
 
   const [expandedRoleId, setExpandedRoleId] = useState<string | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -106,7 +113,15 @@ export default function AppRoles() {
           p.name.toLowerCase().includes(q) ||
           p.description.toLowerCase().includes(q),
       );
-      return inName || inPrivileges;
+      const inMenus = (r.roleMenus ?? []).some((rm) => {
+        const menu = rm.menu;
+        if (!menu) return false;
+        return (
+          menu.caption.toLowerCase().includes(q) ||
+          menu.route.toLowerCase().includes(q)
+        );
+      });
+      return inName || inPrivileges || inMenus;
     });
   }, [roles, searchTerm]);
 
@@ -143,7 +158,7 @@ export default function AppRoles() {
     setExpandedRoleId((prev) => (prev === id ? null : id));
   };
 
-  const TABLE_COL_SPAN = 5;
+  const TABLE_COL_SPAN = 6;
 
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
@@ -153,8 +168,8 @@ export default function AppRoles() {
           Role management
         </h1>
         <p className="text-muted-foreground mt-1">
-          Create application roles, set their status, and assign privileges that
-          control what users can do.
+          Create roles, assign privileges (what users can do), and navigation
+          menus (what they can see).
         </p>
       </div>
 
@@ -162,8 +177,8 @@ export default function AppRoles() {
         <CardHeader>
           <CardTitle>Create role</CardTitle>
           <CardDescription>
-            New roles start with no privileges. Expand a role row to assign
-            permissions.
+            New roles start with no privileges or menus. Expand a role to
+            configure access on the Privileges and Menus tabs.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -219,7 +234,7 @@ export default function AppRoles() {
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search roles or privileges…"
+                placeholder="Search roles, privileges, or menus…"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-8"
@@ -259,12 +274,16 @@ export default function AppRoles() {
                     <TableHead>Name</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-center">Privileges</TableHead>
+                    <TableHead className="text-center">Menus</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredRoles.map((role) => {
                     const privilegeCount = role.privileges?.length ?? 0;
+                    const menuCount = role.roleMenus?.length ?? 0;
+                    const isExpanded = expandedRoleId === role.id;
+
                     return (
                       <Fragment key={role.id}>
                         <TableRow>
@@ -275,14 +294,14 @@ export default function AppRoles() {
                               size="icon"
                               className="h-8 w-8 shrink-0"
                               onClick={() => toggleExpand(role.id)}
-                              aria-expanded={expandedRoleId === role.id}
+                              aria-expanded={isExpanded}
                               aria-label={
-                                expandedRoleId === role.id
-                                  ? "Collapse privileges"
-                                  : "Expand privileges"
+                                isExpanded
+                                  ? "Collapse role access"
+                                  : "Expand role access"
                               }
                             >
-                              {expandedRoleId === role.id ? (
+                              {isExpanded ? (
                                 <ChevronDown className="h-4 w-4" />
                               ) : (
                                 <ChevronRight className="h-4 w-4" />
@@ -305,6 +324,18 @@ export default function AppRoles() {
                               </Badge>
                             </button>
                           </TableCell>
+                          <TableCell className="text-center">
+                            <button
+                              type="button"
+                              onClick={() => toggleExpand(role.id)}
+                              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+                            >
+                              <LayoutList className="h-4 w-4" />
+                              <Badge variant="secondary" className="tabular-nums">
+                                {menuCount}
+                              </Badge>
+                            </button>
+                          </TableCell>
                           <TableCell className="text-right">
                             <Button
                               type="button"
@@ -316,19 +347,27 @@ export default function AppRoles() {
                             </Button>
                           </TableCell>
                         </TableRow>
-                        {expandedRoleId === role.id && (
+                        {isExpanded && (
                           <TableRow className="bg-muted/30 hover:bg-muted/30">
                             <TableCell colSpan={TABLE_COL_SPAN} className="p-4">
-                              <RolePrivilegesPanel
+                              <RoleAccessPanel
                                 role={role}
                                 allPrivileges={allPrivileges}
                                 privilegesLoading={privilegesLoading}
-                                accessPending={isPrivilegePending}
-                                onAssign={(privilegeIds) =>
+                                allMenus={allMenus}
+                                menusLoading={menusLoading}
+                                accessPending={isAccessPending}
+                                onAssignPrivileges={(privilegeIds) =>
                                   assignPrivileges(role.id, privilegeIds)
                                 }
-                                onRemove={(privilegeId) =>
+                                onRemovePrivilege={(privilegeId) =>
                                   removePrivilege(role.id, privilegeId)
+                                }
+                                onAssignMenus={(menuIds) =>
+                                  assignMenus(role.id, menuIds)
+                                }
+                                onRemoveMenu={(menuId) =>
+                                  removeMenu(role.id, menuId)
                                 }
                               />
                             </TableCell>

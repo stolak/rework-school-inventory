@@ -110,6 +110,54 @@ export function useAppRoles(params?: { status?: string }) {
     },
   });
 
+  const assignMenusMutation = useMutation({
+    mutationFn: ({
+      roleId,
+      menuIds,
+    }: {
+      roleId: string;
+      menuIds: string[];
+    }) => appRoleApi.assignMenus(roleId, menuIds),
+    onSuccess: (res) => {
+      invalidate();
+      toast({
+        title: "Success",
+        description: res?.message || "Menus added to role successfully",
+      });
+    },
+    onError: (e: Error) => {
+      toast({
+        title: "Error",
+        description: e?.message || "Failed to assign menus",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeMenuMutation = useMutation({
+    mutationFn: ({
+      roleId,
+      menuId,
+    }: {
+      roleId: string;
+      menuId: string;
+    }) => appRoleApi.removeMenu(roleId, menuId),
+    onSuccess: (res) => {
+      invalidate();
+      toast({
+        title: "Success",
+        description: res?.message || "Menu removed from role successfully",
+      });
+    },
+    onError: (e: Error) => {
+      toast({
+        title: "Error",
+        description: e?.message || "Failed to remove menu",
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     roles,
     isLoading,
@@ -122,9 +170,20 @@ export function useAppRoles(params?: { status?: string }) {
       assignPrivilegesMutation.mutateAsync({ roleId, privilegeIds }),
     removePrivilege: (roleId: string, privilegeId: string) =>
       removePrivilegeMutation.mutateAsync({ roleId, privilegeId }),
+    assignMenus: (roleId: string, menuIds: string[]) =>
+      assignMenusMutation.mutateAsync({ roleId, menuIds }),
+    removeMenu: (roleId: string, menuId: string) =>
+      removeMenuMutation.mutateAsync({ roleId, menuId }),
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isPrivilegePending:
       assignPrivilegesMutation.isPending || removePrivilegeMutation.isPending,
+    isMenuPending:
+      assignMenusMutation.isPending || removeMenuMutation.isPending,
+    isAccessPending:
+      assignPrivilegesMutation.isPending ||
+      removePrivilegeMutation.isPending ||
+      assignMenusMutation.isPending ||
+      removeMenuMutation.isPending,
   };
 }

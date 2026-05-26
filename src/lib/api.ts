@@ -3098,11 +3098,19 @@ export type AppRolePrivilege = {
   description: string;
 };
 
+export type RoleMenu = {
+  id: string;
+  roleId: string;
+  menuId: string;
+  menu?: AppMenu;
+};
+
 export type AppRole = {
   id: string;
   name: string;
   status: "active" | "inactive" | string;
   privileges?: AppRolePrivilege[];
+  roleMenus?: RoleMenu[];
 };
 
 export type Privilege = {
@@ -3138,6 +3146,15 @@ export const removeRolePrivilege = (roleId: string, privilegeId: string) =>
     `/api/v1/app-roles/${roleId}/privileges/${privilegeId}`,
   );
 
+export const assignRoleMenus = (roleId: string, menuIds: string[]) =>
+  post<ApiResponse<{ roleMenus: RoleMenu[] }>>(
+    `/api/v1/app-roles/${roleId}/menus`,
+    { menuIds },
+  );
+
+export const removeRoleMenu = (roleId: string, menuId: string) =>
+  del<ApiResponse<unknown>>(`/api/v1/app-roles/${roleId}/menus/${menuId}`);
+
 export const fetchPrivileges = () =>
   get<ApiResponse<{ privileges: Privilege[] }>>("/api/v1/privileges");
 
@@ -3147,6 +3164,8 @@ export const appRoleApi = {
   update: updateAppRole,
   assignPrivileges: assignRolePrivileges,
   removePrivilege: removeRolePrivilege,
+  assignMenus: assignRoleMenus,
+  removeMenu: removeRoleMenu,
 };
 
 export const privilegeApi = {
