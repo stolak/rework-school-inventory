@@ -848,6 +848,43 @@ export const fetchDonations = (params?: {
   >(`/api/v1/donations?${queryParams.toString()}`);
 };
 
+export type DonationGroup = {
+  referenceNo: string;
+  donations: DonationRow[];
+};
+
+export const fetchDonationsGrouped = (params?: {
+  page?: number;
+  limit?: number;
+  itemId?: string;
+  storeId?: string;
+  sessionId?: string;
+  termId?: string;
+  referenceNo?: string;
+  transactionDateFrom?: string;
+  transactionDateTo?: string;
+}) => {
+  const queryParams = new URLSearchParams();
+  queryParams.append("page", String(params?.page ?? 1));
+  queryParams.append("limit", String(params?.limit ?? 20));
+  if (params?.itemId) queryParams.append("itemId", params.itemId);
+  if (params?.storeId) queryParams.append("storeId", params.storeId);
+  if (params?.sessionId) queryParams.append("sessionId", params.sessionId);
+  if (params?.termId) queryParams.append("termId", params.termId);
+  if (params?.referenceNo) queryParams.append("referenceNo", params.referenceNo);
+  if (params?.transactionDateFrom)
+    queryParams.append("transactionDateFrom", params.transactionDateFrom);
+  if (params?.transactionDateTo)
+    queryParams.append("transactionDateTo", params.transactionDateTo);
+
+  return get<
+    ApiResponse<{
+      groups: DonationGroup[];
+      pagination: Pagination;
+    }>
+  >(`/api/v1/donations/grouped?${queryParams.toString()}`);
+};
+
 export const createDonationsBulk = (body: {
   storeId: string;
   notes?: string;
@@ -865,6 +902,7 @@ export const inventoryReceiveAcknowledgementsApi = {
 
 export const donationsApi = {
   list: fetchDonations,
+  listGrouped: fetchDonationsGrouped,
   bulkCreate: createDonationsBulk,
   remove: deleteDonation,
   acknowledgeReceive: createInventoryReceiveAcknowledgement,
@@ -3052,6 +3090,100 @@ export const tempJournalTransfersApi = {
   bulkCreate: createTempJournalTransfersBulk,
   groupedByReferenceNo: fetchTempJournalTransfersGroupedByReferenceNo,
   list: fetchTempJournalTransfers,
+};
+
+export type AppRolePrivilege = {
+  id: string;
+  name: string;
+  description: string;
+};
+
+export type AppRole = {
+  id: string;
+  name: string;
+  status: "active" | "inactive" | string;
+  privileges?: AppRolePrivilege[];
+};
+
+export type Privilege = {
+  id: string;
+  name: string;
+  description: string;
+};
+
+export const fetchAppRoles = (params?: { status?: string }) => {
+  const sp = new URLSearchParams();
+  if (params?.status) sp.append("status", params.status);
+  const qs = sp.toString();
+  return get<ApiResponse<{ roles: AppRole[] }>>(
+    `/api/v1/app-roles${qs ? `?${qs}` : ""}`,
+  );
+};
+
+export const createAppRole = (body: { name: string; status: "active" | "inactive" }) =>
+  post<ApiResponse<AppRole>>("/api/v1/app-roles", body);
+
+export const updateAppRole = (
+  id: string,
+  body: { name: string; status: "active" | "inactive" },
+) => put<ApiResponse<AppRole>>(`/api/v1/app-roles/${id}`, body);
+
+export const assignRolePrivileges = (roleId: string, privilegeIds: string[]) =>
+  post<ApiResponse<unknown>>(`/api/v1/app-roles/${roleId}/privileges`, {
+    privilegeIds,
+  });
+
+export const removeRolePrivilege = (roleId: string, privilegeId: string) =>
+  del<ApiResponse<unknown>>(
+    `/api/v1/app-roles/${roleId}/privileges/${privilegeId}`,
+  );
+
+export const fetchPrivileges = () =>
+  get<ApiResponse<{ privileges: Privilege[] }>>("/api/v1/privileges");
+
+export const appRoleApi = {
+  list: fetchAppRoles,
+  create: createAppRole,
+  update: updateAppRole,
+  assignPrivileges: assignRolePrivileges,
+  removePrivilege: removeRolePrivilege,
+};
+
+export const privilegeApi = {
+  list: fetchPrivileges,
+};
+
+export type AppMenu = {
+  id: string;
+  route: string;
+  caption: string;
+  status: "Active" | "Inactive" | string;
+};
+
+export const fetchMenus = (params?: { status?: string }) => {
+  const sp = new URLSearchParams();
+  if (params?.status) sp.append("status", params.status);
+  const qs = sp.toString();
+  return get<ApiResponse<{ menus: AppMenu[] }>>(
+    `/api/v1/menus${qs ? `?${qs}` : ""}`,
+  );
+};
+
+export const createMenu = (body: {
+  route: string;
+  caption: string;
+  status: "Active" | "Inactive";
+}) => post<ApiResponse<AppMenu>>("/api/v1/menus", body);
+
+export const updateMenu = (
+  id: string,
+  body: { route: string; caption: string; status: "Active" | "Inactive" },
+) => put<ApiResponse<AppMenu>>(`/api/v1/menus/${id}`, body);
+
+export const menuApi = {
+  list: fetchMenus,
+  create: createMenu,
+  update: updateMenu,
 };
 
 export default {

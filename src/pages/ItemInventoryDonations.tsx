@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useDonations, type Donation } from "@/hooks/useDonations"
+import { useDonations } from "@/hooks/useDonations"
 import { useInventory } from "@/hooks/useInventory"
 import { useSchoolSessions } from "@/hooks/useSchoolSessions"
 import { useTerms } from "@/hooks/useTerms"
@@ -85,12 +85,13 @@ export default function ItemInventoryDonations() {
   const { toast } = useToast()
 
   const {
-    donations,
+    donationBatches,
     createBulkDonations,
     deleteDonation,
     acknowledgeReceive,
     isAcknowledging,
     isLoading,
+    pagination,
   } = useDonations({
     itemId: filterItemId || undefined,
     storeId: filterStoreId || undefined,
@@ -234,40 +235,7 @@ export default function ItemInventoryDonations() {
     }
   }
 
-  const groupedBatches = donations.reduce((acc, row) => {
-    const ref = row.referenceNo ?? row.id
-    const key = ref
-
-    if (!acc.has(key)) {
-      acc.set(key, {
-        referenceNo: row.referenceNo,
-        notes: row.notes,
-        transactionDate: row.transactionDate,
-        createdByName: row.createdByName,
-        storeName: row.storeName,
-        isAcknowledged: Boolean(row.isAcknowledged),
-        acknowledgedAt: row.acknowledgedAt ?? null,
-        acknowledgedByName: row.acknowledgedByName,
-        rows: [] as Donation[],
-      })
-    }
-    const batch = acc.get(key)!
-    batch.rows.push(row)
-    if (!row.isAcknowledged) {
-      batch.isAcknowledged = false
-    }
-    return acc
-  }, new Map<string, {
-    referenceNo: string | null
-    notes: string | null
-    transactionDate: string
-    createdByName?: string
-    storeName?: string
-    isAcknowledged: boolean
-    acknowledgedAt: string | null
-    acknowledgedByName?: string
-    rows: Donation[]
-  }>())
+  const batchCount = pagination?.total ?? donationBatches.length
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -542,14 +510,14 @@ export default function ItemInventoryDonations() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Donations ({donations.length})</CardTitle>
+              <CardTitle>Donation batches ({batchCount})</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoading ? (
                 <div className="flex justify-center items-center py-10">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
-              ) : donations.length === 0 ? (
+              ) : donationBatches.length === 0 ? (
                 <div className="text-center py-8">
                   <Gift className="mx-auto h-12 w-12 text-muted-foreground" />
                   <h3 className="mt-4 text-lg font-semibold">No donations found</h3>
@@ -571,8 +539,8 @@ export default function ItemInventoryDonations() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {Array.from(groupedBatches.entries()).map(([key, batch]) => (
-                      <TableRow key={key}>
+                    {donationBatches.map((batch) => (
+                      <TableRow key={batch.referenceNo ?? batch.rows[0]?.id ?? "batch"}>
                         <TableCell>
                           <Badge variant="outline">{batch.referenceNo ?? "—"}</Badge>
                         </TableCell>

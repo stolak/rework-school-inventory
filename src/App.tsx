@@ -48,6 +48,8 @@ import StudentBillingSummaryReport from "./pages/StudentBillingSummaryReport";
 import StudentBalancesReport from "./pages/StudentBalancesReport";
 import StudentTransactionLogReport from "./pages/StudentTransactionLogReport";
 import SubClasses from "./pages/SubClasses";
+import AppRoles from "./pages/AppRoles";
+import Menus from "./pages/Menus";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 
@@ -105,6 +107,8 @@ const AppContent = () => {
           <Route path="/store-setup" element={<StoreSetup />} />
           <Route path="/facility-unit-setup" element={<FacilityUnitSetup />} />
           <Route path="/store-transfers" element={<StoreItemTransfer />} />
+          <Route path="/app-roles" element={<AppRoles />} />
+          <Route path="/menus" element={<Menus />} />
           <Route path="/reports/student-inventory" element={<StudentInventoryReport />} />
           <Route
             path="/reports/student-items-received"

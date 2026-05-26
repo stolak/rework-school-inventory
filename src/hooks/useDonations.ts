@@ -1,5 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { donationsApi, type DonationRow } from "@/lib/api";
+import {
+  donationsApi,
+  type DonationGroup,
+  type DonationRow,
+} from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 export interface Donation {
@@ -23,28 +27,20 @@ export interface Donation {
   acknowledgedByName?: string;
 }
 
-export function useDonations(params?: {
-  page?: number;
-  limit?: number;
-  itemId?: string;
-  storeId?: string;
-  sessionId?: string;
-  termId?: string;
-  referenceNo?: string;
-  transactionDateFrom?: string;
-  transactionDateTo?: string;
-}) {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
+export interface DonationBatch {
+  referenceNo: string | null;
+  notes: string | null;
+  transactionDate: string;
+  createdByName?: string;
+  storeName?: string;
+  isAcknowledged: boolean;
+  acknowledgedAt: string | null;
+  acknowledgedByName?: string;
+  rows: Donation[];
+}
 
-  const { data: raw = null, isLoading, error } = useQuery({
-    queryKey: ["donations", params],
-    queryFn: () => donationsApi.list(params),
-  });
-
-  const rawDonations: DonationRow[] = raw?.data?.donations ?? [];
-
-  const donations: Donation[] = rawDonations.map((d: any) => ({
+function mapDonationRow(d: DonationRow): Donation {
+  return {
     id: d.id,
     itemId: d.itemId,
     qtyIn: Number(d.qtyIn ?? 0),
@@ -68,14 +64,69 @@ export function useDonations(params?: {
       ? `${d.acknowledgedByUser.firstName ?? ""} ${d.acknowledgedByUser.lastName ?? ""}`.trim() ||
         d.acknowledgedByUser.email
       : undefined,
-  }));
+  };
+}
+
+function mapDonationGroup(group: DonationGroup): DonationBatch {
+  const rows = group.donations.map(mapDonationRow);
+  const first = rows[0];
+
+  if (!first) {
+    return {
+      referenceNo: group.referenceNo ?? null,
+      notes: null,
+      transactionDate: "",
+      isAcknowledged: true,
+      acknowledgedAt: null,
+      rows: [],
+    };
+  }
+
+  const acknowledgedRow = rows.find((r) => r.isAcknowledged && r.acknowledgedAt);
+
+  return {
+    referenceNo: group.referenceNo ?? first.referenceNo,
+    notes: first.notes,
+    transactionDate: first.transactionDate,
+    createdByName: first.createdByName,
+    storeName: first.storeName,
+    isAcknowledged: rows.length > 0 && rows.every((r) => r.isAcknowledged),
+    acknowledgedAt: acknowledgedRow?.acknowledgedAt ?? first.acknowledgedAt ?? null,
+    acknowledgedByName:
+      acknowledgedRow?.acknowledgedByName ?? first.acknowledgedByName,
+    rows,
+  };
+}
+
+export function useDonations(params?: {
+  page?: number;
+  limit?: number;
+  itemId?: string;
+  storeId?: string;
+  sessionId?: string;
+  termId?: string;
+  referenceNo?: string;
+  transactionDateFrom?: string;
+  transactionDateTo?: string;
+}) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const { data: raw = null, isLoading, error } = useQuery({
+    queryKey: ["donations", "grouped", params],
+    queryFn: () => donationsApi.listGrouped(params),
+  });
+
+  const donationBatches: DonationBatch[] = (raw?.data?.groups ?? []).map(
+    mapDonationGroup,
+  );
 
   const bulkCreateMutation = useMutation({
     mutationFn: donationsApi.bulkCreate,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["donations"] });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
         description: error.message || "Failed to record donations",
@@ -93,7 +144,7 @@ export function useDonations(params?: {
         description: "Donation deleted successfully",
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
         description: error.message || "Failed to delete donation",
@@ -113,7 +164,7 @@ export function useDonations(params?: {
 
   const acknowledgeMutation = useMutation({
     mutationFn: donationsApi.acknowledgeReceive,
-    onSuccess: (res: any) => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["donations"] });
       toast({
         title: "Success",
@@ -135,7 +186,7 @@ export function useDonations(params?: {
     acknowledgeMutation.mutateAsync({ referenceNo });
 
   return {
-    donations,
+    donationBatches,
     isLoading,
     error,
     createBulkDonations,
