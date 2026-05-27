@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   Package,
   Users,
@@ -54,6 +54,11 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
+import {
+  getStoredUserMenus,
+  isSidebarUrlAllowed,
+  USER_MENUS_UPDATED_EVENT,
+} from "@/lib/userMenusStorage"
 
 type NavMenuItem = {
   title: string
@@ -222,6 +227,32 @@ function NavCollapsibleSection({
 export function AppSidebar() {
   const { state } = useSidebar()
   const isCollapsed = state === "collapsed"
+  const [menusRevision, setMenusRevision] = useState(0)
+
+  useEffect(() => {
+    const refresh = () => setMenusRevision((n) => n + 1)
+    window.addEventListener(USER_MENUS_UPDATED_EVENT, refresh)
+    window.addEventListener("storage", refresh)
+    return () => {
+      window.removeEventListener(USER_MENUS_UPDATED_EVENT, refresh)
+      window.removeEventListener("storage", refresh)
+    }
+  }, [])
+
+  const visibleNavSections = useMemo(() => {
+    const stored = getStoredUserMenus()
+    const menus = stored?.menus ?? []
+    if (menus.length === 0) return []
+
+    return sidebarNavSections
+      .map((section) => ({
+        ...section,
+        items: section.items.filter((item) =>
+          isSidebarUrlAllowed(item.url, menus),
+        ),
+      }))
+      .filter((section) => section.items.length > 0)
+  }, [menusRevision])
 
   return (
     <Sidebar className={isCollapsed ? "w-14" : "w-64"} collapsible="icon">
@@ -240,15 +271,23 @@ export function AppSidebar() {
           )}
         </div>
 
-        {sidebarNavSections.map((section) => (
-          <SidebarGroup key={section.title}>
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-0">
-                <NavCollapsibleSection {...section} />
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+        {visibleNavSections.length === 0 ? (
+          !isCollapsed && (
+            <p className="px-4 text-xs text-muted-foreground">
+              No navigation menus assigned to your account.
+            </p>
+          )
+        ) : (
+          visibleNavSections.map((section) => (
+            <SidebarGroup key={section.title}>
+              <SidebarGroupContent>
+                <SidebarMenu className="gap-0">
+                  <NavCollapsibleSection {...section} />
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ))
+        )}
       </SidebarContent>
     </Sidebar>
   )
