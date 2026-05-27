@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { fetchAuthMeMenus } from "@/lib/api";
+import { clearUserMenus, saveUserMenus } from "@/lib/userMenusStorage";
 
 interface User {
   id: string;
@@ -16,8 +18,18 @@ interface AuthContextType {
   isLoading: boolean;
 }
 
-const baseUrl = "http://localhost:5001";
+const baseUrl =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+async function syncUserMenusFromApi(): Promise<void> {
+  const res = await fetchAuthMeMenus();
+  if (!res?.success || !Array.isArray(res.data?.menus)) {
+    return;
+  }
+  saveUserMenus(res.data.menus);
+}
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -34,18 +46,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for stored token on app load
-    const token = localStorage.getItem("authToken");
-    const userData = localStorage.getItem("userData");
+    const restoreSession = async () => {
+      const token = localStorage.getItem("authToken");
+      const userData = localStorage.getItem("userData");
 
-    if (token && userData) {
-      try {
-        setUser(JSON.parse(userData));
-      } catch {
-        setUser(null);
+      if (token && userData) {
+        try {
+          setUser(JSON.parse(userData));
+          await syncUserMenusFromApi();
+        } catch {
+          setUser(null);
+        }
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    };
+
+    void restoreSession();
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -93,6 +109,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       setUser(userFromApi);
+
+      await syncUserMenusFromApi();
     } finally {
       setIsLoading(false);
     }
@@ -102,6 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     localStorage.removeItem("authToken");
     localStorage.removeItem("userData");
     localStorage.removeItem("refreshToken");
+    clearUserMenus();
     setUser(null);
   };
 

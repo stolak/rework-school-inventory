@@ -3304,6 +3304,9 @@ export const menuApi = {
   update: updateMenu,
 };
 
+export const fetchAuthMeMenus = () =>
+  get<ApiResponse<{ menus: AppMenu[] }>>("/api/v1/auth/me/menus");
+
 export default {
   request,
   get,
