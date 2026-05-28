@@ -26,6 +26,7 @@ import {
   consumableAccountChartLabel,
   useConsumableExpenseAccountCharts,
 } from "@/hooks/useConsumableExpenseAccountCharts";
+import { useAccountCharts } from "@/hooks/useAccountCharts";
 
 const categoryTypeValues = ["Consumable", "NonConsumable"] as const;
 
@@ -34,6 +35,7 @@ const categoryBaseSchema = z.object({
   description: z.string().min(5, "Description must be at least 5 characters."),
   categoryType: z.enum(categoryTypeValues),
   consumableAccountId: z.string().optional(),
+  assetAccountId: z.string().optional(),
 });
 
 const categoryEditSchema = categoryBaseSchema.extend({
@@ -48,6 +50,7 @@ export type CategoryFormSubmitData = {
   description: string;
   categoryType: CategoryType;
   consumableAccountId: number | null;
+  assetAccountId: number | null;
   status?: "active" | "inactive";
 };
 
@@ -65,14 +68,25 @@ export function CategoryForm({
   onCancel,
 }: CategoryFormProps) {
   const { accountCharts, isLoading: accountsLoading } = useConsumableExpenseAccountCharts();
+  const { charts: assetCharts, isLoading: assetLoading } = useAccountCharts({
+    status: "Active",
+  });
 
   const accountOptions = accountCharts.map((a) => ({
     value: String(a.id),
     label: consumableAccountChartLabel(a),
   }));
 
+  const assetAccountOptions = assetCharts.map((a) => ({
+    value: String(a.id),
+    label: consumableAccountChartLabel(a),
+  }));
+
   const consumableDefault = initialData?.consumableAccountId
     ? String(initialData.consumableAccountId)
+    : "";
+  const assetDefault = (initialData as any)?.assetAccountId
+    ? String((initialData as any).assetAccountId)
     : "";
 
   const categoryTypeDefault: CategoryType =
@@ -86,6 +100,7 @@ export function CategoryForm({
           description: initialData?.description || "",
           categoryType: categoryTypeDefault,
           consumableAccountId: consumableDefault,
+          assetAccountId: assetDefault,
           status: initialData?.status || "active",
         }
       : {
@@ -93,12 +108,16 @@ export function CategoryForm({
           description: initialData?.description || "",
           categoryType: categoryTypeDefault,
           consumableAccountId: consumableDefault,
+          assetAccountId: assetDefault,
         },
   });
 
   useEffect(() => {
     const consumableId = initialData?.consumableAccountId
       ? String(initialData.consumableAccountId)
+      : "";
+    const assetId = (initialData as any)?.assetAccountId
+      ? String((initialData as any).assetAccountId)
       : "";
     const type: CategoryType =
       initialData?.categoryType === "NonConsumable" ? "NonConsumable" : "Consumable";
@@ -108,6 +127,7 @@ export function CategoryForm({
         description: initialData?.description ?? "",
         categoryType: type,
         consumableAccountId: consumableId,
+        assetAccountId: assetId,
         status: initialData?.status ?? "active",
       });
     } else {
@@ -116,6 +136,7 @@ export function CategoryForm({
         description: initialData?.description ?? "",
         categoryType: type,
         consumableAccountId: consumableId,
+        assetAccountId: assetId,
       });
     }
   }, [
@@ -127,17 +148,22 @@ export function CategoryForm({
     initialData?.status,
     initialData?.categoryType,
     initialData?.consumableAccountId,
+    (initialData as any)?.assetAccountId,
   ]);
 
   const handleSubmit = (data: CategoryCreateFormData | CategoryEditFormData) => {
     const accountId = data.consumableAccountId?.trim()
       ? parseInt(data.consumableAccountId, 10)
       : null;
+    const assetId = data.assetAccountId?.trim()
+      ? parseInt(data.assetAccountId, 10)
+      : null;
     const payload: CategoryFormSubmitData = {
       name: data.name,
       description: data.description,
       categoryType: data.categoryType,
       consumableAccountId: Number.isFinite(accountId) ? accountId : null,
+      assetAccountId: Number.isFinite(assetId) ? assetId : null,
     };
     if (isEdit && "status" in data) {
       payload.status = data.status;
@@ -223,13 +249,33 @@ export function CategoryForm({
             </FormItem>
           )}
         />
-
+<FormField
+          control={form.control}
+          name="assetAccountId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Asset GL account (optional)</FormLabel>
+              {assetLoading ? (
+                <p className="text-sm text-muted-foreground">Loading accounts…</p>
+              ) : (
+                <Combobox
+                  options={assetAccountOptions}
+                  value={field.value ?? ""}
+                  onValueChange={field.onChange}
+                  placeholder="Select asset account…"
+                  searchPlaceholder="Search accounts…"
+                />
+              )}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="consumableAccountId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Consumable expense account (optional)</FormLabel>
+              <FormLabel>Expense GL account (optional)</FormLabel>
               {accountsLoading ? (
                 <p className="text-sm text-muted-foreground">Loading accounts…</p>
               ) : (
@@ -245,6 +291,8 @@ export function CategoryForm({
             </FormItem>
           )}
         />
+
+        
 
         <div className="flex justify-end space-x-2">
           <Button type="button" variant="outline" onClick={onCancel}>

@@ -3,7 +3,7 @@ import { categoryApi, type AccountChart } from "@/lib/api";
 
 function unwrapCharts(res: Awaited<ReturnType<typeof categoryApi.consumableExpenseAccountCharts>>) {
   if (!res?.success) {
-    throw new Error(res?.message || "Failed to load consumable expense accounts");
+    throw new Error(res?.message || "Failed to load expense GL accounts");
   }
   return res.data?.accountCharts ?? [];
 }

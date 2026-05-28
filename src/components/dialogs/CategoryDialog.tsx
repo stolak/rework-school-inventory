@@ -34,6 +34,20 @@ function consumableAccountDisplay(category: Category): string {
     : category.consumableAccount.accountDescription;
 }
 
+function assetAccountDisplay(category: Category): string {
+  const asset = (category as any).assetAccount as
+    | { id: number; accountNo?: string | null; accountDescription: string }
+    | null
+    | undefined;
+  const assetId = (category as any).assetAccountId as number | null | undefined;
+
+  if (!asset) {
+    return assetId != null ? `Account #${assetId}` : "—";
+  }
+  const no = asset.accountNo?.trim();
+  return no ? `${no} — ${asset.accountDescription}` : asset.accountDescription;
+}
+
 export function CategoryDialog({
   open,
   onOpenChange,
@@ -92,7 +106,12 @@ export function CategoryDialog({
             </div>
 
             <div>
-              <h4 className="font-medium text-muted-foreground">Consumable expense account</h4>
+              <h4 className="font-medium text-muted-foreground">Asset GL account</h4>
+              <p>{assetAccountDisplay(category)}</p>
+            </div>
+
+            <div>
+              <h4 className="font-medium text-muted-foreground">Expense GL account</h4>
               <p>{consumableAccountDisplay(category)}</p>
             </div>
 

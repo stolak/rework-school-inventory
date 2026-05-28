@@ -184,6 +184,7 @@ export function InventoryBasicSetupSection() {
         description: data.description,
         categoryType: data.categoryType,
         consumableAccountId: data.consumableAccountId,
+        assetAccountId: data.assetAccountId,
       });
     } else if (categoryDialogMode === "edit" && categoryForDialog) {
       await updateCategory(categoryForDialog.id, {
@@ -192,6 +193,7 @@ export function InventoryBasicSetupSection() {
         categoryType: data.categoryType,
         status: data.status,
         consumableAccountId: data.consumableAccountId,
+        assetAccountId: data.assetAccountId,
       });
     }
   };
@@ -389,23 +391,23 @@ export function InventoryBasicSetupSection() {
                       <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
                         {category.description || "—"}
                       </p>
+                      {category.assetAccount ? (
+                        <p className="text-xs text-muted-foreground line-clamp-1 mt-1">
+                          Asset GL:{" "}
+                          {category.assetAccount.accountNo?.trim()
+                            ? `${category.assetAccount.accountNo} — ${category.assetAccount.accountDescription}`
+                            : category.assetAccount.accountDescription}
+                        </p>
+                      ) : null}
                       {category.consumableAccount ? (
                         <p className="text-xs text-muted-foreground line-clamp-1 mt-1">
-                          GL:{" "}
+                          Expense GL:{" "}
                           {category.consumableAccount.accountNo?.trim()
                             ? `${category.consumableAccount.accountNo} — ${category.consumableAccount.accountDescription}`
                             : category.consumableAccount.accountDescription}
                         </p>
                       ) : null}
-                      <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-                        <span>{category.itemCount} items</span>
-                        <ChevronRight
-                          className={cn(
-                            "h-4 w-4 shrink-0 opacity-40",
-                            selectedCategoryId === category.id && "text-primary opacity-100"
-                          )}
-                        />
-                      </div>
+                      
                     </button>
                     <div className="flex flex-col justify-center gap-0.5 py-1.5 pr-1.5 pl-0.5 shrink-0 border-l border-border/50 bg-background/40">
                       <Button

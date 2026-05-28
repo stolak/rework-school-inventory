@@ -1,4 +1,5 @@
-import { Bell, Search, User, Settings, LogOut } from "lucide-react"
+import { useState } from "react"
+import { Bell, Search, User, Settings, LogOut, KeyRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SidebarTrigger } from "@/components/ui/sidebar"
@@ -11,9 +12,13 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useAuth } from "@/contexts/AuthContext"
+import { ChangePasswordDialog } from "@/components/dialogs/ChangePasswordDialog"
+import { ProfileDialog } from "@/components/dialogs/ProfileDialog"
 
 export function Header() {
   const { user, logout } = useAuth();
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
 
   const getInitials = (name: string) => {
     return name
@@ -60,13 +65,32 @@ export function Header() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault()
+                  setProfileOpen(true)
+                }}
+              >
                 <User className="mr-2 h-4 w-4" />
                 Profile
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Settings className="mr-2 h-4 w-4" />
-                Settings
+                {/* <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault()
+                    setChangePasswordOpen(true)
+                  }}
+                >
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </DropdownMenuItem> */}
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault()
+                  setChangePasswordOpen(true)
+                }}
+              >
+                <KeyRound className="mr-2 h-4 w-4" />
+                Change password
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout}>
@@ -77,6 +101,13 @@ export function Header() {
           </DropdownMenu>
         </div>
       </div>
+
+      <ChangePasswordDialog
+        open={changePasswordOpen}
+        onOpenChange={setChangePasswordOpen}
+      />
+
+      <ProfileDialog open={profileOpen} onOpenChange={setProfileOpen} />
     </header>
   )
 }

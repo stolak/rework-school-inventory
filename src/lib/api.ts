@@ -251,6 +251,7 @@ export const createCategory = (body: {
   description?: string;
   categoryType: CategoryType;
   consumableAccountId?: number | null;
+  assetAccountId?: number | null;
 }) => post<ApiResponse<Category>, typeof body>("/api/v1/categories", body);
 
 export const updateCategory = (
@@ -261,6 +262,7 @@ export const updateCategory = (
     categoryType?: CategoryType;
     status?: "Active" | "Inactive";
     consumableAccountId?: number | null;
+    assetAccountId?: number | null;
   }
 ) => put<ApiResponse<Category>, typeof body>(`/api/v1/categories/${id}`, body);
 
@@ -3306,6 +3308,12 @@ export const menuApi = {
 
 export const fetchAuthMeMenus = () =>
   get<ApiResponse<{ menus: AppMenu[] }>>("/api/v1/auth/me/menus");
+
+export const changeMyPassword = (body: {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}) => patch<ApiResponse<unknown>>("/api/v1/auth/me/password", body);
 
 export default {
   request,

@@ -24,6 +24,8 @@ export interface Category {
   createdAt: string;
   consumableAccountId: number | null;
   consumableAccount: CategoryConsumableAccount | null;
+  assetAccountId?: number | null;
+  assetAccount?: CategoryConsumableAccount | null;
 }
 
 function normalizeCategoryType(value: unknown): CategoryType {
@@ -51,6 +53,8 @@ function mapCategory(item: ApiCategory & { itemCount?: number }): Category {
     createdAt: item.createdAt ?? new Date().toISOString().split("T")[0],
     consumableAccountId: item.consumableAccountId ?? null,
     consumableAccount: item.consumableAccount ?? null,
+    assetAccountId: (item as any).assetAccountId ?? null,
+    assetAccount: (item as any).assetAccount ?? null,
   };
 }
 
@@ -59,6 +63,7 @@ export type CategoryCreateInput = {
   description: string;
   categoryType: CategoryType;
   consumableAccountId?: number | null;
+  assetAccountId?: number | null;
 };
 
 export type CategoryUpdateInput = {
@@ -67,6 +72,7 @@ export type CategoryUpdateInput = {
   categoryType?: CategoryType;
   status?: "active" | "inactive";
   consumableAccountId?: number | null;
+  assetAccountId?: number | null;
 };
 
 export type UseCategoriesOptions = {
@@ -115,6 +121,7 @@ export const useCategories = (options?: UseCategoriesOptions) => {
         description?: string;
         categoryType: CategoryType;
         consumableAccountId?: number;
+        assetAccountId?: number | null;
       } = {
         name: categoryData.name,
         description: categoryData.description,
@@ -122,6 +129,9 @@ export const useCategories = (options?: UseCategoriesOptions) => {
       };
       if (categoryData.consumableAccountId != null) {
         body.consumableAccountId = categoryData.consumableAccountId;
+      }
+      if (categoryData.assetAccountId !== undefined) {
+        body.assetAccountId = categoryData.assetAccountId;
       }
 
       const res = await categoryApi.create(body);
@@ -153,6 +163,7 @@ export const useCategories = (options?: UseCategoriesOptions) => {
         categoryType?: CategoryType;
         status?: "Active" | "Inactive";
         consumableAccountId?: number | null;
+        assetAccountId?: number | null;
       } = {};
 
       if (updates.name !== undefined) body.name = updates.name;
@@ -163,6 +174,9 @@ export const useCategories = (options?: UseCategoriesOptions) => {
       }
       if (updates.consumableAccountId !== undefined) {
         body.consumableAccountId = updates.consumableAccountId;
+      }
+      if (updates.assetAccountId !== undefined) {
+        body.assetAccountId = updates.assetAccountId;
       }
 
       const res = await categoryApi.update(id, body);
