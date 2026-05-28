@@ -1463,6 +1463,32 @@ export type InventoryTransactionLogData = {
   transactions: InventoryTxnLogRow[];
 };
 
+export type InventoryBalanceMatrixRow = {
+  store: { id: string; name: string };
+  items: {
+    item: {
+      id: string;
+      name: string;
+      sku?: string | null;
+      barcode?: string | null;
+      category?: { id: string; name?: string } | null;
+      subCategory?: { id: string; name?: string } | null;
+    };
+    balance: string;
+  }[];
+};
+
+export const fetchInventoryBalanceMatrix = (body?: {
+  stores?: string[];
+  items?: string[];
+  categoryId?: string;
+  subCategoryId?: string;
+}) =>
+  post<ApiResponse<InventoryBalanceMatrixRow[]>>(
+    "/api/v1/inventory-items/balance-matrix",
+    body ?? {},
+  );
+
 export const fetchInventoryItemTransactionLog = (params: {
   itemId: string;
   storeId?: string;
@@ -1487,6 +1513,7 @@ export const inventoryApi = {
   update: updateInventoryItem,
   remove: deleteInventoryItem,
   balances: fetchInventoryItemBalances,
+  balanceMatrix: fetchInventoryBalanceMatrix,
   transactionLog: fetchInventoryItemTransactionLog,
 };
 

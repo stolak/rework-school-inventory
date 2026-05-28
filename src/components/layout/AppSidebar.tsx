@@ -126,6 +126,11 @@ const sidebarNavSections: SidebarNavSection[] = [
     items: [
       { title: "Student collections summary", url: "/reports/student-inventory", icon: FileBarChart },
       {
+        title: "Store inventory matrix",
+        url: "/reports/store-inventory-balance-matrix",
+        icon: BarChart,
+      },
+      {
         title: "Student items received",
         url: "/reports/student-items-received",
         icon: FileBarChart,

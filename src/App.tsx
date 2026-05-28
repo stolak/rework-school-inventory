@@ -51,6 +51,7 @@ import AppRoles from "./pages/AppRoles";
 import Menus from "./pages/Menus";
 import UserManagement from "./pages/UserManagement";
 import StaffManagement from "./pages/StaffManagement";
+import StoreInventoryBalanceMatrixReport from "./pages/StoreInventoryBalanceMatrixReport";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 
@@ -112,6 +113,10 @@ const AppContent = () => {
           <Route path="/menus" element={<Menus />} />
           <Route path="/users" element={<UserManagement />} />
           <Route path="/staff" element={<StaffManagement />} />
+          <Route
+            path="/reports/store-inventory-balance-matrix"
+            element={<StoreInventoryBalanceMatrixReport />}
+          />
           <Route path="/reports/student-inventory" element={<StudentInventoryReport />} />
           <Route
             path="/reports/student-items-received"
