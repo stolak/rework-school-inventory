@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ReportActions } from "@/components/reports/ReportActions";
 import {
   Table,
   TableBody,
@@ -32,6 +33,7 @@ function accountLabel(a: TrialBalanceReportRow["account"]): string {
 }
 
 export default function TrialBalanceReport() {
+  const TABLE_ID = "trial-balance-report-table";
   const today = useMemo(() => new Date(), []);
   const defaultTo = today.toISOString().slice(0, 10);
 
@@ -120,14 +122,21 @@ export default function TrialBalanceReport() {
             (per API). Optional from date narrows the movement window.
           </p>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => refetch()}
-          disabled={!queryParams || isFetching}
-        >
-          Refresh
-        </Button>
+        <div className="flex gap-2 flex-wrap items-center print:hidden">
+          <ReportActions
+            tableId={TABLE_ID}
+            filenameBase="trial-balance-report"
+            disabled={isLoading || sortedRows.length === 0}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => refetch()}
+            disabled={!queryParams || isFetching}
+          >
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -242,7 +251,7 @@ export default function TrialBalanceReport() {
                 <p className="text-center text-muted-foreground py-8">No rows returned.</p>
               ) : (
                 <div className="rounded-md border overflow-x-auto">
-                  <Table>
+                  <Table id={TABLE_ID}>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Group</TableHead>

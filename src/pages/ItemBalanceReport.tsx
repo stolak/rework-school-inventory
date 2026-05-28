@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Combobox } from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
+import { ReportActions } from "@/components/reports/ReportActions";
 import {
   Table,
   TableBody,
@@ -18,6 +19,7 @@ import { useStores } from "@/hooks/useStores";
 import { useItemBalances } from "@/hooks/useItemBalances";
 
 export default function ItemBalanceReport() {
+  const TABLE_ID = "item-balance-report-table";
   const [categoryId, setCategoryId] = useState("");
   const [subCategoryId, setSubCategoryId] = useState("");
   const [storeId, setStoreId] = useState("");
@@ -65,9 +67,16 @@ export default function ItemBalanceReport() {
             empty to include all items (per API behavior).
           </p>
         </div>
-        <Button type="button" variant="outline" onClick={() => refetch()}>
-          Refresh
-        </Button>
+        <div className="flex gap-2 flex-wrap items-center print:hidden">
+          <ReportActions
+            tableId={TABLE_ID}
+            filenameBase="item-balance-report"
+            disabled={isLoading || balances.length === 0}
+          />
+          <Button type="button" variant="outline" onClick={() => refetch()}>
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -154,7 +163,7 @@ export default function ItemBalanceReport() {
             </p>
           ) : (
             <div className="rounded-md border overflow-x-auto">
-              <Table>
+                <Table id={TABLE_ID}>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Item</TableHead>

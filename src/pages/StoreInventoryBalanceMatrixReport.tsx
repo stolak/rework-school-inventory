@@ -6,6 +6,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { MultiCombobox } from "@/components/ui/multi-combobox";
+import { ReportActions } from "@/components/reports/ReportActions";
 import {
   Table,
   TableBody,
@@ -26,6 +27,7 @@ function toNumber(value: unknown): number {
 }
 
 export default function StoreInventoryBalanceMatrixReport() {
+  const TABLE_ID = "store-inventory-balance-matrix-table";
   const [categoryId, setCategoryId] = useState("");
   const [subCategoryId, setSubCategoryId] = useState("");
 
@@ -133,10 +135,17 @@ export default function StoreInventoryBalanceMatrixReport() {
             Stores are shown across the top, items down the left. All filters are optional.
           </p>
         </div>
-        <Button type="button" variant="outline" onClick={handleRun} disabled={isLoading}>
-          <RefreshCw className="mr-2 h-4 w-4" />
-          Refresh
-        </Button>
+        <div className="flex gap-2 flex-wrap items-center print:hidden">
+          <ReportActions
+            tableId={TABLE_ID}
+            filenameBase="store-inventory-balance-matrix"
+            disabled={isLoading || stores.length === 0 || items.length === 0}
+          />
+          <Button type="button" variant="outline" onClick={handleRun} disabled={isLoading}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -226,7 +235,7 @@ export default function StoreInventoryBalanceMatrixReport() {
             </div>
           ) : (
             <div className="rounded-md border overflow-auto">
-              <Table>
+              <Table id={TABLE_ID}>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="sticky left-0 bg-background z-10 min-w-[320px]">

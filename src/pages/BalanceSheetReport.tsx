@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ReportActions } from "@/components/reports/ReportActions";
 import {
   Table,
   TableBody,
@@ -40,6 +41,7 @@ function parseHeadSections(raw: BalanceSheetReportData | undefined): BalanceShee
 }
 
 export default function BalanceSheetReport() {
+  const TABLE_ID = "balance-sheet-summary-table";
   const today = useMemo(() => new Date(), []);
   const defaultTo = today.toISOString().slice(0, 10);
 
@@ -111,14 +113,21 @@ export default function BalanceSheetReport() {
             Optional from date narrows the activity window.
           </p>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => refetch()}
-          disabled={!queryParams || isFetching}
-        >
-          Refresh
-        </Button>
+        <div className="flex gap-2 flex-wrap items-center print:hidden">
+          <ReportActions
+            tableId={TABLE_ID}
+            filenameBase="balance-sheet-report"
+            disabled={isLoading || headTotals.length === 0}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => refetch()}
+            disabled={!queryParams || isFetching}
+          >
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -261,7 +270,7 @@ export default function BalanceSheetReport() {
               </CardHeader>
               <CardContent>
                 <div className="rounded-md border overflow-x-auto">
-                  <Table>
+                  <Table id={TABLE_ID}>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Head code</TableHead>

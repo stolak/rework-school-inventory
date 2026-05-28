@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Combobox } from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
+import { ReportActions } from "@/components/reports/ReportActions";
 import {
   Table,
   TableBody,
@@ -32,6 +33,7 @@ function studentLabel(row: StudentBillingSummaryReportRow): string {
 }
 
 export default function StudentBillingSummaryReport() {
+  const TABLE_ID = "student-billing-summary-report-table";
   const [sessionId, setSessionId] = useState("");
   const [termId, setTermId] = useState("");
   const [classId, setClassId] = useState("");
@@ -144,14 +146,21 @@ export default function StudentBillingSummaryReport() {
             <span className="text-foreground">All</span> to include every class or subclass.
           </p>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => refetch()}
-          disabled={!filtersReady || isFetching}
-        >
-          Refresh
-        </Button>
+        <div className="flex gap-2 flex-wrap items-center print:hidden">
+          <ReportActions
+            tableId={TABLE_ID}
+            filenameBase="student-billing-summary-report"
+            disabled={isLoading || !filtersReady || (rows?.length ?? 0) === 0}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => refetch()}
+            disabled={!filtersReady || isFetching}
+          >
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -242,7 +251,7 @@ export default function StudentBillingSummaryReport() {
               <p className="text-center text-muted-foreground py-10">No data for this period.</p>
             ) : (
               <div className="rounded-md border overflow-x-auto">
-                <Table>
+                <Table id={TABLE_ID}>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Student</TableHead>

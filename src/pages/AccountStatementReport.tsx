@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ReportActions } from "@/components/reports/ReportActions";
 import {
   Table,
   TableBody,
@@ -36,6 +37,7 @@ function accountOptionLabel(a: {
 }
 
 export default function AccountStatementReport() {
+  const TABLE_ID = "account-statement-report-table";
   const today = useMemo(() => new Date(), []);
   const defaultTo = today.toISOString().slice(0, 10);
   const defaultFrom = new Date(
@@ -120,14 +122,21 @@ export default function AccountStatementReport() {
             the from date, then each line’s debit minus credit.
           </p>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => refetch()}
-          disabled={!queryParams}
-        >
-          Refresh
-        </Button>
+        <div className="flex gap-2 flex-wrap items-center print:hidden">
+          <ReportActions
+            tableId={TABLE_ID}
+            filenameBase="account-statement-report"
+            disabled={isLoading || !queryParams || rowsWithBalance.length === 0}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => refetch()}
+            disabled={!queryParams}
+          >
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -273,7 +282,7 @@ export default function AccountStatementReport() {
                 </p>
               ) : (
                 <div className="rounded-md border overflow-x-auto">
-                  <Table>
+                  <Table id={TABLE_ID}>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Date</TableHead>

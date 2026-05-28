@@ -164,9 +164,13 @@ export default function Purchases() {
           description: "Purchase order added successfully",
         });
       } catch (err) {
+        const msg =
+          err instanceof Error && err.message.trim()
+            ? err.message.trim()
+            : "Failed to add purchase order";
         toast({
           title: "Error",
-          description: "Failed to add purchase order",
+          description: msg,
           variant: "destructive",
         });
         throw err
