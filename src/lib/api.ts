@@ -1652,6 +1652,7 @@ export const createPurchasesBulk = (body: {
   notes?: string;
   transactionDate: string;
   amountPaid?: string | number;
+  paymentAccountId?: string;
   items: { itemId: string; qtyIn: number; inCost: number }[];
 }) => post<ApiResponse<Purchase[]>, typeof body>("/api/v1/purchases/bulk", body);
 

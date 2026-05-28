@@ -21,12 +21,22 @@ import { Combobox } from "@/components/ui/combobox"
 import { useClasses } from "@/hooks/useClasses"
 import { useSubClasses } from "@/hooks/useSubClasses"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import type { Student } from "@/hooks/useStudents"
 
 export default function Students() {
   const [searchTerm, setSearchTerm] = useState("")
   const [classId, setClassId] = useState("all")
   const [subClassId, setSubClassId] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid")
 
   const { classes } = useClasses({ page: 1, limit: 100 })
   const { subClasses } = useSubClasses({ page: 1, limit: 500 })
@@ -45,7 +55,7 @@ export default function Students() {
   const { students, addStudent, updateStudent, deleteStudent, isLoading } = useStudents(listQuery)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<'add' | 'edit' | 'view'>('add')
-  const [selectedStudent, setSelectedStudent] = useState<any>(null)
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [studentToDelete, setStudentToDelete] = useState<string | null>(null)
 
@@ -91,13 +101,13 @@ export default function Students() {
     setDialogOpen(true)
   }
 
-  const handleEdit = (student: any) => {
+  const handleEdit = (student: Student) => {
     setDialogMode('edit')
     setSelectedStudent(student)
     setDialogOpen(true)
   }
 
-  const handleView = (student: any) => {
+  const handleView = (student: Student) => {
     setDialogMode('view')
     setSelectedStudent(student)
     setDialogOpen(true)
@@ -215,14 +225,32 @@ export default function Students() {
             <SelectItem value="Graduated">Graduated</SelectItem>
           </SelectContent>
         </Select>
+
+        <div className="flex items-center gap-2 w-full xl:w-auto xl:ml-auto">
+          <Button
+            type="button"
+            variant={viewMode === "grid" ? "default" : "outline"}
+            onClick={() => setViewMode("grid")}
+          >
+            Grid
+          </Button>
+          <Button
+            type="button"
+            variant={viewMode === "table" ? "default" : "outline"}
+            onClick={() => setViewMode("table")}
+          >
+            Table
+          </Button>
+        </div>
       </div>
 
-      {/* Students Grid */}
       {isLoading ? (
         <div className="flex justify-center items-center py-10">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
-      ) : (
+      ) : filteredStudents.length === 0 ? (
+        <div className="text-center py-10 text-muted-foreground">No students found.</div>
+      ) : viewMode === "grid" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredStudents.map((student) => (
           <Card key={student.id} className="shadow-card hover:shadow-elevated transition-all duration-300">
@@ -277,16 +305,7 @@ export default function Students() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4 pt-2 border-t">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-success">{student.itemsReceived || 0}</p>
-                  <p className="text-xs text-muted-foreground">Items Received</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-warning">{student.itemsPending || 0}</p>
-                  <p className="text-xs text-muted-foreground">Items Pending</p>
-                </div>
-              </div>
+              
 
               <div className="flex gap-2 pt-2">
                 <Button 
@@ -318,6 +337,79 @@ export default function Students() {
             </CardContent>
           </Card>
           ))}
+        </div>
+      ) : (
+        <div className="rounded-md border bg-background overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Student</TableHead>
+                  <TableHead>Admission No.</TableHead>
+                  <TableHead>Class</TableHead>
+                  <TableHead>Sub Class</TableHead>
+                  <TableHead>Guardian</TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredStudents.map((student) => (
+                  <TableRow key={student.id}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-8 w-8 bg-gradient-primary shrink-0">
+                          <AvatarFallback className="text-primary-foreground text-xs font-medium">
+                            {getInitials(student.firstName, student.lastName)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span>
+                          {student.firstName} {student.lastName}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>{student.admissionNumber}</TableCell>
+                    <TableCell>{student.className || "—"}</TableCell>
+                    <TableCell>{student.subClassName || "—"}</TableCell>
+                    <TableCell>{student.guardianName}</TableCell>
+                    <TableCell>{student.guardianContact}</TableCell>
+                    <TableCell className="max-w-[180px] truncate">
+                      {student.guardianEmail || student.studentEmail || "—"}
+                    </TableCell>
+                    <TableCell>{getStatusBadge(student.status)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleView(student)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(student)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDelete(student.id)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
 

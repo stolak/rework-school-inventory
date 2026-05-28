@@ -118,16 +118,7 @@ export function StudentDialog({ open, onOpenChange, mode, student, onSubmit }: S
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-success">{student.itemsReceived || 0}</p>
-                <p className="text-xs text-muted-foreground">Items Received</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-warning">{student.itemsPending || 0}</p>
-                <p className="text-xs text-muted-foreground">Items Pending</p>
-              </div>
-            </div>
+            
           </div>
         </DialogContent>
       </Dialog>

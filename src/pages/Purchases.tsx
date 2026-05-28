@@ -143,13 +143,17 @@ export default function Purchases() {
         description: "Please wait while we add the purchase order",
       });
       
+      const amountPaid = data.amountPaid ?? 0;
       const purchaseData = {
         storeId: data.storeId,
         supplierId: data.supplierId,
         referenceNo: data.referenceNo || undefined,
         notes: data.notes || undefined,
         transactionDate: format(data.transactionDate, "yyyy-MM-dd"),
-        amountPaid: data.amountPaid ?? undefined,
+        amountPaid: amountPaid > 0 ? amountPaid : undefined,
+        ...(amountPaid > 0 && data.paymentAccountId
+          ? { paymentAccountId: data.paymentAccountId }
+          : {}),
         items: (data.items || []).map((it: any) => ({
           itemId: it.itemId,
           qtyIn: Number(it.qtyIn),

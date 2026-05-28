@@ -1,3 +1,4 @@
+import { useEffect, useMemo } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -21,6 +22,8 @@ import {
 import { useInventory, type InventoryItem } from "@/hooks/useInventory";
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { useStores } from "@/hooks/useStores";
+import { useAccountCharts } from "@/hooks/useAccountCharts";
+import { accountChartOptionLabel } from "@/hooks/useDefaultAccountSettings";
 
 function roundMoney(n: number): number {
   return Math.round(n * 100) / 100;
@@ -58,24 +61,36 @@ function unitCostAsNumber(value: number | ""): number {
   return value === "" ? 0 : value;
 }
 
-const schema = z.object({
-  storeId: z.string().min(1, "Please select a store"),
-  supplierId: z.string().min(1, "Please select a supplier"),
-  referenceNo: z.string().optional(),
-  notes: z.string().optional(),
-  transactionDate: z.date(),
-  amountPaid: z.number().min(0, "Amount paid must be non-negative").optional(),
-  items: z
-    .array(
-      z.object({
-        itemId: z.string().min(1, "Please select an item"),
-        qtyIn: z.number().min(1, "Qty must be at least 1"),
-        unitCost: z.number().min(0, "Unit cost must be non-negative"),
-        inCost: z.number().min(0, "Cost must be non-negative"),
-      })
-    )
-    .min(1, "Add at least one item"),
-});
+const schema = z
+  .object({
+    storeId: z.string().min(1, "Please select a store"),
+    supplierId: z.string().min(1, "Please select a supplier"),
+    referenceNo: z.string().optional(),
+    notes: z.string().optional(),
+    transactionDate: z.date(),
+    amountPaid: z.number().min(0, "Amount paid must be non-negative").optional(),
+    paymentAccountId: z.string().optional(),
+    items: z
+      .array(
+        z.object({
+          itemId: z.string().min(1, "Please select an item"),
+          qtyIn: z.number().min(1, "Qty must be at least 1"),
+          unitCost: z.number().min(0, "Unit cost must be non-negative"),
+          inCost: z.number().min(0, "Cost must be non-negative"),
+        })
+      )
+      .min(1, "Add at least one item"),
+  })
+  .superRefine((data, ctx) => {
+    const paid = data.amountPaid ?? 0;
+    if (paid > 0 && !data.paymentAccountId?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Payment account is required when amount paid is greater than zero",
+        path: ["paymentAccountId"],
+      });
+    }
+  });
 
 export type PurchaseCreateFormData = z.infer<typeof schema>;
 
@@ -93,6 +108,20 @@ export function PurchaseCreateForm({
     page: 1,
     limit: 100,
   });
+  const { charts: paymentAccounts, isLoading: paymentAccountsLoading } = useAccountCharts({
+    status: "Active",
+  });
+
+  const paymentAccountOptions = useMemo(
+    () =>
+      paymentAccounts
+        .map((a) => ({
+          value: String(a.id),
+          label: accountChartOptionLabel(a),
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [paymentAccounts]
+  );
 
   const form = useForm<PurchaseCreateFormData>({
     resolver: zodResolver(schema),
@@ -103,9 +132,19 @@ export function PurchaseCreateForm({
       notes: "",
       transactionDate: new Date(),
       amountPaid: undefined,
+      paymentAccountId: "",
       items: [{ itemId: "", qtyIn: 1, unitCost: 0, inCost: 0 }],
     },
   });
+
+  const amountPaid = form.watch("amountPaid");
+  const requiresPaymentAccount = (amountPaid ?? 0) > 0;
+
+  useEffect(() => {
+    if (!requiresPaymentAccount) {
+      form.setValue("paymentAccountId", "");
+    }
+  }, [requiresPaymentAccount, form]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -390,6 +429,34 @@ export function PurchaseCreateForm({
             )}
           />
         </div>
+
+        {requiresPaymentAccount ? (
+          <FormField
+            control={form.control}
+            name="paymentAccountId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Payment Account</FormLabel>
+                <FormControl>
+                  {paymentAccountsLoading ? (
+                    <p className="text-sm text-muted-foreground">Loading accounts…</p>
+                  ) : paymentAccountOptions.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No active accounts found.</p>
+                  ) : (
+                    <Combobox
+                      value={field.value ?? ""}
+                      onValueChange={field.onChange}
+                      options={paymentAccountOptions}
+                      placeholder="Select payment account"
+                      searchPlaceholder="Search accounts…"
+                    />
+                  )}
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        ) : null}
 
         <FormField
           control={form.control}
