@@ -27,14 +27,13 @@ import ClassDefaultBillings from "./pages/ClassDefaultBillings";
 import Uoms from "./pages/Uoms";
 import Sessions from "./pages/Sessions";
 import Terms from "./pages/Terms";
-import ProjectSetup from "./pages/ProjectSetup";
+import ProjectFacilitySetup from "./pages/ProjectFacilitySetup";
 import StudentItemCollections from "./pages/StudentItemCollections";
 import StaffItemCollections from "./pages/StaffItemCollections";
 import ItemInventoryDonations from "./pages/ItemInventoryDonations";
 import ProjectDisbursement from "./pages/ProjectDisbursement";
 import FacilityItemDistribution from "./pages/FacilityItemDistribution";
 import StoreSetup from "./pages/StoreSetup";
-import FacilityUnitSetup from "./pages/FacilityUnitSetup";
 import StoreItemTransfer from "./pages/StoreItemTransfer";
 import StudentInventoryReport from "./pages/StudentInventoryReport";
 import StudentItemsReceivedReport from "./pages/StudentItemsReceivedReport";
@@ -100,14 +99,14 @@ const AppContent = () => {
           <Route path="/uoms" element={<Uoms />} />
           <Route path="/sessions" element={<Sessions />} />
           <Route path="/terms" element={<Terms />} />
-          <Route path="/projects" element={<ProjectSetup />} />
+          <Route path="/projects" element={<ProjectFacilitySetup />} />
           <Route path="/student-collections" element={<StudentItemCollections />} />
           <Route path="/staff-collections" element={<StaffItemCollections />} />
           <Route path="/donations" element={<ItemInventoryDonations />} />
           <Route path="/project-disbursement" element={<ProjectDisbursement />} />
           <Route path="/facility-item-distribution" element={<FacilityItemDistribution />} />
           <Route path="/store-setup" element={<StoreSetup />} />
-          <Route path="/facility-unit-setup" element={<FacilityUnitSetup />} />
+          <Route path="/facility-unit-setup" element={<ProjectFacilitySetup />} />
           <Route path="/store-transfers" element={<StoreItemTransfer />} />
           <Route path="/app-roles" element={<AppRoles />} />
           <Route path="/menus" element={<Menus />} />

@@ -25,7 +25,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-export default function ProjectSetup() {
+export function ProjectSetupContent({ embedded = false }: { embedded?: boolean }) {
   const { projects, addProject, updateProject, deleteProject, isLoading } =
     useProjects({ page: 1, limit: 100 });
 
@@ -107,7 +107,7 @@ export default function ProjectSetup() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className={embedded ? "space-y-6" : "p-6 space-y-6"}>
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -221,4 +221,8 @@ export default function ProjectSetup() {
       </AlertDialog>
     </div>
   );
+}
+
+export default function ProjectSetup() {
+  return <ProjectSetupContent />;
 }

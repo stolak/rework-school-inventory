@@ -79,17 +79,33 @@ const sidebarNavSections: SidebarNavSection[] = [
     tooltip: "Main",
     sectionIcon: LayoutDashboard,
     items: [
-      { title: "Dashboard", url: "/", icon: Home },
-      { title: "Purchases", url: "/purchases", icon: ShoppingCart },
-      { title: "Donations", url: "/donations", icon: Gift },
-      { title: "Project disbursement", url: "/project-disbursement", icon: PackageMinus },
-      { title: "Facility item distribution", url: "/facility-item-distribution", icon: Building2 },
+      { title: "Dashboard", url: "/", icon: Home },     
+      
       { title: "Sales", url: "/sales", icon: ShoppingBag },
-      { title: "Suppliers", url: "/suppliers", icon: Users },
-      { title: "Projects", url: "/projects", icon: FolderKanban },
-      { title: "Facility/unit setup", url: "/facility-unit-setup", icon: Building2 },
-      { title: "Store setup", url: "/store-setup", icon: Store },
-      { title: "Store transfers", url: "/store-transfers", icon: ArrowLeftRight },
+     
+    ],
+  },
+  {
+    title: "Inventory Entry",
+    tooltip: "Inventory Entry",
+    sectionIcon: LayoutDashboard,
+    items: [
+     
+      { title: "Purchases orders", url: "/purchases", icon: ShoppingCart },
+      { title: "Donations orders", url: "/donations", icon: Gift },
+      { title: "Store item transfers", url: "/store-transfers", icon: ArrowLeftRight },
+    ],
+  },
+  {
+    title: "Inventory Disbursement",
+    tooltip: "Inventory Disbursement",
+    sectionIcon: LayoutDashboard,
+    items: [
+      { title: "Student Collections", url: "/student-collections", icon: UserCheck },
+      { title: "Staff Collections", url: "/staff-collections", icon: UserCheck },
+      { title: "Project disbursement", url: "/project-disbursement", icon: PackageMinus },
+      { title: "Facility distribution", url: "/facility-item-distribution", icon: Building2 },
+      { title: "Store item transfers", url: "/store-transfers", icon: ArrowLeftRight },
     ],
   },
   {
@@ -98,11 +114,9 @@ const sidebarNavSections: SidebarNavSection[] = [
     sectionIcon: School,
     items: [
       { title: "Classes & sub-classes", url: "/classes", icon: GraduationCap },
-      { title: "Students", url: "/students", icon: Users },
-      { title: "Staff", url: "/staff", icon: UserCog },
+     
       { title: "Sessions & terms", url: "/sessions", icon: BookOpen },
-      { title: "Student Collections", url: "/student-collections", icon: UserCheck },
-      { title: "Staff Collections", url: "/staff-collections", icon: UserCheck },
+      
     ],
   },
   {
@@ -119,9 +133,6 @@ const sidebarNavSections: SidebarNavSection[] = [
       { title: "Inventory Collections Report", url: "/reports/inventory-collections", icon: BarChart },
       { title: "Item balance report", url: "/reports/item-balances", icon: Scale },
       { title: "Item transaction log", url: "/reports/item-transaction-log", icon: History },
-      { title: "Account statement", url: "/reports/account-statement", icon: ScrollText },
-      { title: "Trial balance", url: "/reports/trial-balance", icon: Equal },
-      { title: "Balance sheet", url: "/reports/balance-sheet", icon: BookMarked },
       { title: "Student billing summary", url: "/reports/student-billing-summary", icon: FileBarChart },
       { title: "Student balances", url: "/reports/student-balances", icon: Wallet },
       {
@@ -129,6 +140,10 @@ const sidebarNavSections: SidebarNavSection[] = [
         url: "/reports/student-transaction-log",
         icon: History,
       },
+      { title: "Account statement", url: "/reports/account-statement", icon: ScrollText },
+      { title: "Trial balance", url: "/reports/trial-balance", icon: Equal },
+      { title: "Balance sheet", url: "/reports/balance-sheet", icon: BookMarked },
+      
     ],
   },
   {
@@ -148,12 +163,26 @@ const sidebarNavSections: SidebarNavSection[] = [
       },
     ],
   },
+
+  {
+    title: "Registration",
+    tooltip: "Registration",
+    sectionIcon: LayoutDashboard,
+    items: [
+      { title: "Students", url: "/students", icon: Users },
+      { title: "Staff", url: "/staff", icon: UserCog },
+      { title: "Suppliers", url: "/suppliers", icon: Users },  
+    ],
+  },
   {
     title: "Setup",
     tooltip: "Setup",
     sectionIcon: LayoutDashboard,
     items: [
       { title: "Inventory", url: "/inventory", icon: Package },
+      { title: "Facilities & Projects", url: "/facility-unit-setup", icon: Building2 },
+      { title: "Stores & Warehouses", url: "/store-setup", icon: Store },
+    
       { title: "Default account settings", url: "/default-account-settings", icon: Landmark },
       { title: "User management", url: "/users", icon: UserCog },
       { title: "Role management", url: "/app-roles", icon: Shield },

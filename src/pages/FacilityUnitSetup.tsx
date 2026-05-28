@@ -18,7 +18,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-export default function FacilityUnitSetup() {
+export function FacilityUnitSetupContent({ embedded = false }: { embedded?: boolean }) {
   const { facilities, isLoading, addFacility, updateFacility, deleteFacility } = useFacilities();
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -82,12 +82,12 @@ export default function FacilityUnitSetup() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className={embedded ? "space-y-6" : "p-6 space-y-6"}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <Building2 className="h-8 w-8" />
-            Facility/unit setup
+            Facility
           </h1>
           <p className="text-muted-foreground mt-1">
             Manage facilities for inventory locations and organization.
@@ -194,4 +194,8 @@ export default function FacilityUnitSetup() {
       </AlertDialog>
     </div>
   );
+}
+
+export default function FacilityUnitSetup() {
+  return <FacilityUnitSetupContent />;
 }
