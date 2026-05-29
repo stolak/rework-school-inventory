@@ -29,6 +29,9 @@ import { useStoreTransfers, type StoreTransferRowView } from "@/hooks/useStoreTr
 import { useToast } from "@/hooks/use-toast"
 import { TablePaginationBar } from "@/components/ui/table-pagination-bar"
 import { cn } from "@/lib/utils"
+import { ReportActions } from "@/components/reports/ReportActions"
+
+const TRANSFER_EXPORT_TABLE_ID = "store-item-transfer-export-table"
 
 interface LineItem {
   itemId: string
@@ -64,7 +67,11 @@ export default function StoreItemTransfer() {
   const [lineItems, setLineItems] = useState<LineItem[]>([])
 
   const { items: filterItems } = useInventory({ page: 1, limit: 500 })
-  const { items: storeItems, isLoading: storeItemsLoading } = useInventory({
+  const {
+    items: storeItems,
+    isLoading: storeItemsLoading,
+    refetch: refetchSourceStoreItems,
+  } = useInventory({
     storeId: sourceStoreId || undefined,
     page: 1,
     limit: 500,
@@ -217,6 +224,9 @@ export default function StoreItemTransfer() {
         notes: notes.trim() || undefined,
         transactionDate,
       })
+      if (sourceStoreId) {
+        await refetchSourceStoreItems()
+      }
       setLineItems([])
       setNotes("")
     } catch {
@@ -252,9 +262,47 @@ export default function StoreItemTransfer() {
     rows: StoreTransferRowView[]
   }>())
 
+  const batchEntries = useMemo(
+    () => Array.from(groupedTransfers.entries()),
+    [groupedTransfers]
+  )
+
+  const exportRows = useMemo(() => {
+    const rows: {
+      referenceNo: string
+      transactionDate: string
+      sourceName: string
+      destName: string
+      itemName: string
+      quantity: string
+      status: string
+      notes: string
+      recordedBy: string
+    }[] = []
+    for (const [, batch] of batchEntries) {
+      const dateStr = batch.transactionDate
+        ? new Date(batch.transactionDate).toLocaleDateString()
+        : ""
+      for (const r of batch.rows) {
+        rows.push({
+          referenceNo: batch.referenceNo ?? "",
+          transactionDate: dateStr,
+          sourceName: batch.sourceName ?? "",
+          destName: batch.destName ?? "",
+          itemName: r.item?.name ?? "",
+          quantity: String(r.quantity ?? ""),
+          status: batch.status ?? "",
+          notes: batch.notes ?? "",
+          recordedBy: batch.createdByName ?? "",
+        })
+      }
+    }
+    return rows
+  }, [batchEntries])
+
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-4 print:hidden">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <ArrowLeftRight className="h-8 w-8" />
@@ -268,7 +316,7 @@ export default function StoreItemTransfer() {
       </div>
 
       <Tabs defaultValue="entry" className="space-y-4">
-        <TabsList className="grid w-full max-w-md grid-cols-2 sm:w-auto sm:inline-flex">
+        <TabsList className="grid w-full max-w-md grid-cols-2 sm:w-auto sm:inline-flex print:hidden">
           <TabsTrigger value="entry" className="gap-2">
             <Plus className="h-4 w-4" />
             New entry
@@ -279,7 +327,7 @@ export default function StoreItemTransfer() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="entry" className="space-y-6 mt-6">
+        <TabsContent value="entry" className="space-y-6 mt-6 print:hidden">
           <Card>
             <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
               <CardTitle>
@@ -442,7 +490,7 @@ export default function StoreItemTransfer() {
                             updateLine(
                               index,
                               "qty",
-                              Number.isNaN(parsed) ? 1 : parsed
+                              Number.isNaN(parsed) ? '' : parsed
                             )
                           }}
                         />
@@ -493,7 +541,7 @@ export default function StoreItemTransfer() {
         </TabsContent>
 
         <TabsContent value="report" className="space-y-6 mt-6">
-          <Card>
+          <Card className="print:hidden">
             <CardHeader>
               <CardTitle>Filters (optional)</CardTitle>
             </CardHeader>
@@ -604,10 +652,21 @@ export default function StoreItemTransfer() {
 
           <Card className="overflow-hidden">
             <CardHeader>
-              <CardTitle>
-                Transfer history
-                {pagination ? ` (${pagination.total})` : ` (${transfers.length})`}
-              </CardTitle>
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <CardTitle>
+                  Transfer history
+                  {pagination ? ` (${pagination.total})` : ` (${transfers.length})`}
+                </CardTitle>
+                <ReportActions
+                  tableId={TRANSFER_EXPORT_TABLE_ID}
+                  filenameBase="store-item-transfer"
+                  disabled={isLoading || batchEntries.length === 0}
+                  className="flex gap-2 print:hidden shrink-0"
+                />
+              </div>
+              <p className="hidden print:block text-sm text-muted-foreground mt-2">
+                Store item transfer report
+              </p>
             </CardHeader>
             <CardContent className="p-0">
               {isLoading ? (
@@ -623,8 +682,9 @@ export default function StoreItemTransfer() {
                   </p>
                 </div>
               ) : (
+                <>
                 <div className="overflow-x-auto border-b">
-                  <Table>
+                  <Table id="store-item-transfer-display-table">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Reference</TableHead>
@@ -638,7 +698,7 @@ export default function StoreItemTransfer() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {Array.from(groupedTransfers.entries()).map(([key, batch]) => (
+                      {batchEntries.map(([key, batch]) => (
                         <TableRow key={key}>
                           <TableCell>
                             <Badge variant="outline">{batch.referenceNo}</Badge>
@@ -685,6 +745,53 @@ export default function StoreItemTransfer() {
                     </TableBody>
                   </Table>
                 </div>
+
+                <div className="sr-only" aria-hidden>
+                  <Table id={TRANSFER_EXPORT_TABLE_ID}>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Reference</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>From</TableHead>
+                        <TableHead>To</TableHead>
+                        <TableHead>Item</TableHead>
+                        <TableHead>Qty</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Notes</TableHead>
+                        <TableHead>Recorded By</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {exportRows.map((row, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell>{row.referenceNo}</TableCell>
+                          <TableCell>{row.transactionDate}</TableCell>
+                          <TableCell>{row.sourceName}</TableCell>
+                          <TableCell>{row.destName}</TableCell>
+                          <TableCell>{row.itemName}</TableCell>
+                          <TableCell>{row.quantity}</TableCell>
+                          <TableCell>{row.status}</TableCell>
+                          <TableCell>{row.notes}</TableCell>
+                          <TableCell>{row.recordedBy}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                </>
+              )}
+              {pagination && !isLoading && (
+                <TablePaginationBar
+                  pagination={pagination}
+                  totalLabel="Total transfers"
+                  pageSize={limit}
+                  onPageChange={setPage}
+                  onPageSizeChange={(nextLimit) => {
+                    setLimit(nextLimit)
+                    setPage(1)
+                  }}
+                  className="print:hidden"
+                />
               )}
             </CardContent>
           </Card>

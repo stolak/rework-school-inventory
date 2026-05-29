@@ -85,6 +85,7 @@ export function useFacilityCollections(params?: {
     mutationFn: facilityCollectionsApi.bulkCreate,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["facility-collections"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
     },
     onError: (error: Error) => {
       toast({
@@ -99,6 +100,7 @@ export function useFacilityCollections(params?: {
     mutationFn: facilityCollectionsApi.remove,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["facility-collections"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
       toast({
         title: "Success",
         description: "Facility distribution line deleted successfully",

@@ -64,6 +64,7 @@ export function useStoreTransfers(params?: {
     },
     onSuccess: (res: any) => {
       queryClient.invalidateQueries({ queryKey: ["store-transfers"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
       toast({
         title: "Success",
         description:

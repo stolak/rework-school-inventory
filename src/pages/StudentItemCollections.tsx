@@ -565,7 +565,7 @@ export default function StudentItemCollections() {
                         <Label>Quantity</Label>
                         <Input
                           type="number"
-                          min="1"
+                          min="0"
                           value={row.qtyOut}
                           className={cn(
                             exceedsStock && "border-destructive focus-visible:ring-destructive"
@@ -575,7 +575,7 @@ export default function StudentItemCollections() {
                             updateNewItem(
                               index,
                               "qtyOut",
-                              Number.isNaN(parsed) ? 1 : parsed
+                              Number.isNaN(parsed) ? '' : parsed
                             )
                           }}
                         />

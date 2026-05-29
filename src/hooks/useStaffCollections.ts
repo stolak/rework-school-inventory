@@ -65,6 +65,7 @@ export function useStaffCollections(params?: {
     mutationFn: staffCollectionsApi.bulkCreate,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["staff-collections"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
       toast({
         title: "Success",
         description: "Staff collection created successfully",
@@ -83,6 +84,7 @@ export function useStaffCollections(params?: {
     mutationFn: staffCollectionsApi.remove,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["staff-collections"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
       toast({
         title: "Success",
         description: "Staff collection deleted successfully",

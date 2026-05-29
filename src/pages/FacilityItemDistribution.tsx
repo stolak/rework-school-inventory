@@ -31,6 +31,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { ReportActions } from "@/components/reports/ReportActions"
+
+const DISTRIBUTION_EXPORT_TABLE_ID = "facility-item-distribution-export-table"
 
 interface NewLineItem {
   itemId: string
@@ -73,7 +76,11 @@ export default function FacilityItemDistribution() {
   const [collectionToDelete, setCollectionToDelete] = useState<string | null>(null)
 
   const { items: filterItems } = useInventory({ page: 1, limit: 500 })
-  const { items: storeItems, isLoading: storeItemsLoading } = useInventory({
+  const {
+    items: storeItems,
+    isLoading: storeItemsLoading,
+    refetch: refetchStoreItems,
+  } = useInventory({
     storeId: storeId || undefined,
     page: 1,
     limit: 500,
@@ -252,6 +259,9 @@ export default function FacilityItemDistribution() {
         transactionDate,
         items: validItems.map((it) => ({ itemId: it.itemId, qtyOut: it.qtyOut })),
       })
+      if (storeId) {
+        await refetchStoreItems()
+      }
       toast({
         title: "Success",
         description: "Facility distribution recorded successfully",
@@ -315,6 +325,44 @@ export default function FacilityItemDistribution() {
     rows: FacilityCollection[]
   }>())
 
+  const batchEntries = useMemo(
+    () => Array.from(groupedBatches.entries()),
+    [groupedBatches]
+  )
+
+  const exportRows = useMemo(() => {
+    const rows: {
+      referenceNo: string
+      transactionDate: string
+      storeName: string
+      facilityName: string
+      staffLabel: string
+      itemName: string
+      qtyOut: string
+      notes: string
+      recordedBy: string
+    }[] = []
+    for (const [, batch] of batchEntries) {
+      const dateStr = batch.transactionDate
+        ? new Date(batch.transactionDate).toLocaleDateString()
+        : ""
+      for (const r of batch.rows) {
+        rows.push({
+          referenceNo: batch.referenceNo ?? "",
+          transactionDate: dateStr,
+          storeName: batch.storeName ?? "",
+          facilityName: batch.facilityName ?? "",
+          staffLabel: batch.staffLabel ?? "",
+          itemName: r.itemName ?? "",
+          qtyOut: String(r.qtyOut ?? ""),
+          notes: batch.notes ?? "",
+          recordedBy: batch.createdByName ?? "",
+        })
+      }
+    }
+    return rows
+  }, [batchEntries])
+
   const selectedStoreForEntry = myStores.find((s) => s.id === storeId)
   const selectedFacilityForEntry = facilities.find((f) => f.id === facilityId)
   const selectedStaffForEntry = staff.find((s) => s.id === staffId)
@@ -329,7 +377,7 @@ export default function FacilityItemDistribution() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between print:hidden">
         <div>
           <h1 className="text-3xl font-bold">Facility item distribution</h1>
           <p className="text-muted-foreground">
@@ -340,7 +388,7 @@ export default function FacilityItemDistribution() {
       </div>
 
       <Tabs defaultValue="entry" className="space-y-4">
-        <TabsList className="grid w-full max-w-md grid-cols-2 sm:w-auto sm:inline-flex">
+        <TabsList className="grid w-full max-w-md grid-cols-2 sm:w-auto sm:inline-flex print:hidden">
           <TabsTrigger value="entry" className="gap-2">
             <Plus className="h-4 w-4" />
             New entry
@@ -351,7 +399,7 @@ export default function FacilityItemDistribution() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="entry" className="space-y-6 mt-6">
+        <TabsContent value="entry" className="space-y-6 mt-6 print:hidden">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>
@@ -364,7 +412,7 @@ export default function FacilityItemDistribution() {
                   Save Batch
                 </Button>
               )}
-            </CardHeader>
+            </CardHeader> 
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div>
@@ -517,7 +565,7 @@ export default function FacilityItemDistribution() {
                             updateNewItem(
                               index,
                               "qtyOut",
-                              Number.isNaN(parsed) ? 1 : parsed
+                              Number.isNaN(parsed) ? '' : parsed
                             )
                           }}
                         />
@@ -561,7 +609,7 @@ export default function FacilityItemDistribution() {
         </TabsContent>
 
         <TabsContent value="report" className="space-y-6 mt-6">
-          <Card>
+          <Card className="print:hidden">
             <CardHeader>
               <CardTitle>Filters (optional)</CardTitle>
             </CardHeader>
@@ -690,12 +738,23 @@ export default function FacilityItemDistribution() {
 
           <Card className="overflow-hidden">
             <CardHeader>
-              <CardTitle>
-                Facility distributions
-                {pagination
-                  ? ` (${pagination.total})`
-                  : ` (${facilityCollections.length})`}
-              </CardTitle>
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <CardTitle>
+                  Facility distributions
+                  {pagination
+                    ? ` (${pagination.total})`
+                    : ` (${facilityCollections.length})`}
+                </CardTitle>
+                <ReportActions
+                  tableId={DISTRIBUTION_EXPORT_TABLE_ID}
+                  filenameBase="facility-item-distribution"
+                  disabled={isLoading || batchEntries.length === 0}
+                  className="flex gap-2 print:hidden shrink-0"
+                />
+              </div>
+              <p className="hidden print:block text-sm text-muted-foreground mt-2">
+                Facility item distribution report
+              </p>
             </CardHeader>
             <CardContent className="p-0">
               {isLoading ? (
@@ -711,8 +770,9 @@ export default function FacilityItemDistribution() {
                   </p>
                 </div>
               ) : (
+                <>
                 <div className="overflow-x-auto">
-                <Table>
+                <Table id="facility-item-distribution-display-table">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Reference</TableHead>
@@ -726,7 +786,7 @@ export default function FacilityItemDistribution() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {Array.from(groupedBatches.entries()).map(([key, batch]) => (
+                    {batchEntries.map(([key, batch]) => (
                       <TableRow key={key}>
                         <TableCell>
                           <Badge variant="outline">{batch.referenceNo ?? "—"}</Badge>
@@ -762,7 +822,7 @@ export default function FacilityItemDistribution() {
                                   type="button"
                                   size="icon"
                                   variant="ghost"
-                                  className="h-7 w-7 shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  className="h-7 w-7 shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10 print:hidden"
                                   title="Delete this item"
                                   onClick={() => handleDelete(r.id)}
                                 >
@@ -783,6 +843,40 @@ export default function FacilityItemDistribution() {
                   </TableBody>
                 </Table>
                 </div>
+
+                <div className="sr-only" aria-hidden>
+                  <Table id={DISTRIBUTION_EXPORT_TABLE_ID}>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Reference</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Store</TableHead>
+                        <TableHead>Facility</TableHead>
+                        <TableHead>Staff</TableHead>
+                        <TableHead>Item</TableHead>
+                        <TableHead>Qty Out</TableHead>
+                        <TableHead>Notes</TableHead>
+                        <TableHead>Recorded By</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {exportRows.map((row, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell>{row.referenceNo}</TableCell>
+                          <TableCell>{row.transactionDate}</TableCell>
+                          <TableCell>{row.storeName}</TableCell>
+                          <TableCell>{row.facilityName}</TableCell>
+                          <TableCell>{row.staffLabel}</TableCell>
+                          <TableCell>{row.itemName}</TableCell>
+                          <TableCell>{row.qtyOut}</TableCell>
+                          <TableCell>{row.notes}</TableCell>
+                          <TableCell>{row.recordedBy}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                </>
               )}
               {pagination && !isLoading && (
                 <TablePaginationBar
@@ -794,6 +888,7 @@ export default function FacilityItemDistribution() {
                     setLimit(nextLimit)
                     setPage(1)
                   }}
+                  className="print:hidden"
                 />
               )}
             </CardContent>

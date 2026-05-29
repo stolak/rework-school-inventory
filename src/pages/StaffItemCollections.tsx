@@ -27,6 +27,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { ReportActions } from "@/components/reports/ReportActions"
+
+const COLLECTIONS_EXPORT_TABLE_ID = "staff-item-collections-export-table"
 
 interface NewCollectionItem {
   itemId: string
@@ -66,7 +69,11 @@ export default function StaffItemCollections() {
   const [collectionToDelete, setCollectionToDelete] = useState<string | null>(null)
 
   const { staff, isLoading: staffLoading } = useStaff({ page: 1, limit: 500 })
-  const { items: storeItems, isLoading: storeItemsLoading } = useInventory({
+  const {
+    items: storeItems,
+    isLoading: storeItemsLoading,
+    refetch: refetchStoreItems,
+  } = useInventory({
     storeId: storeId || undefined,
     page: 1,
     limit: 500,
@@ -223,6 +230,9 @@ export default function StaffItemCollections() {
         transactionDate,
         items: validItems.map((it) => ({ itemId: it.itemId, qtyOut: it.qtyOut })),
       })
+      if (storeId) {
+        await refetchStoreItems()
+      }
       toast({
         title: "Success",
         description: "Staff collection batch added successfully",
@@ -286,6 +296,42 @@ export default function StaffItemCollections() {
     rows: StaffCollection[]
   }>())
 
+  const batchEntries = useMemo(
+    () => Array.from(groupedBatches.entries()),
+    [groupedBatches]
+  )
+
+  const exportRows = useMemo(() => {
+    const rows: {
+      staffName: string
+      staffNumber: string
+      storeName: string
+      referenceNo: string
+      transactionDate: string
+      itemName: string
+      qtyOut: string
+      notes: string
+    }[] = []
+    for (const [, batch] of batchEntries) {
+      const dateStr = batch.transactionDate
+        ? new Date(batch.transactionDate).toLocaleDateString()
+        : ""
+      for (const r of batch.rows) {
+        rows.push({
+          staffName: batch.staffName,
+          staffNumber: batch.staffNumber ?? "",
+          storeName: batch.storeName ?? "",
+          referenceNo: batch.referenceNo ?? "",
+          transactionDate: dateStr,
+          itemName: r.itemName ?? "",
+          qtyOut: String(r.qtyOut ?? ""),
+          notes: batch.notes ?? "",
+        })
+      }
+    }
+    return rows
+  }, [batchEntries])
+
   const selectedStoreForEntry = myStores.find((s) => s.id === storeId)
   const selectedStaffForEntry = staff.find((s) => s.id === selectedStaffId)
 
@@ -298,7 +344,7 @@ export default function StaffItemCollections() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between print:hidden">
         <div>
           <h1 className="text-3xl font-bold">Staff Item Collections</h1>
           <p className="text-muted-foreground">Track inventory collections issued to staff</p>
@@ -307,7 +353,7 @@ export default function StaffItemCollections() {
       </div>
 
       <Tabs defaultValue="entry" className="space-y-4">
-        <TabsList className="grid w-full max-w-md grid-cols-2 sm:w-auto sm:inline-flex">
+        <TabsList className="grid w-full max-w-md grid-cols-2 sm:w-auto sm:inline-flex print:hidden">
           <TabsTrigger value="entry" className="gap-2">
             <Plus className="h-4 w-4" />
             New entry
@@ -318,7 +364,7 @@ export default function StaffItemCollections() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="entry" className="space-y-6 mt-6">
+        <TabsContent value="entry" className="space-y-6 mt-6 print:hidden">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>
@@ -469,7 +515,7 @@ export default function StaffItemCollections() {
                             updateNewItem(
                               index,
                               "qtyOut",
-                              Number.isNaN(parsed) ? 1 : parsed
+                              Number.isNaN(parsed) ? '' : parsed
                             )
                           }}
                         />
@@ -513,7 +559,7 @@ export default function StaffItemCollections() {
         </TabsContent>
 
         <TabsContent value="report" className="space-y-6 mt-6">
-          <Card>
+          <Card className="print:hidden">
             <CardHeader>
               <CardTitle>Filters (optional)</CardTitle>
             </CardHeader>
@@ -607,10 +653,21 @@ export default function StaffItemCollections() {
 
           <Card className="overflow-hidden">
             <CardHeader>
-              <CardTitle>
-                Current Collections
-                {pagination ? ` (${pagination.total})` : ` (${collections.length})`}
-              </CardTitle>
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <CardTitle>
+                  Current Collections
+                  {pagination ? ` (${pagination.total})` : ` (${collections.length})`}
+                </CardTitle>
+                <ReportActions
+                  tableId={COLLECTIONS_EXPORT_TABLE_ID}
+                  filenameBase="staff-item-collections"
+                  disabled={isLoading || batchEntries.length === 0}
+                  className="flex gap-2 print:hidden shrink-0"
+                />
+              </div>
+              <p className="hidden print:block text-sm text-muted-foreground mt-2">
+                Staff item collections report
+              </p>
             </CardHeader>
             <CardContent className="p-0">
               {isLoading ? (
@@ -626,8 +683,9 @@ export default function StaffItemCollections() {
                   </p>
                 </div>
               ) : (
+                <>
                 <div className="overflow-x-auto">
-                <Table>
+                <Table id="staff-item-collections-display-table">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Staff</TableHead>
@@ -639,15 +697,11 @@ export default function StaffItemCollections() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {Array.from(groupedBatches.entries()).map(([key, batch]) => (
+                    {batchEntries.map(([key, batch]) => (
                       <TableRow key={key}>
                         <TableCell>
                           <div className="font-medium">{batch.staffName}</div>
-                          {batch.staffNumber && (
-                            <Badge variant="secondary" className="text-xs">
-                              {batch.staffNumber}
-                            </Badge>
-                          )}
+                          
                         </TableCell>
                         <TableCell className="max-w-[140px] truncate">
                           {batch.storeName ?? "—"}
@@ -677,7 +731,7 @@ export default function StaffItemCollections() {
                                   type="button"
                                   size="icon"
                                   variant="ghost"
-                                  className="h-7 w-7 shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  className="h-7 w-7 shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10 print:hidden"
                                   title="Delete this item"
                                   onClick={() => handleDelete(r.id)}
                                 >
@@ -695,6 +749,36 @@ export default function StaffItemCollections() {
                   </TableBody>
                 </Table>
                 </div>
+
+                <div className="sr-only" aria-hidden>
+                  <Table id={COLLECTIONS_EXPORT_TABLE_ID}>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Staff</TableHead>
+                        <TableHead>Store</TableHead>
+                        <TableHead>Reference</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Item</TableHead>
+                        <TableHead>Qty</TableHead>
+                        <TableHead>Notes</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {exportRows.map((row, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell>{row.staffName}</TableCell>
+                          <TableCell>{row.storeName}</TableCell>
+                          <TableCell>{row.referenceNo}</TableCell>
+                          <TableCell>{row.transactionDate}</TableCell>
+                          <TableCell>{row.itemName}</TableCell>
+                          <TableCell>{row.qtyOut}</TableCell>
+                          <TableCell>{row.notes}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                </>
               )}
               {pagination && !isLoading && (
                 <TablePaginationBar
@@ -706,6 +790,7 @@ export default function StaffItemCollections() {
                     setLimit(nextLimit)
                     setPage(1)
                   }}
+                  className="print:hidden"
                 />
               )}
             </CardContent>

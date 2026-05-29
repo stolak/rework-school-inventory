@@ -79,6 +79,7 @@ export function useProjectCollections(params?: {
     mutationFn: projectCollectionsApi.bulkCreate,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project-collections"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
     },
     onError: (error: any) => {
       toast({
@@ -93,6 +94,7 @@ export function useProjectCollections(params?: {
     mutationFn: projectCollectionsApi.remove,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project-collections"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
       toast({
         title: "Success",
         description: "Project collection deleted successfully",
