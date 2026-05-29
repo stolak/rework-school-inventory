@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useStudents } from "@/hooks/useStudents"
 import { StudentDialog } from "@/components/dialogs/StudentDialog"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +30,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import type { Student } from "@/hooks/useStudents"
+import { TablePaginationBar } from "@/components/ui/table-pagination-bar"
 
 export default function Students() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -37,22 +38,33 @@ export default function Students() {
   const [subClassId, setSubClassId] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid")
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(10)
 
   const { classes } = useClasses({ page: 1, limit: 100 })
   const { subClasses } = useSubClasses({ page: 1, limit: 500 })
 
+  useEffect(() => {
+    setPage(1)
+  }, [classId, subClassId, statusFilter, limit])
+
+  useEffect(() => {
+    setPage(1)
+  }, [searchTerm])
+
   const listQuery = useMemo(
     () => ({
-      page: 1,
-      limit: 20,
+      page,
+      limit,
       classId: classId === "all" ? undefined : classId,
       subClassId: subClassId === "all" ? undefined : subClassId,
       status: statusFilter === "all" ? undefined : statusFilter,
     }),
-    [classId, subClassId, statusFilter]
+    [classId, subClassId, statusFilter, page, limit]
   )
 
-  const { students, addStudent, updateStudent, deleteStudent, isLoading } = useStudents(listQuery)
+  const { students, pagination, addStudent, updateStudent, deleteStudent, isLoading } =
+    useStudents(listQuery)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<'add' | 'edit' | 'view'>('add')
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
@@ -251,6 +263,7 @@ export default function Students() {
       ) : filteredStudents.length === 0 ? (
         <div className="text-center py-10 text-muted-foreground">No students found.</div>
       ) : viewMode === "grid" ? (
+        <div className="space-y-0">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredStudents.map((student) => (
           <Card key={student.id} className="shadow-card hover:shadow-elevated transition-all duration-300">
@@ -338,6 +351,21 @@ export default function Students() {
           </Card>
           ))}
         </div>
+        {pagination ? (
+          <div className="rounded-md border bg-background overflow-hidden mt-4">
+            <TablePaginationBar
+              pagination={pagination}
+              totalLabel="Total students"
+              pageSize={limit}
+              onPageChange={setPage}
+              onPageSizeChange={(nextLimit) => {
+                setLimit(nextLimit)
+                setPage(1)
+              }}
+            />
+          </div>
+        ) : null}
+        </div>
       ) : (
         <div className="rounded-md border bg-background overflow-hidden">
           <div className="overflow-x-auto">
@@ -410,15 +438,22 @@ export default function Students() {
               </TableBody>
             </Table>
           </div>
+          {pagination ? (
+            <TablePaginationBar
+              pagination={pagination}
+              totalLabel="Total students"
+              pageSize={limit}
+              onPageChange={setPage}
+              onPageSizeChange={(nextLimit) => {
+                setLimit(nextLimit)
+                setPage(1)
+              }}
+            />
+          ) : null}
         </div>
       )}
 
-      {/* Load More */}
-      <div className="text-center">
-        <Button variant="outline">
-          Load More Students
-        </Button>
-      </div>
+     
 
       <StudentDialog
         open={dialogOpen}
