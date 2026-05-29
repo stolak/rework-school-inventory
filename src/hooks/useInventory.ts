@@ -40,7 +40,7 @@ export function useInventory(params?: {
 }) {
   const queryClient = useQueryClient();
 
-  const { data: items = [], isLoading } = useQuery({
+  const { data: items = [], isLoading, refetch } = useQuery({
     queryKey: [
       "inventory",
       params?.q ?? "",
@@ -109,6 +109,7 @@ export function useInventory(params?: {
   return {
     items,
     isLoading,
+    refetch,
     addItem: (data: any) => addMutation.mutate(data),
     updateItem: (id: string, data: UpdateInventoryItemBody) =>
       updateMutation.mutate({ id, data }),

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Plus, Save, Trash2, Users, FileBarChart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -29,6 +29,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { ReportActions } from "@/components/reports/ReportActions"
+
+const COLLECTIONS_EXPORT_TABLE_ID = "student-item-collections-export-table"
 
 interface NewCollectionItem {
   itemId: string
@@ -67,7 +70,11 @@ export default function StudentItemCollections() {
     limit,
   })
   const { classes } = useClasses()
-  const { items: storeItems, isLoading: storeItemsLoading } = useInventory({
+  const {
+    items: storeItems,
+    isLoading: storeItemsLoading,
+    refetch: refetchStoreItems,
+  } = useInventory({
     storeId: storeId || undefined,
     page: 1,
     limit: 500,
@@ -238,6 +245,9 @@ export default function StudentItemCollections() {
         transactionDate,
         items: validItems.map(it => ({ itemId: it.itemId, qtyOut: it.qtyOut })),
       })
+      if (storeId) {
+        await refetchStoreItems()
+      }
       toast({
         title: "Success",
         description: "Collection batch added successfully",
@@ -303,6 +313,42 @@ export default function StudentItemCollections() {
     rows: StudentCollection[]
   }>())
 
+  const batchEntries = useMemo(
+    () => Array.from(groupedBatches.entries()),
+    [groupedBatches]
+  )
+
+  const exportRows = useMemo(() => {
+    const rows: {
+      studentName: string
+      admissionNumber: string
+      storeName: string
+      referenceNo: string
+      transactionDate: string
+      itemName: string
+      qtyOut: string
+      notes: string
+    }[] = []
+    for (const [, batch] of batchEntries) {
+      const dateStr = batch.transactionDate
+        ? new Date(batch.transactionDate).toLocaleDateString()
+        : ""
+      for (const r of batch.rows) {
+        rows.push({
+          studentName: batch.studentName,
+          admissionNumber: batch.admissionNumber || batch.studentId,
+          storeName: batch.storeName ?? "",
+          referenceNo: batch.referenceNo ?? "",
+          transactionDate: dateStr,
+          itemName: r.itemName ?? "",
+          qtyOut: String(r.qtyOut ?? ""),
+          notes: batch.notes ?? "",
+        })
+      }
+    }
+    return rows
+  }, [batchEntries])
+
   const selectedStoreForEntry = myStores.find((s) => s.id === storeId)
   const selectedStudentForEntry =
     classStudents.find((s) => s.id === selectedStudentId) ??
@@ -319,7 +365,7 @@ export default function StudentItemCollections() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between print:hidden">
         <div>
           <h1 className="text-3xl font-bold">Student Item Collections</h1>
           <p className="text-muted-foreground">Track individual student inventory distributions</p>
@@ -328,7 +374,7 @@ export default function StudentItemCollections() {
       </div>
 
       <Tabs defaultValue="entry" className="space-y-4">
-        <TabsList className="grid w-full max-w-md grid-cols-2 sm:w-auto sm:inline-flex">
+        <TabsList className="grid w-full max-w-md grid-cols-2 sm:w-auto sm:inline-flex print:hidden">
           <TabsTrigger value="entry" className="gap-2">
             <Plus className="h-4 w-4" />
             New entry
@@ -339,7 +385,7 @@ export default function StudentItemCollections() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="entry" className="space-y-6 mt-6">
+        <TabsContent value="entry" className="space-y-6 mt-6 print:hidden">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>
@@ -573,7 +619,7 @@ export default function StudentItemCollections() {
         </TabsContent>
 
         <TabsContent value="report" className="space-y-6 mt-6">
-          <Card>
+          <Card className="print:hidden">
             <CardHeader>
               <CardTitle>Filters (optional)</CardTitle>
             </CardHeader>
@@ -594,7 +640,7 @@ export default function StudentItemCollections() {
                   { value: "", label: "All classes" },
                   ...classes.map((class_) => ({
                     value: class_.id,
-                    label: `${class_.name}  (${class_.totalStudents} students)`,
+                    label: `${class_.name}  `,
                   })),
                 ]}
                 placeholder="All classes"
@@ -679,26 +725,7 @@ export default function StudentItemCollections() {
                 disabled={allStudentsLoading}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Page</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={page}
-                  onChange={(e) => setPage(Math.max(1, parseInt(e.target.value) || 1))}
-                />
-              </div>
-              <div>
-                <Label>Limit</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={limit}
-                  onChange={(e) => setLimit(Math.max(1, parseInt(e.target.value) || 20))}
-                />
-              </div>
-            </div>
+          
           </div>
         </CardContent>
       </Card>
@@ -707,10 +734,21 @@ export default function StudentItemCollections() {
           {/* Existing Collections */}
           <Card className="overflow-hidden">
             <CardHeader>
-              <CardTitle>
-                Current Collections
-                {pagination ? ` (${pagination.total})` : ` (${collections.length})`}
-              </CardTitle>
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <CardTitle>
+                  Current Collections
+                  {pagination ? ` (${pagination.total})` : ` (${collections.length})`}
+                </CardTitle>
+                <ReportActions
+                  tableId={COLLECTIONS_EXPORT_TABLE_ID}
+                  filenameBase="student-item-collections"
+                  disabled={isLoading || batchEntries.length === 0}
+                  className="flex gap-2 print:hidden shrink-0"
+                />
+              </div>
+              <p className="hidden print:block text-sm text-muted-foreground mt-2">
+                Student item collections report
+              </p>
             </CardHeader>
             <CardContent className="p-0">
               {isLoading ? (
@@ -726,8 +764,9 @@ export default function StudentItemCollections() {
                   </p>
                 </div>
               ) : (
+                <>
                 <div className="overflow-x-auto">
-                <Table>
+                <Table id="student-item-collections-display-table">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Student</TableHead>
@@ -739,7 +778,7 @@ export default function StudentItemCollections() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {Array.from(groupedBatches.entries()).map(([key, batch]) => (
+                    {batchEntries.map(([key, batch]) => (
                       <TableRow key={key}>
                         <TableCell>
                           <div className="font-medium">{batch.studentName}</div>
@@ -777,7 +816,7 @@ export default function StudentItemCollections() {
                                   type="button"
                                   size="icon"
                                   variant="ghost"
-                                  className="h-7 w-7 shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  className="h-7 w-7 shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10 print:hidden"
                                   title="Delete this item"
                                   onClick={() => handleDelete(r.id)}
                                 >
@@ -795,9 +834,42 @@ export default function StudentItemCollections() {
                   </TableBody>
                 </Table>
                 </div>
+
+                <div className="sr-only" aria-hidden>
+                  <Table id={COLLECTIONS_EXPORT_TABLE_ID}>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Student</TableHead>
+                        <TableHead>Admission No.</TableHead>
+                        <TableHead>Store</TableHead>
+                        <TableHead>Reference</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Item</TableHead>
+                        <TableHead>Qty</TableHead>
+                        <TableHead>Notes</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {exportRows.map((row, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell>{row.studentName}</TableCell>
+                          <TableCell>{row.admissionNumber}</TableCell>
+                          <TableCell>{row.storeName}</TableCell>
+                          <TableCell>{row.referenceNo}</TableCell>
+                          <TableCell>{row.transactionDate}</TableCell>
+                          <TableCell>{row.itemName}</TableCell>
+                          <TableCell>{row.qtyOut}</TableCell>
+                          <TableCell>{row.notes}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                </>
               )}
               {pagination && !isLoading && (
                 <TablePaginationBar
+                  className="print:hidden"
                   pagination={pagination}
                   totalLabel="Total collections"
                   pageSize={limit}

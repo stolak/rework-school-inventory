@@ -135,6 +135,7 @@ export function useStudentCollections(params?: {
     mutationFn: studentCollectionsApi.bulkCreate,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["student-collections"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
       toast({
         title: "Success",
         description: "Student collection created successfully",
@@ -177,6 +178,7 @@ export function useStudentCollections(params?: {
     mutationFn: studentCollectionsApi.remove,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["student-collections"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
       toast({
         title: "Success",
         description: "Collection deleted successfully",
