@@ -178,6 +178,30 @@ export const useStudents = (params?: {
     },
   });
 
+  const bulkUpdateClassMutation = useMutation({
+    mutationFn: async (body: Parameters<typeof studentApi.bulkUpdateClass>[0]) => {
+      const res = await studentApi.bulkUpdateClass(body);
+      if (!res?.success) {
+        throw new Error(res?.message || "Failed to update students");
+      }
+      return res;
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ["students"] });
+      toast({
+        title: "Success",
+        description: res?.message || "Students updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update students",
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     students,
     pagination,
@@ -187,6 +211,8 @@ export const useStudents = (params?: {
     updateStudent: (id: string, data: Partial<Student>) =>
       updateMutation.mutateAsync({ id, data }),
     deleteStudent: deleteMutation.mutateAsync,
+    bulkUpdateStudentsClass: bulkUpdateClassMutation.mutateAsync,
+    isBulkUpdating: bulkUpdateClassMutation.isPending,
     getStudent: (id: string) => students.find((student) => student.id === id),
   };
 };

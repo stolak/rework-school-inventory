@@ -1,4 +1,4 @@
-import { Users, Plus, Search, GraduationCap, Edit, Eye, Trash2 } from "lucide-react"
+import { Users, Plus, Search, GraduationCap, Edit, Eye, Trash2, ArrowRightLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -31,6 +31,9 @@ import {
 } from "@/components/ui/table"
 import type { Student } from "@/hooks/useStudents"
 import { TablePaginationBar } from "@/components/ui/table-pagination-bar"
+import { Checkbox } from "@/components/ui/checkbox"
+import { StudentBulkMoveDialog } from "@/components/dialogs/StudentBulkMoveDialog"
+import { STUDENT_STATUSES } from "@/lib/studentConstants"
 
 export default function Students() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -63,8 +66,18 @@ export default function Students() {
     [classId, subClassId, statusFilter, page, limit]
   )
 
-  const { students, pagination, addStudent, updateStudent, deleteStudent, isLoading } =
-    useStudents(listQuery)
+  const {
+    students,
+    pagination,
+    addStudent,
+    updateStudent,
+    deleteStudent,
+    bulkUpdateStudentsClass,
+    isBulkUpdating,
+    isLoading,
+  } = useStudents(listQuery)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
+  const [bulkMoveOpen, setBulkMoveOpen] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<'add' | 'edit' | 'view'>('add')
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
@@ -89,11 +102,57 @@ export default function Students() {
     })
   }, [students, searchTerm])
 
+  const pageStudentIds = useMemo(
+    () => filteredStudents.map((s) => s.id),
+    [filteredStudents]
+  )
+
+  const selectedCount = selectedIds.size
+  const allOnPageSelected =
+    pageStudentIds.length > 0 && pageStudentIds.every((id) => selectedIds.has(id))
+  const someOnPageSelected = pageStudentIds.some((id) => selectedIds.has(id))
+
+  const toggleStudentSelection = (id: string, checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (checked) next.add(id)
+      else next.delete(id)
+      return next
+    })
+  }
+
+  const toggleSelectAllOnPage = (checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (checked) {
+        pageStudentIds.forEach((id) => next.add(id))
+      } else {
+        pageStudentIds.forEach((id) => next.delete(id))
+      }
+      return next
+    })
+  }
+
+  const clearSelection = () => setSelectedIds(new Set())
+
+  const handleBulkMove = async (payload: {
+    studentIds: string[]
+    classId?: string
+    subClassId?: string
+    status?: string
+  }) => {
+    await bulkUpdateStudentsClass(payload)
+    clearSelection()
+  }
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, string> = {
       Active: "bg-success/10 text-success",
       Inactive: "bg-warning/10 text-warning",
       Graduated: "bg-primary/10 text-primary",
+      Transferred: "bg-muted text-muted-foreground",
+      Suspended: "bg-destructive/10 text-destructive",
+      Archived: "bg-muted text-muted-foreground",
     }
 
     return (
@@ -174,10 +233,23 @@ export default function Students() {
             Manage student records and track inventory distributions
           </p>
         </div>
-        <Button className="bg-gradient-primary" onClick={handleAdd}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add New Student
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {selectedCount > 0 ? (
+            <>
+              <Button variant="secondary" onClick={() => setBulkMoveOpen(true)}>
+                <ArrowRightLeft className="mr-2 h-4 w-4" />
+                Move ({selectedCount})
+              </Button>
+              <Button variant="ghost" size="sm" onClick={clearSelection}>
+                Clear selection
+              </Button>
+            </>
+          ) : null}
+          <Button className="bg-gradient-primary" onClick={handleAdd}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add New Student
+          </Button>
+        </div>
       </div>
 
       {/* Search (client-side) + Backend filters (classId, subClassId, status) */}
@@ -232,9 +304,11 @@ export default function Students() {
           </SelectTrigger>
           <SelectContent className="bg-background border shadow-md">
             <SelectItem value="all">All status</SelectItem>
-            <SelectItem value="Active">Active</SelectItem>
-            <SelectItem value="Inactive">Inactive</SelectItem>
-            <SelectItem value="Graduated">Graduated</SelectItem>
+            {STUDENT_STATUSES.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 
@@ -264,11 +338,37 @@ export default function Students() {
         <div className="text-center py-10 text-muted-foreground">No students found.</div>
       ) : viewMode === "grid" ? (
         <div className="space-y-0">
+        <div className="flex items-center gap-2 pb-3">
+          <Checkbox
+            id="select-all-students-grid"
+            checked={
+              allOnPageSelected ? true : someOnPageSelected ? "indeterminate" : false
+            }
+            onCheckedChange={(v) => toggleSelectAllOnPage(v === true)}
+          />
+          <label
+            htmlFor="select-all-students-grid"
+            className="text-sm text-muted-foreground cursor-pointer select-none"
+          >
+            Select all on this page
+          </label>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredStudents.map((student) => (
-          <Card key={student.id} className="shadow-card hover:shadow-elevated transition-all duration-300">
+          <Card
+            key={student.id}
+            className={`shadow-card hover:shadow-elevated transition-all duration-300 ${
+              selectedIds.has(student.id) ? "ring-2 ring-primary" : ""
+            }`}
+          >
             <CardHeader>
               <div className="flex items-start gap-3">
+                <Checkbox
+                  checked={selectedIds.has(student.id)}
+                  onCheckedChange={(v) => toggleStudentSelection(student.id, v === true)}
+                  aria-label={`Select ${student.firstName} ${student.lastName}`}
+                  className="mt-1"
+                />
                 <Avatar className="h-12 w-12 bg-gradient-primary">
                   <AvatarFallback className="text-primary-foreground font-medium">
                     {getInitials(student.firstName, student.lastName)}
@@ -372,6 +472,19 @@ export default function Students() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={
+                        allOnPageSelected
+                          ? true
+                          : someOnPageSelected
+                            ? "indeterminate"
+                            : false
+                      }
+                      onCheckedChange={(v) => toggleSelectAllOnPage(v === true)}
+                      aria-label="Select all students on this page"
+                    />
+                  </TableHead>
                   <TableHead>Student</TableHead>
                   <TableHead>Admission No.</TableHead>
                   <TableHead>Class</TableHead>
@@ -385,7 +498,20 @@ export default function Students() {
               </TableHeader>
               <TableBody>
                 {filteredStudents.map((student) => (
-                  <TableRow key={student.id}>
+                  <TableRow
+                    key={student.id}
+                    data-state={selectedIds.has(student.id) ? "selected" : undefined}
+                    className={selectedIds.has(student.id) ? "bg-muted/50" : undefined}
+                  >
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.has(student.id)}
+                        onCheckedChange={(v) =>
+                          toggleStudentSelection(student.id, v === true)
+                        }
+                        aria-label={`Select ${student.firstName} ${student.lastName}`}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         <Avatar className="h-8 w-8 bg-gradient-primary shrink-0">
@@ -461,6 +587,15 @@ export default function Students() {
         mode={dialogMode}
         student={selectedStudent}
         onSubmit={handleSubmit}
+      />
+
+      <StudentBulkMoveDialog
+        open={bulkMoveOpen}
+        onOpenChange={setBulkMoveOpen}
+        selectedCount={selectedCount}
+        studentIds={[...selectedIds]}
+        onSubmit={handleBulkMove}
+        isSubmitting={isBulkUpdating}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

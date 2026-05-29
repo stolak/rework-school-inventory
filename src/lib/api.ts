@@ -1744,11 +1744,23 @@ export const updateStudent = (
 ) => put<any>(`/api/v1/students/${id}`, body);
 export const deleteStudent = (id: string) => del<any>(`/api/v1/students/${id}`);
 
+export const bulkUpdateStudentsClass = (body: {
+  studentIds: string[];
+  classId?: string;
+  subClassId?: string;
+  status?: string;
+}) =>
+  patch<
+    ApiResponse<{ updated?: number; students?: unknown[] }>,
+    typeof body
+  >("/api/v1/students/class/bulk", body);
+
 export const studentApi = {
   list: fetchStudents,
   create: createStudent,
   update: updateStudent,
   remove: deleteStudent,
+  bulkUpdateClass: bulkUpdateStudentsClass,
 };
 
 // Class-specific helpers
