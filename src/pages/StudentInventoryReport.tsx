@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { useSearchParams } from "react-router-dom"
 import { FileText, Search, Download, Printer, FileSpreadsheet } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,6 +25,7 @@ import { TablePaginationBar } from "@/components/ui/table-pagination-bar"
 import { studentCollectionsApi, type StudentCollectionRow, type StudentCollectionSummaryRow } from "@/lib/api"
 
 export default function StudentInventoryReport() {
+  const [searchParams] = useSearchParams()
   const today = useMemo(() => new Date(), [])
   const defaultTo = today.toISOString().slice(0, 10)
   const defaultFrom = new Date(
@@ -34,15 +36,34 @@ export default function StudentInventoryReport() {
     .toISOString()
     .slice(0, 10)
 
+  const initialStudentId = searchParams.get("studentId") ?? ""
+  const initialAutoSearch =
+    searchParams.get("autoSearch") === "1" || Boolean(initialStudentId)
+
   const [selectedItemId, setSelectedItemId] = useState<string>("")
-  const [selectedStudentId, setSelectedStudentId] = useState<string>("")
-  const [selectedClassId, setSelectedClassId] = useState<string>("")
-  const [selectedSubClassId, setSelectedSubClassId] = useState<string>("")
-  const [selectedSessionId, setSelectedSessionId] = useState<string>("")
-  const [selectedTermId, setSelectedTermId] = useState<string>("")
-  const [transactionDateFrom, setTransactionDateFrom] = useState<string>(defaultFrom)
-  const [transactionDateTo, setTransactionDateTo] = useState<string>(defaultTo)
-  const [hasSearched, setHasSearched] = useState(true)
+  const [selectedStudentId, setSelectedStudentId] = useState<string>(initialStudentId)
+  const [selectedClassId, setSelectedClassId] = useState<string>(
+    () => searchParams.get("classId") ?? ""
+  )
+  const [selectedSubClassId, setSelectedSubClassId] = useState<string>(
+    () =>
+      searchParams.get("subClassId") ??
+      searchParams.get("subclassId") ??
+      ""
+  )
+  const [selectedSessionId, setSelectedSessionId] = useState<string>(
+    () => searchParams.get("sessionId") ?? ""
+  )
+  const [selectedTermId, setSelectedTermId] = useState<string>(
+    () => searchParams.get("termId") ?? ""
+  )
+  const [transactionDateFrom, setTransactionDateFrom] = useState<string>(
+    () => searchParams.get("transactionDateFrom") ?? defaultFrom
+  )
+  const [transactionDateTo, setTransactionDateTo] = useState<string>(
+    () => searchParams.get("transactionDateTo") ?? defaultTo
+  )
+  const [hasSearched, setHasSearched] = useState(initialAutoSearch)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [detailsItemId, setDetailsItemId] = useState<string | null>(null)
   const [detailsPage, setDetailsPage] = useState(1)
@@ -61,6 +82,29 @@ export default function StudentInventoryReport() {
     classId: selectedClassId || undefined,
     subClassId: selectedSubClassId || undefined,
   })
+
+  useEffect(() => {
+    const sid = searchParams.get("studentId")
+    if (!sid) return
+    setSelectedStudentId(sid)
+    const cid = searchParams.get("classId")
+    if (cid) setSelectedClassId(cid)
+    const scid =
+      searchParams.get("subClassId") ?? searchParams.get("subclassId")
+    if (scid) setSelectedSubClassId(scid)
+    const sess = searchParams.get("sessionId")
+    if (sess) setSelectedSessionId(sess)
+    const tid = searchParams.get("termId")
+    if (tid) setSelectedTermId(tid)
+    const df = searchParams.get("transactionDateFrom")
+    if (df) setTransactionDateFrom(df)
+    const dt = searchParams.get("transactionDateTo")
+    if (dt) setTransactionDateTo(dt)
+    if (searchParams.get("autoSearch") === "1" || sid) {
+      setHasSearched(true)
+    }
+  }, [searchParams])
+
   const { toast } = useToast()
 
   const queryParams = useMemo(() => ({
@@ -125,7 +169,9 @@ export default function StudentInventoryReport() {
     detailsData?.data?.studentCollections ?? []
   const detailsPagination = detailsData?.data?.pagination
 
-  const selectedStudent = filteredStudents.find(s => s.id === selectedStudentId)
+  const selectedStudent = filteredStudents.find(
+    (s) => s.id === selectedStudentId
+  )
   const selectedClass = classes.find(c => c.id === selectedClassId)
   const selectedSubClass = subClasses.find(sc => sc.id === selectedSubClassId)
   const selectedSession = sessions.find(s => s.id === selectedSessionId)
@@ -238,10 +284,12 @@ export default function StudentInventoryReport() {
                 onValueChange={setSelectedStudentId}
                 options={[
                   { value: "", label: "All Students" },
-                  ...(studentsLoading ? [] : filteredStudents.map((student) => ({
-                    value: student.id,
-                    label: `${student.firstName} ${student.lastName} - ${student.admissionNumber}`,
-                  }))),
+                  ...(studentsLoading
+                    ? []
+                    : filteredStudents.map((student) => ({
+                        value: student.id,
+                        label: `${student.firstName} ${student.lastName} - ${student.admissionNumber}`,
+                      }))),
                 ]}
                 placeholder={studentsLoading ? "Loading students..." : "All students"}
                 searchPlaceholder="Search students..."

@@ -45,6 +45,27 @@ function formatStudentName(info: StudentItemsReceivedReportStudentInfo): string 
     .join(" ");
 }
 
+function openStudentInventoryReport(
+  studentId: string,
+  filters: {
+    classId?: string;
+    subclassId?: string;
+    sessionId?: string;
+    termId?: string;
+  }
+) {
+  const params = new URLSearchParams({
+    studentId,
+    autoSearch: "1",
+  });
+  if (filters.classId) params.set("classId", filters.classId);
+  if (filters.subclassId) params.set("subClassId", filters.subclassId);
+  if (filters.sessionId) params.set("sessionId", filters.sessionId);
+  if (filters.termId) params.set("termId", filters.termId);
+  const path = `/reports/student-inventory?${params.toString()}`;
+  window.open(path, "_blank", "noopener,noreferrer");
+}
+
 export default function StudentItemsReceivedReport() {
   const [sessionId, setSessionId] = useState("");
   const [termId, setTermId] = useState("");
@@ -485,8 +506,34 @@ export default function StudentItemsReceivedReport() {
                       );
                       return (
                         <TableRow key={row.studentInfo.id}>
-                          <TableCell className="sticky left-0 z-10 bg-background border-r font-medium">
-                            <div>{formatStudentName(row.studentInfo)}</div>
+                          <TableCell
+                            className="sticky left-0 z-10 bg-background border-r font-medium cursor-pointer hover:bg-muted/60 transition-colors"
+                            title="Open student collection summary in a new tab"
+                            onClick={() =>
+                              openStudentInventoryReport(row.studentInfo.id, {
+                                classId,
+                                subclassId,
+                                sessionId,
+                                termId,
+                              })
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                openStudentInventoryReport(row.studentInfo.id, {
+                                  classId,
+                                  subclassId,
+                                  sessionId,
+                                  termId,
+                                });
+                              }
+                            }}
+                            tabIndex={0}
+                            role="link"
+                          >
+                            <div className="text-primary underline-offset-2 hover:underline">
+                              {formatStudentName(row.studentInfo)}
+                            </div>
                             <div className="text-xs text-muted-foreground font-mono">
                               {row.studentInfo.admissionNumber}
                             </div>
