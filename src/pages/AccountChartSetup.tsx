@@ -271,8 +271,8 @@ export function AccountChartSetupSection() {
         <CardHeader>
           <CardTitle className="text-lg">Filters</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="space-y-2">
+        <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {/* <div className="space-y-2">
             <Label>Group</Label>
             <Combobox
               options={groupOptions}
@@ -282,7 +282,7 @@ export function AccountChartSetupSection() {
               searchPlaceholder="Search groups…"
               disabled={groupsLoading}
             />
-          </div>
+          </div> */}
           <div className="space-y-2">
             <Label>Head</Label>
             <Combobox

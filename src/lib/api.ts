@@ -1768,6 +1768,69 @@ export const salesApi = {
   bulkCreate: createSalesBulk,
 };
 
+export type Cashier = {
+  id: string;
+  name: string;
+  staffId: string;
+  accountChartId: number;
+  status: string;
+  userId?: string;
+  Staff?: {
+    id: string;
+    name?: string;
+    StaffNumber?: string;
+    email?: string;
+  } | null;
+  user?: {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  } | null;
+  ledger?: {
+    id: number;
+    accountNo?: string;
+    accountDescription?: string;
+  } | null;
+};
+
+export const fetchCashiers = (params?: {
+  status?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const searchParams = new URLSearchParams();
+  if (params?.status) searchParams.append("status", params.status);
+  if (params?.page) searchParams.append("page", String(params.page));
+  if (params?.limit) searchParams.append("limit", String(params.limit));
+  const qs = searchParams.toString();
+  return get<ApiResponse<{ cashiers: Cashier[]; pagination: Pagination }>>(
+    `/api/v1/cashiers${qs ? `?${qs}` : ""}`
+  );
+};
+
+export const createCashier = (body: {
+  name: string;
+  staffId: string;
+  accountChartId: number;
+}) => post<ApiResponse<Cashier>, typeof body>("/api/v1/cashiers", body);
+
+export const updateCashier = (
+  id: string,
+  body: {
+    name?: string;
+    staffId?: string;
+    accountChartId?: number;
+    status?: string;
+  }
+) => put<ApiResponse<Cashier>, typeof body>(`/api/v1/cashiers/${id}`, body);
+
+export const cashiersApi = {
+  list: fetchCashiers,
+  create: createCashier,
+  update: updateCashier,
+};
+
 // Student-specific helpers
 export const fetchStudents = (params?: {
   page?: number;

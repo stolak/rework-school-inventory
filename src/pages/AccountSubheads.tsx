@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Plus, Search, Edit, Trash2, ListTree, Landmark } from "lucide-react";
+import { Plus, Search, Edit, Trash2, ListTree, Landmark, Wallet } from "lucide-react";
+import { CashierSetupSection } from "@/pages/CashierSetup";
 import { Navigate, useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AccountChartSetupSection } from "@/pages/AccountChartSetup";
@@ -370,7 +371,13 @@ export function AccountSubheadsSection() {
 
 export default function AccountSetup() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const tab = searchParams.get("tab") === "charts" ? "charts" : "subheads";
+  const tabParam = searchParams.get("tab");
+  const tab =
+    tabParam === "charts"
+      ? "charts"
+      : tabParam === "cashiers"
+        ? "cashiers"
+        : "subheads";
 
   const handleTabChange = (value: string) => {
     setSearchParams(
@@ -395,13 +402,13 @@ export default function AccountSetup() {
           Account setup
         </h1>
         <p className="text-muted-foreground mt-1 max-w-3xl">
-          Configure account subheads and ledger chart accounts for billing and
-          reporting.
+          Configure account subheads, ledger chart accounts, and cashiers for
+          billing and reporting.
         </p>
       </div>
 
       <Tabs value={tab} onValueChange={handleTabChange} className="space-y-4">
-        <TabsList className="grid w-full max-w-md grid-cols-2 sm:w-auto sm:inline-flex">
+        <TabsList className="grid w-full max-w-2xl grid-cols-3 sm:w-auto sm:inline-flex">
           <TabsTrigger value="subheads" className="gap-2">
             <ListTree className="h-4 w-4" />
             Subheads
@@ -409,6 +416,10 @@ export default function AccountSetup() {
           <TabsTrigger value="charts" className="gap-2">
             <Landmark className="h-4 w-4" />
             Chart accounts
+          </TabsTrigger>
+          <TabsTrigger value="cashiers" className="gap-2">
+            <Wallet className="h-4 w-4" />
+            Cashiers
           </TabsTrigger>
         </TabsList>
 
@@ -418,6 +429,10 @@ export default function AccountSetup() {
 
         <TabsContent value="charts" className="mt-6">
           <AccountChartSetupSection />
+        </TabsContent>
+
+        <TabsContent value="cashiers" className="mt-6">
+          <CashierSetupSection />
         </TabsContent>
       </Tabs>
     </div>
