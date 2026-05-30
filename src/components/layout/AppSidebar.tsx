@@ -5,7 +5,6 @@ import {
   BookOpen,
   ShoppingCart,
   ShoppingBag,
-  Home,
   GraduationCap,
   Layers,
   UserCheck,
@@ -75,19 +74,8 @@ type SidebarNavSection = {
 
 const sidebarNavSections: SidebarNavSection[] = [
   {
-    title: "Main",
-    tooltip: "Main",
-    sectionIcon: LayoutDashboard,
-    items: [
-      { title: "Dashboard", url: "/", icon: Home },     
-      
-      { title: "Sales", url: "/sales", icon: ShoppingBag },
-     
-    ],
-  },
-  {
-    title: "Inventory Entry",
-    tooltip: "Inventory Entry",
+    title: "Inventory Inflow",
+    tooltip: "Inventory Inflow",
     sectionIcon: LayoutDashboard,
     items: [
      
@@ -97,14 +85,15 @@ const sidebarNavSections: SidebarNavSection[] = [
     ],
   },
   {
-    title: "Inventory Disbursement",
-    tooltip: "Inventory Disbursement",
+    title: "Inventory Outflow",
+    tooltip: "Inventory Outflow",
     sectionIcon: LayoutDashboard,
     items: [
       { title: "Student Collections", url: "/student-collections", icon: UserCheck },
       { title: "Staff Collections", url: "/staff-collections", icon: UserCheck },
       { title: "Project disbursement", url: "/project-disbursement", icon: PackageMinus },
       { title: "Facility distribution", url: "/facility-item-distribution", icon: Building2 },
+      { title: "Sales", url: "/sales", icon: ShoppingBag },
       { title: "Store item transfers", url: "/store-transfers", icon: ArrowLeftRight },
     ],
   },
@@ -259,6 +248,7 @@ function NavCollapsibleSection({
 }
 
 export function AppSidebar() {
+  const location = useLocation()
   const { state } = useSidebar()
   const isCollapsed = state === "collapsed"
   const [menusRevision, setMenusRevision] = useState(0)
@@ -273,19 +263,24 @@ export function AppSidebar() {
     }
   }, [])
 
-  const visibleNavSections = useMemo(() => {
+  const { showDashboard, visibleNavSections } = useMemo(() => {
     const stored = getStoredUserMenus()
     const menus = stored?.menus ?? []
-    if (menus.length === 0) return []
+    if (menus.length === 0) {
+      return { showDashboard: false, visibleNavSections: [] as SidebarNavSection[] }
+    }
 
-    return sidebarNavSections
-      .map((section) => ({
-        ...section,
-        items: section.items.filter((item) =>
-          isSidebarUrlAllowed(item.url, menus),
-        ),
-      }))
-      .filter((section) => section.items.length > 0)
+    return {
+      showDashboard: isSidebarUrlAllowed("/", menus),
+      visibleNavSections: sidebarNavSections
+        .map((section) => ({
+          ...section,
+          items: section.items.filter((item) =>
+            isSidebarUrlAllowed(item.url, menus),
+          ),
+        }))
+        .filter((section) => section.items.length > 0),
+    }
   }, [menusRevision])
 
   return (
@@ -305,7 +300,28 @@ export function AppSidebar() {
           )}
         </div>
 
-        {visibleNavSections.length === 0 ? (
+        {showDashboard && (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location.pathname === "/"}
+                    tooltip={isCollapsed ? "Dashboard" : undefined}
+                  >
+                    <NavLink to="/" end>
+                      <LayoutDashboard className="h-4 w-4 shrink-0" />
+                      <span>Dashboard</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {!showDashboard && visibleNavSections.length === 0 ? (
           !isCollapsed && (
             <p className="px-4 text-xs text-muted-foreground">
               No navigation menus assigned to your account.
