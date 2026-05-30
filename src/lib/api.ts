@@ -1759,8 +1759,11 @@ export const createSalesBulk = (body: {
   ref?: string;
   note?: string;
   customerName: string;
+  staffId?: string;
+  /** API field name (typo preserved). */
+  stundentId?: string;
   transactionDate: string;
-  items: { id: string; qty: number; amount: number }[];
+  items: { id: string; qty: string | number; amount: string | number }[];
 }) => post<ApiResponse<Sale[]>, typeof body>("/api/v1/sales/bulk", body);
 
 export const salesApi = {

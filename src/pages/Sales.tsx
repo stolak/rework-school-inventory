@@ -109,11 +109,17 @@ export default function Sales() {
       ref: form.ref?.trim() ? form.ref.trim() : undefined,
       note: form.note?.trim() ? form.note.trim() : undefined,
       customerName: form.customerName.trim(),
+      ...(form.customerType === "staff" && form.staffId
+        ? { staffId: form.staffId }
+        : {}),
+      ...(form.customerType === "student" && form.studentId
+        ? { stundentId: form.studentId }
+        : {}),
       transactionDate: form.transactionDate.toISOString(),
       items: form.items.map((it) => ({
         id: it.itemId,
-        qty: Number(it.qty),
-        amount: Number(it.amount),
+        qty: String(Number(it.qty)),
+        amount: String(Number(it.amount)),
       })),
     }
 

@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Combobox } from "@/components/ui/combobox";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Plus, Trash2 } from "lucide-react";
+import { CalendarIcon, GraduationCap, Plus, Trash2, User, UserRound } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
@@ -21,8 +21,10 @@ import {
 } from "@/components/ui/form";
 import { useInventory, type InventoryItem } from "@/hooks/useInventory";
 import { useMyStores } from "@/hooks/useMyStores";
-import { useStudents } from "@/hooks/useStudents";
-import { useClassTeachers } from "@/hooks/useClassTeachers";
+import { useStudents, type Student } from "@/hooks/useStudents";
+import { useStaff } from "@/hooks/useStaff";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 function roundMoney(n: number): number {
   return Math.round(n * 100) / 100;
@@ -54,23 +56,59 @@ function formatMoneyDisplay(n: number): string {
   return moneyFormatter.format(value);
 }
 
-const schema = z.object({
-  storeId: z.string().min(1, "Please select a store"),
-  ref: z.string().optional(),
-  note: z.string().optional(),
-  customerName: z.string().min(1, "Please enter customer name"),
-  transactionDate: z.date(),
-  items: z
-    .array(
-      z.object({
-        itemId: z.string().min(1, "Please select an item"),
-        qty: z.number().min(1, "Qty must be at least 1"),
-        sellingPrice: z.number().min(0, "Selling price must be non-negative"),
-        amount: z.number().min(0, "Amount must be non-negative"),
-      })
-    )
-    .min(1, "Add at least one item"),
-});
+function formatStudentName(student: Student): string {
+  return [student.firstName, student.middleName, student.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+}
+
+const schema = z
+  .object({
+    storeId: z.string().min(1, "Please select a store"),
+    ref: z.string().optional(),
+    note: z.string().optional(),
+    customerType: z.enum(["direct", "student", "staff"]),
+    studentId: z.string().optional(),
+    staffId: z.string().optional(),
+    customerName: z.string(),
+    transactionDate: z.date(),
+    items: z
+      .array(
+        z.object({
+          itemId: z.string().min(1, "Please select an item"),
+          qty: z.number().min(1, "Qty must be at least 1"),
+          sellingPrice: z.number().min(0, "Selling price must be non-negative"),
+          amount: z.number().min(0, "Amount must be non-negative"),
+        })
+      )
+      .min(1, "Add at least one item"),
+  })
+  .superRefine((data, ctx) => {
+    if (data.customerType === "direct") {
+      if (!data.customerName.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Please enter the customer name",
+          path: ["customerName"],
+        });
+      }
+    }
+    if (data.customerType === "student" && !data.studentId?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Please select a student",
+        path: ["studentId"],
+      });
+    }
+    if (data.customerType === "staff" && !data.staffId?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Please select a staff member",
+        path: ["staffId"],
+      });
+    }
+  });
 
 export type SaleCreateFormData = z.infer<typeof schema>;
 
@@ -82,8 +120,8 @@ export function SaleCreateForm({
   onCancel: () => void;
 }) {
   const { stores, isLoading: storesLoading } = useMyStores({ page: 1, limit: 100 });
-  const { students } = useStudents({ page: 1, limit: 200 });
-  const { classTeachers } = useClassTeachers();
+  const { students, isLoading: studentsLoading } = useStudents({ page: 1, limit: 500 });
+  const { staff, isLoading: staffLoading } = useStaff({ page: 1, limit: 500 });
 
   const form = useForm<SaleCreateFormData>({
     resolver: zodResolver(schema),
@@ -91,6 +129,9 @@ export function SaleCreateForm({
       storeId: "",
       ref: "",
       note: "",
+      customerType: "direct",
+      studentId: "",
+      staffId: "",
       customerName: "",
       transactionDate: new Date(),
       items: [{ itemId: "", qty: 1, sellingPrice: 0, amount: 0 }],
@@ -98,6 +139,9 @@ export function SaleCreateForm({
   });
 
   const storeId = form.watch("storeId");
+  const customerType = form.watch("customerType");
+  const studentId = form.watch("studentId");
+  const staffIdWatch = form.watch("staffId");
   const watchedItems = useWatch({ control: form.control, name: "items" }) ?? [];
 
   const {
@@ -118,6 +162,49 @@ export function SaleCreateForm({
   useEffect(() => {
     form.setValue("items", [{ itemId: "", qty: 1, sellingPrice: 0, amount: 0 }]);
   }, [storeId, form]);
+
+  useEffect(() => {
+    if (customerType !== "student" || !studentId) return;
+    const student = students.find((s) => s.id === studentId);
+    if (student) {
+      form.setValue("customerName", formatStudentName(student), { shouldDirty: true });
+    }
+  }, [customerType, studentId, students, form]);
+
+  useEffect(() => {
+    if (customerType !== "staff" || !staffIdWatch) return;
+    const member = staff.find((s) => s.id === staffIdWatch);
+    if (member?.name) {
+      form.setValue("customerName", member.name.trim(), { shouldDirty: true });
+    }
+  }, [customerType, staffIdWatch, staff, form]);
+
+  const studentOptions = useMemo(
+    () =>
+      students.map((s) => ({
+        value: s.id,
+        label: `${formatStudentName(s)} · ${s.admissionNumber}`,
+      })),
+    [students]
+  );
+
+  const staffOptions = useMemo(
+    () =>
+      staff.map((s) => ({
+        value: s.id,
+        label: s.name?.trim() || s.StaffNumber || s.id,
+      })),
+    [staff]
+  );
+
+  const handleCustomerTypeChange = (value: string) => {
+    if (value !== "direct" && value !== "student" && value !== "staff") return;
+    form.setValue("customerType", value);
+    form.setValue("studentId", "");
+    form.setValue("staffId", "");
+    form.setValue("customerName", "");
+    form.clearErrors(["customerName", "studentId", "staffId"]);
+  };
 
   const stockExceeded = useMemo(() => {
     if (!storeId) return false;
@@ -223,7 +310,7 @@ export function SaleCreateForm({
             control={form.control}
             name="storeId"
             render={({ field }) => (
-              <FormItem className="md:col-span-4">
+              <FormItem className="md:col-span-9">
                 <FormLabel>Store</FormLabel>
                 <FormControl>
                   {storesLoading ? (
@@ -247,38 +334,179 @@ export function SaleCreateForm({
               </FormItem>
             )}
           />
-
-          <FormField
-            control={form.control}
-            name="customerName"
-            render={({ field }) => (
-              <FormItem className="md:col-span-5">
-                <FormLabel>Customer Name</FormLabel>
-                <FormControl>
-                  <Input
-                    {...field}
-                    placeholder="Student, staff, or walk-in customer"
-                    list="sale-customer-suggestions"
-                  />
-                </FormControl>
-                <datalist id="sale-customer-suggestions">
-                  {students.map((student) => (
-                    <option
-                      key={`student-${student.id}`}
-                      value={`${student.firstName} ${student.lastName}`}
-                    />
-                  ))}
-                  {classTeachers.map((teacher) => (
-                    <option key={`teacher-${teacher.id}`} value={teacher.name} />
-                  ))}
-                </datalist>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
         </div>
 
-        
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Customer</CardTitle>
+            <CardDescription>
+              Sell to a walk-in customer, or link the sale to a student or staff member.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
+              name="customerType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <ToggleGroup
+                      type="single"
+                      value={field.value}
+                      onValueChange={handleCustomerTypeChange}
+                      className="grid w-full grid-cols-1 sm:grid-cols-3 gap-2"
+                    >
+                      <ToggleGroupItem
+                        value="direct"
+                        aria-label="Walk-in customer"
+                        className="h-auto flex-col gap-1 py-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                      >
+                        <User className="h-4 w-4" />
+                        <span className="text-sm font-medium">Walk-in</span>
+                        <span className="text-xs font-normal opacity-80">
+                          Enter name manually
+                        </span>
+                      </ToggleGroupItem>
+                      <ToggleGroupItem
+                        value="student"
+                        aria-label="Student customer"
+                        className="h-auto flex-col gap-1 py-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                      >
+                        <GraduationCap className="h-4 w-4" />
+                        <span className="text-sm font-medium">Student</span>
+                        <span className="text-xs font-normal opacity-80">
+                          Pick from register
+                        </span>
+                      </ToggleGroupItem>
+                      <ToggleGroupItem
+                        value="staff"
+                        aria-label="Staff customer"
+                        className="h-auto flex-col gap-1 py-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                      >
+                        <UserRound className="h-4 w-4" />
+                        <span className="text-sm font-medium">Staff</span>
+                        <span className="text-xs font-normal opacity-80">
+                          Pick from staff list
+                        </span>
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {customerType === "direct" ? (
+              <FormField
+                control={form.control}
+                name="customerName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Customer name</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="e.g. Walk-in buyer, parent, vendor…"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ) : null}
+
+            {customerType === "student" ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="studentId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Student</FormLabel>
+                      <FormControl>
+                        <Combobox
+                          value={field.value ?? ""}
+                          onValueChange={field.onChange}
+                          options={studentOptions}
+                          placeholder={
+                            studentsLoading ? "Loading students…" : "Search student…"
+                          }
+                          searchPlaceholder="Name or admission no."
+                          disabled={studentsLoading}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="customerName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Customer name</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          readOnly
+                          tabIndex={-1}
+                          className="bg-muted"
+                          placeholder="Select a student above"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            ) : null}
+
+            {customerType === "staff" ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="staffId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Staff member</FormLabel>
+                      <FormControl>
+                        <Combobox
+                          value={field.value ?? ""}
+                          onValueChange={field.onChange}
+                          options={staffOptions}
+                          placeholder={staffLoading ? "Loading staff…" : "Search staff…"}
+                          searchPlaceholder="Search staff…"
+                          disabled={staffLoading}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="customerName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Customer name</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          readOnly
+                          tabIndex={-1}
+                          className="bg-muted"
+                          placeholder="Select staff above"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+
 
         <FormField
           control={form.control}
