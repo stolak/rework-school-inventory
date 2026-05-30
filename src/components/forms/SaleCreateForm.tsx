@@ -246,10 +246,24 @@ export function SaleCreateForm({
     [watchedItems, storeInventory]
   );
 
-  const itemOptions = storeInventory.map((it) => ({
-    value: it.id,
-    label: `${it.name}${it.sku ? ` - ${it.sku}` : ""} (stock: ${it.currentStock ?? 0})`,
-  }));
+  const getItemOptionsForRow = (rowIndex: number) => {
+    const selectedElsewhere = new Set(
+      watchedItems
+        .filter((_, i) => i !== rowIndex)
+        .map((row) => row.itemId)
+        .filter(Boolean)
+    );
+    return storeInventory
+      .filter(
+        (it) =>
+          !selectedElsewhere.has(it.id) ||
+          watchedItems[rowIndex]?.itemId === it.id
+      )
+      .map((it) => ({
+        value: it.id,
+        label: `${it.name}${it.sku ? ` - ${it.sku}` : ""} (stock: ${it.currentStock ?? 0})`,
+      }));
+  };
 
   const handleFormSubmit = async (data: SaleCreateFormData) => {
     if (stockExceeded) return;
@@ -573,10 +587,15 @@ export function SaleCreateForm({
                             field.onChange(itemId);
                             if (itemId) applyItemSelection(index, itemId);
                           }}
-                          options={itemOptions}
+                          options={getItemOptionsForRow(index)}
                           placeholder={storeId ? "Select item" : "Select store first"}
                           searchPlaceholder="Search items…"
-                          disabled={!storeId}
+                          emptyText={
+                            storeItemsLoading
+                              ? "Loading items…"
+                              : "No items available (already used in this sale)"
+                          }
+                          disabled={!storeId || storeItemsLoading}
                         />
                       </FormControl>
                       <FormMessage />
