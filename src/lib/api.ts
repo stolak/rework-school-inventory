@@ -1681,6 +1681,93 @@ export const purchaseApi = {
   remove: deletePurchase,
 };
 
+export type Sale = {
+  id: string;
+  itemId: string;
+  supplierId: string | null;
+  receiverId: string | null;
+  supplierReceiver: string | null;
+  transactionType: "sales";
+  qtyIn: string;
+  inCost: string;
+  qtyOut: string;
+  outCost: string;
+  amountPaid: string;
+  status: "pending" | "completed" | "cancelled" | string;
+  referenceNo: string | null;
+  notes: string | null;
+  transactionDate: string;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+  storeId: string;
+  /** API field name (typo preserved). */
+  customerMame?: string | null;
+  item?: { name?: string } | null;
+  store?: { id: string; name?: string } | null;
+  createdBy?: { firstName?: string; lastName?: string } | null;
+};
+
+export type GroupedSaleLineItem = {
+  id: string;
+  itemId: string;
+  item?: { name?: string } | null;
+  qtyOut: string;
+  outCost: string;
+  status: string;
+};
+
+export type GroupedSale = {
+  transactionType: "sales";
+  referenceNo: string;
+  storeId: string;
+  transactionDate: string;
+  status: string;
+  /** API field name (typo preserved). */
+  customerMame?: string | null;
+  customerName?: string | null;
+  notes?: string | null;
+  totalAmount?: string;
+  createdBy?: { firstName?: string; lastName?: string } | null;
+  store?: { id: string; name?: string } | null;
+  items: GroupedSaleLineItem[];
+};
+
+export const fetchSalesGrouped = (params?: {
+  storeId?: string;
+  transactionDateFrom?: string;
+  transactionDateTo?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const searchParams = new URLSearchParams();
+  if (params?.storeId) searchParams.append("storeId", params.storeId);
+  if (params?.transactionDateFrom)
+    searchParams.append("transactionDateFrom", params.transactionDateFrom);
+  if (params?.transactionDateTo)
+    searchParams.append("transactionDateTo", params.transactionDateTo);
+  if (params?.page) searchParams.append("page", String(params.page));
+  if (params?.limit) searchParams.append("limit", String(params.limit));
+  const qs = searchParams.toString();
+  return get<ApiResponse<{ sales: GroupedSale[]; pagination: Pagination }>>(
+    `/api/v1/sales/bulk${qs ? `?${qs}` : ""}`
+  );
+};
+
+export const createSalesBulk = (body: {
+  storeId: string;
+  ref?: string;
+  note?: string;
+  customerName: string;
+  transactionDate: string;
+  items: { id: string; qty: number; amount: number }[];
+}) => post<ApiResponse<Sale[]>, typeof body>("/api/v1/sales/bulk", body);
+
+export const salesApi = {
+  listGrouped: fetchSalesGrouped,
+  bulkCreate: createSalesBulk,
+};
+
 // Student-specific helpers
 export const fetchStudents = (params?: {
   page?: number;

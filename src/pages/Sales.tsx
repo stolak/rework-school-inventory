@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { Plus, Search, Eye, Edit, Trash2, Filter, ShoppingBag, CalendarIcon } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { Plus, Search, Eye, Filter, ShoppingBag, CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,194 +9,163 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
+import { Combobox } from "@/components/ui/combobox"
+import { useStores } from "@/hooks/useStores"
 import { SaleDialog } from "@/components/dialogs/SaleDialog"
-import { useTransactions, type Transaction } from "@/hooks/useTransactions"
+import {
+  useSales,
+  type GroupedSale,
+  groupedSaleCustomerName,
+  groupedSaleKey,
+  groupedSaleTotalAmount,
+  groupedSaleTotalQty,
+} from "@/hooks/useSales"
+import { TablePaginationBar } from "@/components/ui/table-pagination-bar"
 import { useToast } from "@/hooks/use-toast"
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import type { SaleCreateFormData } from "@/components/forms/SaleCreateForm"
 
 export default function Sales() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [storeId, setStoreId] = useState("")
   const [startDate, setStartDate] = useState<Date | undefined>()
   const [endDate, setEndDate] = useState<Date | undefined>()
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [dialogMode, setDialogMode] = useState<'add' | 'edit' | 'view'>('add')
-  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | undefined>()
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null)
+  const [dialogMode, setDialogMode] = useState<"add" | "view">("add")
+  const [selectedGroup, setSelectedGroup] = useState<GroupedSale | undefined>()
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid")
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(10)
 
-  // Build query parameters for API call
-  const queryParams = {
-    transaction_type: "sale" as const,
-    from_date: startDate ? startDate.toISOString().split('T')[0] : undefined,
-    to_date: endDate ? endDate.toISOString().split('T')[0] : undefined,
-  }
+  useEffect(() => {
+    setPage(1)
+  }, [storeId, startDate, endDate, limit])
 
-  const { saleTransactions, addTransaction, updateTransaction, deleteTransaction } = useTransactions(queryParams)
+  const listQuery = useMemo(
+    () => ({
+      storeId: storeId || undefined,
+      transactionDateFrom: startDate ? format(startDate, "yyyy-MM-dd") : undefined,
+      transactionDateTo: endDate ? format(endDate, "yyyy-MM-dd") : undefined,
+      page,
+      limit,
+    }),
+    [storeId, startDate, endDate, page, limit]
+  )
+
+  const { stores: activeStores } = useStores({ status: "Active", page: 1, limit: 100 })
+
+  const { groupedSales, pagination, isLoading, bulkCreateSales } = useSales(listQuery)
   const { toast } = useToast()
 
-  // Client-side filtering for search term and status (since API doesn't support these)
-  const filteredTransactions = saleTransactions.filter((transaction) => {
-    const matchesSearch = 
-      transaction.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.supplier_receiver?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (transaction.reference_no && transaction.reference_no.toLowerCase().includes(searchTerm.toLowerCase()))
-    
-    const matchesStatus = statusFilter === "all" || transaction.status === statusFilter
-    
-    return matchesSearch && matchesStatus
-  })
+  const filteredGroups = useMemo(
+    () =>
+      groupedSales.filter((group) => {
+        if (statusFilter !== "all" && group.status !== statusFilter) return false
+        if (!searchTerm.trim()) return true
+        const q = searchTerm.toLowerCase()
+        const customer = groupedSaleCustomerName(group).toLowerCase()
+        return (
+          (group.referenceNo || "").toLowerCase().includes(q) ||
+          customer.includes(q) ||
+          (group.store?.name || "").toLowerCase().includes(q) ||
+          group.items.some((line) => (line.item?.name || "").toLowerCase().includes(q))
+        )
+      }),
+    [groupedSales, searchTerm, statusFilter]
+  )
 
   const handleAdd = () => {
-    setDialogMode('add')
-    setSelectedTransaction(undefined)
+    setDialogMode("add")
+    setSelectedGroup(undefined)
     setDialogOpen(true)
   }
 
-  const handleEdit = (transaction: Transaction) => {
-    setDialogMode('edit')
-    setSelectedTransaction(transaction)
+  const handleView = (group: GroupedSale) => {
+    setDialogMode("view")
+    setSelectedGroup(group)
     setDialogOpen(true)
   }
 
-  const handleView = (transaction: Transaction) => {
-    setDialogMode('view')
-    setSelectedTransaction(transaction)
-    setDialogOpen(true)
-  }
+  const handleSubmit = async (data: unknown) => {
+    if (dialogMode !== "add") return
 
-  const handleDelete = (transaction: Transaction) => {
-    setTransactionToDelete(transaction);
-    setDeleteDialogOpen(true);
-  };
+    const form = data as SaleCreateFormData
 
-  const confirmDelete = async () => {
-    if (transactionToDelete) {
-      try {
-        await deleteTransaction(transactionToDelete.id);
-        setTransactionToDelete(null);
-        setDeleteDialogOpen(false);
-      } catch (err) {
-        // Error is already handled in the hook
-        setTransactionToDelete(null);
-        setDeleteDialogOpen(false);
-      }
+    toast({
+      title: "Adding...",
+      description: "Please wait while we save the sale",
+    })
+
+    const saleData = {
+      storeId: form.storeId,
+      ref: form.ref?.trim() ? form.ref.trim() : undefined,
+      note: form.note?.trim() ? form.note.trim() : undefined,
+      customerName: form.customerName.trim(),
+      transactionDate: form.transactionDate.toISOString(),
+      items: form.items.map((it) => ({
+        id: it.itemId,
+        qty: Number(it.qty),
+        amount: Number(it.amount),
+      })),
     }
-  };
 
-  const handleSubmit = async (data: any) => {
-    if (dialogMode === 'add') {
-      toast({
-        title: "Adding...",
-        description: "Please wait while we add the sale transaction",
-      });
-      
-      const transactionData = {
-        item_id: data.item_id,
-        transaction_type: 'sale' as const,
-        qty_in: 0,
-        in_cost: 0,
-        qty_out: data.qty_out,
-        out_cost: data.out_cost,
-        status: data.status,
-        reference_no: data.reference_no || undefined,
-        notes: data.notes || undefined,
-        supplier_receiver: data.customer_name,
-        transaction_date: data.transaction_date.toISOString(),
-      }
-      
-      try {
-        await addTransaction(transactionData);
-        toast({
-          title: "Success",
-          description: "Sale transaction added successfully",
-        });
-      } catch (err) {
-        toast({
-          title: "Error",
-          description: "Failed to add sale transaction",
-          variant: "destructive",
-        });
-      }
-    } else if (dialogMode === 'edit' && selectedTransaction) {
-      toast({
-        title: "Updating...",
-        description: "Please wait while we update the sale transaction",
-      });
-      
-      const updateData = {
-        item_id: data.item_id,
-        qty_out: data.qty_out,
-        out_cost: data.out_cost,
-        status: data.status,
-        reference_no: data.reference_no || undefined,
-        notes: data.notes || undefined,
-        supplier_receiver: data.customer_name,
-        transaction_date: data.transaction_date.toISOString(),
-      }
-      
-      try {
-        await updateTransaction(selectedTransaction.id, updateData);
-        toast({
-          title: "Success",
-          description: "Sale transaction updated successfully",
-        });
-      } catch (err) {
-        toast({
-          title: "Error",
-          description: "Failed to update sale transaction",
-          variant: "destructive",
-        });
-      }
-    }
+    await bulkCreateSales(saleData)
   }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'completed':
-        return <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">Completed</Badge>
-      case 'pending':
-        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pending</Badge>
-      case 'cancelled':
+      case "completed":
+        return (
+          <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">
+            Completed
+          </Badge>
+        )
+      case "pending":
+        return (
+          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
+            Pending
+          </Badge>
+        )
+      case "cancelled":
         return <Badge variant="destructive">Cancelled</Badge>
       default:
         return <Badge variant="outline">{status}</Badge>
     }
   }
 
-  const totalValue = filteredTransactions.reduce((sum, t) => sum + (t.out_cost || 0), 0)
-  const completedSales = filteredTransactions.filter(t => t.status === 'completed').length
-  const pendingSales = filteredTransactions.filter(t => t.status === 'pending').length
+  const totalValue = filteredGroups.reduce(
+    (sum, g) => sum + groupedSaleTotalAmount(g),
+    0
+  )
+  const completedSales = filteredGroups.filter((g) => g.status === "completed").length
+  const pendingSales = filteredGroups.filter((g) => g.status === "pending").length
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
             <ShoppingBag className="h-8 w-8" />
-            Sales Transactions
+            Sales
           </h1>
           <p className="text-muted-foreground mt-1">
-            Manage your inventory sales transactions and customer orders.
+            Record inventory sales and review grouped sale transactions.
           </p>
         </div>
         <Button onClick={handleAdd} className="bg-gradient-primary">
           <Plus className="mr-2 h-4 w-4" />
-          New Sale Transaction
+          New Sale
         </Button>
       </div>
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
@@ -205,7 +174,7 @@ export default function Sales() {
           <CardContent>
             <div className="text-2xl font-bold">₦{totalValue.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              {filteredTransactions.length} transactions
+              {filteredGroups.length} sale{filteredGroups.length !== 1 ? "s" : ""} on this page
             </p>
           </CardContent>
         </Card>
@@ -215,9 +184,7 @@ export default function Sales() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{completedSales}</div>
-            <p className="text-xs text-muted-foreground">
-              Successfully processed
-            </p>
+            <p className="text-xs text-muted-foreground">Successfully processed</p>
           </CardContent>
         </Card>
         <Card>
@@ -226,37 +193,47 @@ export default function Sales() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">{pendingSales}</div>
-            <p className="text-xs text-muted-foreground">
-              Awaiting processing
-            </p>
+            <p className="text-xs text-muted-foreground">Awaiting processing</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Search and Filter */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search by item or reference number..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+      <div className="relative max-w-xl">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+        <Input
+          placeholder="Search by customer, item, store, or reference..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10"
+        />
+      </div>
+
+      <div className="flex flex-col xl:flex-row flex-wrap gap-4">
+        <div className="w-full sm:w-[220px]">
+          <Combobox
+            value={storeId}
+            onValueChange={setStoreId}
+            options={[
+              { value: "", label: "All stores" },
+              ...activeStores.map((s) => ({ value: s.id, label: s.name })),
+            ]}
+            placeholder="Store"
+            searchPlaceholder="Search stores..."
           />
         </div>
-        
-        {/* Date Range Filters */}
+
         <Popover>
           <PopoverTrigger asChild>
             <Button
+              type="button"
               variant="outline"
               className={cn(
-                "w-full sm:w-[240px] justify-start text-left font-normal",
+                "w-full sm:w-[220px] justify-start text-left font-normal",
                 !startDate && "text-muted-foreground"
               )}
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
-              {startDate ? format(startDate, "PPP") : "Start date"}
+              {startDate ? format(startDate, "PPP") : "From date"}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
@@ -273,14 +250,15 @@ export default function Sales() {
         <Popover>
           <PopoverTrigger asChild>
             <Button
+              type="button"
               variant="outline"
               className={cn(
-                "w-full sm:w-[240px] justify-start text-left font-normal",
+                "w-full sm:w-[220px] justify-start text-left font-normal",
                 !endDate && "text-muted-foreground"
               )}
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
-              {endDate ? format(endDate, "PPP") : "End date"}
+              {endDate ? format(endDate, "PPP") : "To date"}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
@@ -293,107 +271,204 @@ export default function Sales() {
             />
           </PopoverContent>
         </Popover>
-        
+
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-full sm:w-[180px]">
             <Filter className="mr-2 h-4 w-4" />
-            <SelectValue placeholder="Filter by status" />
+            <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent className="bg-background border shadow-md">
-            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="all">All status</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="completed">Completed</SelectItem>
             <SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent>
         </Select>
+
+        <div className="flex items-center gap-2 w-full xl:w-auto xl:ml-auto">
+          <Button
+            type="button"
+            variant={viewMode === "grid" ? "default" : "outline"}
+            onClick={() => setViewMode("grid")}
+          >
+            Grid
+          </Button>
+          <Button
+            type="button"
+            variant={viewMode === "table" ? "default" : "outline"}
+            onClick={() => setViewMode("table")}
+          >
+            Table
+          </Button>
+        </div>
       </div>
 
-      {/* Sales Transactions Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredTransactions.map((transaction) => (
-          <Card key={transaction.id} className="hover:shadow-md transition-shadow">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <CardTitle className="text-lg">{transaction.itemName}</CardTitle>
-                  <p className="text-sm text-muted-foreground">customer: {transaction?.supplier_receiver||'N/A'}</p>
-                  
+      {isLoading ? (
+        <div className="text-center py-10 text-muted-foreground">Loading sales…</div>
+      ) : viewMode === "grid" ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredGroups.map((group) => (
+            <Card key={groupedSaleKey(group)} className="hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1 min-w-0">
+                    <CardTitle className="text-lg truncate">
+                      {group.referenceNo || "N/A"}
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground truncate">
+                      {groupedSaleCustomerName(group) || "No customer"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {group.store?.name ? `Store: ${group.store.name}` : "Store: —"}
+                    </p>
+                  </div>
+                  {getStatusBadge(group.status)}
                 </div>
-                {getStatusBadge(transaction.status)}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Quantity</p>
-                  <p className="font-semibold">{transaction.qty_out || 0}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Total Revenue</p>
-                  <p className="font-semibold">₦{(transaction.out_cost || 0).toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Reference</p>
-                  <p className="font-semibold">{transaction.reference_no || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Date</p>
-                  <p className="font-semibold">
-                    {transaction.transaction_date ? new Date(transaction.transaction_date).toLocaleDateString() : 'N/A'}
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2 text-sm">
+                  <p className="text-muted-foreground">
+                    {group.items.length} line item{group.items.length !== 1 ? "s" : ""}
                   </p>
+                  <ul className="space-y-1">
+                    {group.items.slice(0, 3).map((line) => (
+                      <li key={line.id} className="flex justify-between gap-2">
+                        <span className="truncate">{line.item?.name || "N/A"}</span>
+                        <span className="shrink-0 text-muted-foreground">×{line.qtyOut}</span>
+                      </li>
+                    ))}
+                    {group.items.length > 3 ? (
+                      <li className="text-xs text-muted-foreground">
+                        +{group.items.length - 3} more
+                      </li>
+                    ) : null}
+                  </ul>
                 </div>
-              </div>
-
-              {transaction.notes && (
-                <div className="text-sm">
-                  <p className="text-muted-foreground">Notes</p>
-                  <p className="text-foreground line-clamp-2">{transaction.notes}</p>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Total Qty</p>
+                    <p className="font-semibold">{groupedSaleTotalQty(group)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Total Amount</p>
+                    <p className="font-semibold">
+                      ₦{groupedSaleTotalAmount(group).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-muted-foreground">Date</p>
+                    <p className="font-semibold">
+                      {group.transactionDate
+                        ? new Date(group.transactionDate).toLocaleDateString()
+                        : "N/A"}
+                    </p>
+                  </div>
                 </div>
-              )}
+                {group.notes ? (
+                  <div className="text-sm">
+                    <p className="text-muted-foreground">Notes</p>
+                    <p className="text-foreground line-clamp-2">{group.notes}</p>
+                  </div>
+                ) : null}
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" size="sm" onClick={() => handleView(group)}>
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-md border bg-background overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Reference</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Store</TableHead>
+                  <TableHead>Items</TableHead>
+                  <TableHead className="text-right">Total qty</TableHead>
+                  <TableHead className="text-right">Total amount</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredGroups.map((group) => (
+                  <TableRow key={groupedSaleKey(group)}>
+                    <TableCell className="font-medium">{group.referenceNo || "N/A"}</TableCell>
+                    <TableCell>{groupedSaleCustomerName(group) || "—"}</TableCell>
+                    <TableCell className="max-w-[140px] truncate">
+                      {group.store?.name ?? "—"}
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1 min-w-[160px]">
+                        {group.items.map((line) => (
+                          <div
+                            key={line.id}
+                            className="flex items-center justify-between gap-2 text-sm"
+                          >
+                            <span className="truncate">{line.item?.name || "N/A"}</span>
+                            <span className="shrink-0 text-muted-foreground tabular-nums">
+                              ×{line.qtyOut}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {groupedSaleTotalQty(group)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      ₦{groupedSaleTotalAmount(group).toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      {group.transactionDate
+                        ? new Date(group.transactionDate).toLocaleDateString()
+                        : "N/A"}
+                    </TableCell>
+                    <TableCell>{getStatusBadge(group.status)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="outline" size="sm" onClick={() => handleView(group)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          {!isLoading && pagination && (
+            <TablePaginationBar
+              pagination={pagination}
+              totalLabel="Total sales"
+              pageSize={limit}
+              onPageChange={setPage}
+              onPageSizeChange={(nextLimit) => {
+                setLimit(nextLimit)
+                setPage(1)
+              }}
+            />
+          )}
+        </div>
+      )}
 
-              <div className="flex justify-end space-x-2 pt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleView(transaction)}
-                >
-                  <Eye className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleEdit(transaction)}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDelete(transaction)}
-                  className="text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {filteredTransactions.length === 0 && (
+      {!isLoading && filteredGroups.length === 0 && (
         <div className="text-center py-10">
           <ShoppingBag className="mx-auto h-12 w-12 text-muted-foreground" />
-          <h3 className="mt-4 text-lg font-semibold">No sales transactions found</h3>
+          <h3 className="mt-4 text-lg font-semibold">No sales found</h3>
           <p className="text-muted-foreground">
-            {searchTerm || statusFilter !== "all" || startDate || endDate
+            {searchTerm || storeId || statusFilter !== "all" || startDate || endDate
               ? "Try adjusting your search or filter criteria."
-              : "Get started by creating your first sale transaction."
-            }
+              : "Get started by creating your first sale."}
           </p>
-          {!searchTerm && statusFilter === "all" && !startDate && !endDate && (
+          {!searchTerm && !storeId && statusFilter === "all" && !startDate && !endDate && (
             <Button onClick={handleAdd} className="mt-4">
               <Plus className="mr-2 h-4 w-4" />
-              Create Sale Transaction
+              Create Sale
             </Button>
           )}
         </div>
@@ -403,25 +478,9 @@ export default function Sales() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         mode={dialogMode}
-        transaction={selectedTransaction}
+        groupedSale={selectedGroup}
         onSubmit={handleSubmit}
       />
-
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              sale transaction and all associated data.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }

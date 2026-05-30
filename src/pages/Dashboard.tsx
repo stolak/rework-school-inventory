@@ -1,20 +1,121 @@
-import { 
-  Package, 
-  Users, 
-  AlertTriangle, 
-  TrendingUp,
+import { useMemo } from "react"
+import {
+  Package,
+  Users,
+  AlertTriangle,
   BookOpen,
   GraduationCap,
   ShoppingCart,
-  FileBarChart
+  FileBarChart,
+  Wallet,
+  Landmark,
 } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 import { RecentActivity } from "@/components/dashboard/RecentActivity"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
+import {
+  accountTransactionsApi,
+  inventoryApi,
+  studentApi,
+  type BalanceSheetHeadSection,
+  type BalanceSheetReportData,
+} from "@/lib/api"
+
+const money = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+})
+
+function parseAmount(v: string | number): number {
+  const n = typeof v === "number" ? v : parseFloat(String(v).replace(/,/g, ""))
+  return Number.isFinite(n) ? n : 0
+}
+
+function isBalanceSheetHeadSection(v: unknown): v is BalanceSheetHeadSection {
+  if (!v || typeof v !== "object") return false
+  const o = v as Record<string, unknown>
+  return (
+    typeof o.headcode === "number" &&
+    typeof o.name === "string" &&
+    Array.isArray(o.subheads)
+  )
+}
+
+function parseHeadSections(raw: BalanceSheetReportData | undefined): BalanceSheetHeadSection[] {
+  if (!raw || typeof raw !== "object") return []
+  return Object.values(raw).filter(isBalanceSheetHeadSection)
+}
+
+function formatMetricValue(value: number | undefined, isLoading: boolean): string {
+  if (isLoading || value == null) return "—"
+  return value.toLocaleString()
+}
+
+function formatMoneyValue(value: number | undefined, isLoading: boolean): string {
+  if (isLoading || value == null) return "—"
+  return `₦${money.format(value)}`
+}
 
 export default function Dashboard() {
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), [])
+
+  const { data: metrics, isLoading } = useQuery({
+    queryKey: ["dashboard-metrics", today],
+    queryFn: async () => {
+      const [studentsRes, balancesRes, balanceSheetRes, inventoryRes] = await Promise.all([
+        studentApi.list({ status: "Active", page: 1, limit: 100 }),
+        accountTransactionsApi.studentBalances({
+          asAtDate: today,
+          status: "Active",
+          page: 1,
+          limit: 100,
+        }),
+        accountTransactionsApi.reportByHeadSubhead({ transactionDateTo: today }),
+        inventoryApi.list({ status: "Active", page: 1, limit: 100 }),
+      ])
+      const activeStudents =
+      studentsRes.data.pagination.total ?? 0
+
+      const balanceRows = balancesRes?.data?.rows ?? []
+      const outstandingFees = balanceRows.reduce((sum, row) => {
+        const balance = parseAmount(row.balance)
+        return balance < 0 ? sum + Math.abs(balance) : sum
+      }, 0)
+
+      const headSections = parseHeadSections(
+        balanceSheetRes?.success ? balanceSheetRes.data : undefined
+      )
+      const liabilitySection = headSections.find((h) =>
+        h.name.toLowerCase().includes("liability")
+      )
+      const currentLiability = liabilitySection
+        ? liabilitySection.subheads.reduce(
+            (sum, sh) => sum + Math.abs(Number(sh.balance ?? 0)),
+            0
+          )
+        : 0
+
+      const inventoryItems = inventoryRes?.data?.inventoryItems ?? []
+      const lowStockItems = inventoryItems.filter((item) => {
+        const stock = Number(item.currentStock ?? 0)
+        const threshold = Number(item.lowStockThreshold ?? 0)
+        return stock <= threshold
+      }).length
+
+      return {
+        activeStudents,
+        outstandingFees,
+        currentLiability,
+        lowStockItems,
+        liabilityLabel: liabilitySection?.name,
+      }
+    },
+    staleTime: 60_000,
+  })
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -22,7 +123,7 @@ export default function Dashboard() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
           <p className="text-muted-foreground mt-1">
-            Welcome back! Here's an overview of your school bookstore.
+            Welcome back! Here&apos;s an overview of your school bookstore.
           </p>
         </div>
         <div className="flex gap-2">
@@ -40,32 +141,35 @@ export default function Dashboard() {
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
-          title="Total Inventory Items"
-          value="1,247"
-          change={{ value: "+12% from last month", trend: "up" }}
-          icon={Package}
-          variant="primary"
-        />
-        <MetricCard
           title="Active Students"
-          value="856"
-          change={{ value: "+5% from last term", trend: "up" }}
+          value={formatMetricValue(metrics?.activeStudents, isLoading)}
+          change={{ value: "Currently enrolled", trend: "neutral" }}
           icon={Users}
           variant="success"
         />
         <MetricCard
-          title="Low Stock Items"
-          value="23"
-          change={{ value: "Needs attention", trend: "down" }}
-          icon={AlertTriangle}
+          title="Outstanding Fees"
+          value={formatMoneyValue(metrics?.outstandingFees, isLoading)}
+          change={{ value: `As at ${today}`, trend: "neutral" }}
+          icon={Wallet}
           variant="warning"
         />
         <MetricCard
-          title="Monthly Sales"
-          value="₦285,430"
-          change={{ value: "+18% from last month", trend: "up" }}
-          icon={TrendingUp}
-          variant="success"
+          title="Current Liability"
+          value={formatMoneyValue(metrics?.currentLiability, isLoading)}
+          change={{
+            value: metrics?.liabilityLabel ?? `As at ${today}`,
+            trend: "neutral",
+          }}
+          icon={Landmark}
+          variant="primary"
+        />
+        <MetricCard
+          title="Low Stock Items"
+          value={formatMetricValue(metrics?.lowStockItems, isLoading)}
+          change={{ value: "At or below reorder level", trend: "down" }}
+          icon={AlertTriangle}
+          variant="warning"
         />
       </div>
 

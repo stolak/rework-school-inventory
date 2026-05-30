@@ -3,105 +3,174 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { SaleForm } from "@/components/forms/SaleForm"
-import type { Transaction } from "@/hooks/useTransactions"
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { SaleCreateForm } from "@/components/forms/SaleCreateForm";
+import type { GroupedSale } from "@/hooks/useSales";
+import {
+  groupedSaleCustomerName,
+  groupedSaleTotalAmount,
+  groupedSaleTotalQty,
+} from "@/hooks/useSales";
 
 interface SaleDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  mode: 'add' | 'edit' | 'view'
-  transaction?: Transaction
-  onSubmit: (data: any) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  mode: "add" | "view";
+  groupedSale?: GroupedSale;
+  onSubmit: (data: unknown) => Promise<void>;
 }
 
-export function SaleDialog({ 
-  open, 
-  onOpenChange, 
-  mode, 
-  transaction, 
-  onSubmit 
+export function SaleDialog({
+  open,
+  onOpenChange,
+  mode,
+  groupedSale,
+  onSubmit,
 }: SaleDialogProps) {
-  const handleSubmit = (data: any) => {
-    onSubmit(data)
-    onOpenChange(false)
-  }
+  const handleSubmit = async (data: unknown) => {
+    await onSubmit(data);
+    onOpenChange(false);
+  };
 
   const handleCancel = () => {
-    onOpenChange(false)
-  }
+    onOpenChange(false);
+  };
 
   const getTitle = () => {
     switch (mode) {
-      case 'add':
-        return 'New Sale Transaction'
-      case 'edit':
-        return 'Edit Sale Transaction'
-      case 'view':
-        return 'Sale Transaction Details'
+      case "add":
+        return "New Sale";
+      case "view":
+        return "Sale Details";
       default:
-        return 'Sale Transaction'
+        return "Sale";
     }
-  }
+  };
+
+  const createdByName = groupedSale?.createdBy
+    ? `${groupedSale.createdBy.firstName ?? ""} ${groupedSale.createdBy.lastName ?? ""}`.trim()
+    : "";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-4xl max-h-[90vh] overflow-y-auto"
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>{getTitle()}</DialogTitle>
         </DialogHeader>
-        
-        {mode === 'view' && transaction ? (
+
+        {mode === "view" && groupedSale ? (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium">Item</label>
-                <p className="text-sm text-muted-foreground">{transaction.itemName}</p>
+                <label className="text-sm font-medium">Reference</label>
+                <p className="text-sm text-muted-foreground">
+                  {groupedSale.referenceNo || "N/A"}
+                </p>
               </div>
               <div>
                 <label className="text-sm font-medium">Customer</label>
-                <p className="text-sm text-muted-foreground">{transaction.receiver_id || 'N/A'}</p>
+                <p className="text-sm text-muted-foreground">
+                  {groupedSaleCustomerName(groupedSale) || "N/A"}
+                </p>
               </div>
               <div>
-                <label className="text-sm font-medium">Quantity</label>
-                <p className="text-sm text-muted-foreground">{transaction.qty_out || 0}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Total Revenue</label>
-                <p className="text-sm text-muted-foreground">₦{(transaction.out_cost || 0).toLocaleString()}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Reference No</label>
-                <p className="text-sm text-muted-foreground">{transaction.reference_no || 'N/A'}</p>
+                <label className="text-sm font-medium">Store</label>
+                <p className="text-sm text-muted-foreground">
+                  {groupedSale.store?.name || "N/A"}
+                </p>
               </div>
               <div>
                 <label className="text-sm font-medium">Status</label>
-                <p className="text-sm text-muted-foreground capitalize">{transaction.status}</p>
+                <p className="text-sm text-muted-foreground capitalize">
+                  {groupedSale.status}
+                </p>
               </div>
               <div>
                 <label className="text-sm font-medium">Transaction Date</label>
-                <p className="text-sm text-muted-foreground">{transaction.transaction_date ? new Date(transaction.transaction_date).toLocaleDateString() : 'N/A'}</p>
+                <p className="text-sm text-muted-foreground">
+                  {groupedSale.transactionDate
+                    ? new Date(groupedSale.transactionDate).toLocaleDateString()
+                    : "N/A"}
+                </p>
               </div>
               <div>
-                <label className="text-sm font-medium">Transaction Type</label>
-                <p className="text-sm text-muted-foreground capitalize">{transaction.transaction_type}</p>
+                <label className="text-sm font-medium">Created By</label>
+                <p className="text-sm text-muted-foreground">
+                  {createdByName || "N/A"}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Total Quantity</label>
+                <p className="text-sm text-muted-foreground">
+                  {groupedSaleTotalQty(groupedSale)}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Total Amount</label>
+                <p className="text-sm text-muted-foreground">
+                  ₦{groupedSaleTotalAmount(groupedSale).toLocaleString()}
+                </p>
               </div>
             </div>
-            {transaction.notes && (
+
+            {groupedSale.notes ? (
               <div>
                 <label className="text-sm font-medium">Notes</label>
-                <p className="text-sm text-muted-foreground">{transaction.notes}</p>
+                <p className="text-sm text-muted-foreground">{groupedSale.notes}</p>
               </div>
-            )}
+            ) : null}
+
+            <div>
+              <label className="text-sm font-medium">Line Items</label>
+              <div className="mt-2 rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item</TableHead>
+                      <TableHead className="text-right">Qty</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {groupedSale.items.map((line) => (
+                      <TableRow key={line.id}>
+                        <TableCell>{line.item?.name || "N/A"}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {line.qtyOut}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          ₦{Number(line.outCost || 0).toLocaleString()}
+                        </TableCell>
+                        <TableCell className="capitalize">{line.status}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
           </div>
         ) : (
-          <SaleForm
-            transaction={transaction}
-            onSubmit={handleSubmit}
+          <SaleCreateForm
+            onSubmit={async (data) => {
+              await handleSubmit(data);
+            }}
             onCancel={handleCancel}
           />
         )}
       </DialogContent>
     </Dialog>
-  )
+  );
 }
