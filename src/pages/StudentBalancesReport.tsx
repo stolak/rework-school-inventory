@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Wallet } from "lucide-react";
+import { Banknote, Wallet } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -68,6 +68,15 @@ function studentTransactionLogHref(studentId: string, asAtDate: string): string 
     params.set("datefrom", from.toISOString().slice(0, 10));
   }
   return `/reports/student-transaction-log?${params.toString()}`;
+}
+
+function studentJournalPaymentHref(studentId: string): string {
+  const params = new URLSearchParams({
+    studentId,
+    transferMode: "Payment",
+    tab: "create",
+  });
+  return `/student-journal-transfers?${params.toString()}`;
 }
 
 export default function StudentBalancesReport() {
@@ -282,6 +291,7 @@ export default function StudentBalancesReport() {
                       <TableHead className="text-right">Total credit</TableHead>
                       <TableHead className="text-right">Total debit</TableHead>
                       <TableHead className="text-right">Balance</TableHead>
+                      <TableHead className="text-right w-[130px]">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -319,6 +329,14 @@ export default function StudentBalancesReport() {
                           >
                             {money.format(balance)}
                           </TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="outline" size="sm" asChild>
+                              <Link to={studentJournalPaymentHref(r.studentId)}>
+                                <Banknote className="mr-1.5 h-3.5 w-3.5" />
+                                Pay
+                              </Link>
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       );
                     })}
@@ -339,6 +357,7 @@ export default function StudentBalancesReport() {
                       >
                         {money.format(pageTotals.balance)}
                       </TableCell>
+                      <TableCell />
                     </TableRow>
                   </TableBody>
                 </Table>

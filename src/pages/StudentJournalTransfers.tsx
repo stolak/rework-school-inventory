@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { ArrowLeftRight, Eye, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -107,7 +108,14 @@ function isAllStudentsSelection(id: string): boolean {
   return id === ALL_STUDENTS_VALUE || id === "";
 }
 
+function transferModeFromParam(value: string | null): TransferMode {
+  return value === "Journal" ? "Journal" : "Payment";
+}
+
 export default function StudentJournalTransfers() {
+  const [searchParams] = useSearchParams();
+  const studentIdFromUrl = searchParams.get("studentId")?.trim() ?? "";
+
   const today = useMemo(() => new Date(), []);
   const defaultTo = today.toISOString().slice(0, 10);
   const defaultFrom = new Date(
@@ -118,7 +126,9 @@ export default function StudentJournalTransfers() {
     .toISOString()
     .slice(0, 10);
 
-  const [tab, setTab] = useState<"create" | "history">("create");
+  const [tab, setTab] = useState<"create" | "history">(() =>
+    searchParams.get("tab") === "history" ? "history" : "create"
+  );
 
   const { students, isLoading: studentsLoading } = useStudents({
     page: 1,
@@ -153,7 +163,9 @@ export default function StudentJournalTransfers() {
     return m;
   }, [students]);
 
-  const [transferMode, setTransferMode] = useState<TransferMode>("Payment");
+  const [transferMode, setTransferMode] = useState<TransferMode>(() =>
+    transferModeFromParam(searchParams.get("transferMode"))
+  );
 
   const accountChartsForMode =
     transferMode === "Payment" ? cashAccountCharts : allAccountCharts;
@@ -172,7 +184,11 @@ export default function StudentJournalTransfers() {
     return mapped;
   }, [accountChartsForMode]);
 
-  const [studentId, setStudentId] = useState(ALL_STUDENTS_VALUE);
+  const [studentId, setStudentId] = useState(() =>
+    studentIdFromUrl && !isAllStudentsSelection(studentIdFromUrl)
+      ? studentIdFromUrl
+      : ALL_STUDENTS_VALUE
+  );
   const [manualRef, setManualRef] = useState("");
   const [transactionDate, setTransactionDate] = useState(defaultTo);
   const [entries, setEntries] = useState<EntryDraft[]>(() => defaultEntriesForMode("Payment"));
@@ -323,6 +339,15 @@ export default function StudentJournalTransfers() {
     refetch: refetchHistory,
     isFetching: historyFetching,
   } = useStudentJournalTransfersList(historyParams);
+
+  useEffect(() => {
+    const id = searchParams.get("studentId")?.trim() ?? "";
+    if (id && !isAllStudentsSelection(id)) {
+      setStudentId(id);
+      setTab(searchParams.get("tab") === "history" ? "history" : "create");
+      setTransferMode(transferModeFromParam(searchParams.get("transferMode")));
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (
