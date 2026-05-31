@@ -51,7 +51,10 @@ function CashierAddForm({
   onCancel: () => void;
 }) {
   const { staff, isLoading: staffLoading } = useStaff({ page: 1, limit: 500 });
-  const { charts, isLoading: chartsLoading } = useAccountCharts({ status: "Active" });
+  const { charts, isLoading: chartsLoading } = useAccountCharts({
+    status: "Active",
+    accountType: "Cash",
+  });
 
   const staffOptions = useMemo(
     () =>
@@ -160,7 +163,10 @@ function CashierEditForm({
   onCancel: () => void;
 }) {
   const { staff, isLoading: staffLoading } = useStaff({ page: 1, limit: 500 });
-  const { charts, isLoading: chartsLoading } = useAccountCharts({ status: "All" });
+  const { charts, isLoading: chartsLoading } = useAccountCharts({
+    status: "All",
+    accountType: "Cash",
+  });
 
   const staffOptions = useMemo(
     () =>

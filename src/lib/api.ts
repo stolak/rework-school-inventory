@@ -2305,6 +2305,8 @@ export type AccountHead = {
   rank: number;
 };
 
+export type AccountType = "Cash" | "NonCash";
+
 export type AccountSubhead = {
   id: number;
   groupId: number;
@@ -2314,7 +2316,8 @@ export type AccountSubhead = {
   status: string;
   rank: number;
   afs: string | null;
-  paymentMethod: string;
+  paymentMethod: string | null;
+  accountType?: AccountType | null;
   group?: { id: number; name: string; rank: number };
   head?: {
     id: number;
@@ -2324,6 +2327,20 @@ export type AccountSubhead = {
     rank: number;
   };
 };
+
+export function subheadAccountType(
+  subhead?: Pick<AccountSubhead, "accountType"> | null
+): AccountType | undefined {
+  const raw = subhead?.accountType;
+  if (raw === "Cash" || raw === "NonCash") return raw;
+  return undefined;
+}
+
+export function chartAccountType(chart: {
+  subhead?: Pick<AccountSubhead, "accountType"> | null;
+}): AccountType | undefined {
+  return subheadAccountType(chart.subhead);
+}
 
 export const fetchAccountHeads = (params?: { groupId?: number }) => {
   const sp = new URLSearchParams();
@@ -2487,6 +2504,7 @@ export const fetchAccountCharts = (params?: {
   headId?: number;
   subheadId?: number;
   status?: string;
+  accountType?: AccountType;
 }) => {
   const sp = new URLSearchParams();
   if (params?.groupId != null) sp.append("groupId", String(params.groupId));
@@ -2494,6 +2512,7 @@ export const fetchAccountCharts = (params?: {
   if (params?.subheadId != null) sp.append("subheadId", String(params.subheadId));
   if (params?.status != null && params.status !== "")
     sp.append("status", params.status);
+  if (params?.accountType) sp.append("accountType", params.accountType);
   const qs = sp.toString();
   return get<ApiResponse<{ accountCharts: AccountChart[]; count: number }>>(
     `/api/v1/account-charts${qs ? `?${qs}` : ""}`

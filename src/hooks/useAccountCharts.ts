@@ -5,6 +5,7 @@ import {
   updateAccountChart,
   deleteAccountChart,
   type AccountChart,
+  type AccountType,
 } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
@@ -14,6 +15,8 @@ export type AccountChartListFilters = {
   subheadId?: number;
   /** API expects e.g. `All`, `Active`, `Inactive` */
   status: string;
+  /** Optional: `Cash` or `NonCash` */
+  accountType?: AccountType;
 };
 
 function unwrapCharts(
@@ -55,6 +58,7 @@ export function useAccountCharts(filters: AccountChartListFilters) {
           headId: filters.headId,
           subheadId: filters.subheadId,
           status: filters.status,
+          accountType: filters.accountType,
         })
       ),
   });
@@ -135,4 +139,4 @@ export function useAccountCharts(filters: AccountChartListFilters) {
   };
 }
 
-export type { AccountChart };
+export type { AccountChart, AccountType };

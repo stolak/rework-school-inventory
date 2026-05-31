@@ -27,7 +27,9 @@ import { useAccountGroups } from "@/hooks/useAccountGroups";
 import {
   useAccountCharts,
   type AccountChart,
+  type AccountType,
 } from "@/hooks/useAccountCharts";
+import { chartAccountType } from "@/lib/api";
 import type { AccountGroupTree } from "@/lib/api";
 import type { AccountChartAddFormData, AccountChartEditFormData } from "@/components/forms/AccountChartForm";
 import {
@@ -42,6 +44,8 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const ANY_VALUE = "";
+/** Radix Select cannot use empty string as SelectItem value */
+const ANY_ACCOUNT_TYPE = "__all__";
 
 function parseId(s: string): number | undefined {
   const n = parseInt(s, 10);
@@ -55,6 +59,7 @@ export function AccountChartSetupSection() {
   const [headStr, setHeadStr] = useState<string>(ANY_VALUE);
   const [subheadStr, setSubheadStr] = useState<string>(ANY_VALUE);
   const [statusFilter, setStatusFilter] = useState<string>("All");
+  const [accountTypeFilter, setAccountTypeFilter] = useState<string>(ANY_ACCOUNT_TYPE);
   const [searchTerm, setSearchTerm] = useState("");
 
   const selectedGroupId = parseId(groupStr);
@@ -132,8 +137,12 @@ export function AccountChartSetupSection() {
       headId: selectedHeadId,
       subheadId: parseId(subheadStr),
       status: statusFilter || "All",
+      accountType:
+        accountTypeFilter === "Cash" || accountTypeFilter === "NonCash"
+          ? (accountTypeFilter as AccountType)
+          : undefined,
     }),
-    [selectedGroupId, selectedHeadId, subheadStr, statusFilter]
+    [selectedGroupId, selectedHeadId, subheadStr, statusFilter, accountTypeFilter]
   );
 
   const {
@@ -318,6 +327,19 @@ export function AccountChartSetupSection() {
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-2">
+            <Label>Account type</Label>
+            <Select value={accountTypeFilter} onValueChange={setAccountTypeFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Any type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ANY_ACCOUNT_TYPE}>Any type</SelectItem>
+                <SelectItem value="Cash">Cash</SelectItem>
+                <SelectItem value="NonCash">Non-cash</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardContent>
       </Card>
 
@@ -347,6 +369,7 @@ export function AccountChartSetupSection() {
                   <TableHead>Description</TableHead>
                   <TableHead>Ref</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Account type</TableHead>
                   <TableHead className="text-right">Rank</TableHead>
                   <TableHead>Group</TableHead>
                   <TableHead>Head</TableHead>
@@ -372,6 +395,9 @@ export function AccountChartSetupSection() {
                       >
                         {row.status}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {chartAccountType(row) ?? "—"}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {row.rank}

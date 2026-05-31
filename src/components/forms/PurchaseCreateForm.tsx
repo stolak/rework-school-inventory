@@ -110,6 +110,7 @@ export function PurchaseCreateForm({
   });
   const { charts: paymentAccounts, isLoading: paymentAccountsLoading } = useAccountCharts({
     status: "Active",
+    accountType: "Cash",
   });
 
   const paymentAccountOptions = useMemo(
