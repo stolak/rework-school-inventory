@@ -2763,6 +2763,22 @@ export const fetchStudentBalances = (params: ListStudentBalancesParams) => {
   );
 };
 
+export type StudentAccountBalanceData = {
+  studentId: string;
+  asAtDate: string;
+  balanceAsAtDate: string | number;
+  sumCredit: string | number;
+  sumDebit: string | number;
+};
+
+export const fetchStudentAccountBalance = (params: { studentId: string }) => {
+  const sp = new URLSearchParams();
+  sp.append("studentId", params.studentId);
+  return get<ApiResponse<StudentAccountBalanceData>>(
+    `/api/v1/account-transactions/student-balance?${sp.toString()}`
+  );
+};
+
 export type StudentJournalTransferTransactionType = "debit" | "credit";
 
 export type StudentJournalTransferEntryInput = {
@@ -2827,6 +2843,7 @@ export const accountTransactionsApi = {
   reportByAccount: fetchAccountReportByAccount,
   reportByHeadSubhead: fetchAccountReportByHeadSubhead,
   studentBalances: fetchStudentBalances,
+  studentBalance: fetchStudentAccountBalance,
   studentTransactionLog: fetchStudentTransactionLog,
   postStudentJournalTransfer,
   listStudentJournalTransfers: fetchStudentJournalTransfers,

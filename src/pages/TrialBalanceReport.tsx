@@ -220,7 +220,6 @@ export default function TrialBalanceReport() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold tabular-nums">{money.format(netTotal)}</p>
                 <p className="text-xs text-muted-foreground mt-2 space-y-0.5">
                   <span className="block">
                     Debit column total: {money.format(debitColumnTotal)} (sum of |net| where net

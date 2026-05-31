@@ -14,6 +14,22 @@ export type StudentJournalTransfersListParams = {
   allStudents?: boolean;
 };
 
+export function useStudentAccountBalance(studentId: string | null | undefined) {
+  const id = studentId?.trim() ?? "";
+  return useQuery({
+    queryKey: ["student-account-balance", id],
+    queryFn: async () => {
+      const res = await accountTransactionsApi.studentBalance({ studentId: id });
+      if (!res.success || !res.data) {
+        throw new Error(res.message || "Failed to load student balance");
+      }
+      return res.data;
+    },
+    enabled: Boolean(id),
+    staleTime: 30_000,
+  });
+}
+
 export function useStudentJournalTransfersList(
   params: StudentJournalTransfersListParams | null
 ) {
@@ -52,6 +68,7 @@ export function useCreateStudentJournalTransfer() {
           : res.message || "Student journal transfer posted",
       });
       queryClient.invalidateQueries({ queryKey: ["student-journal-transfers"] });
+      queryClient.invalidateQueries({ queryKey: ["student-account-balance"] });
     },
     onError: (error: Error) => {
       toast({

@@ -326,7 +326,7 @@ export default function StudentInventoryReport() {
                     .filter(sc => !selectedClassId || sc.classId === selectedClassId)
                     .map((sc) => ({
                       value: sc.id,
-                      label: sc.name,
+                      label: `${sc.class?.name} - ${sc.name}`,
                     })),
                 ]}
                 placeholder="All sub classes"

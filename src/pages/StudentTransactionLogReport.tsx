@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { History } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Link, useSearchParams } from "react-router-dom";
+import { Banknote, History } from "lucide-react";import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
@@ -32,6 +31,15 @@ function studentLabelFromLog(student: StudentTransactionLogData["student"]): str
     .filter(Boolean)
     .join(" ");
   return `${student.admissionNumber} — ${name}`;
+}
+
+function studentJournalPaymentHref(studentId: string): string {
+  const params = new URLSearchParams({
+    studentId,
+    transferMode: "Payment",
+    tab: "create",
+  });
+  return `/student-journal-transfers?${params.toString()}`;
 }
 
 export default function StudentTransactionLogReport() {
@@ -135,6 +143,14 @@ export default function StudentTransactionLogReport() {
           </p>
         </div>
         <div className="flex gap-2 flex-wrap items-center print:hidden">
+          {studentId ? (
+            <Button asChild>
+              <Link to={studentJournalPaymentHref(studentId)}>
+                <Banknote className="mr-2 h-4 w-4" />
+                Make payment
+              </Link>
+            </Button>
+          ) : null}
           <ReportActions
             tableId={TABLE_ID}
             filenameBase="student-transaction-log-report"

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { ArrowLeftRight, Eye, Plus, Trash2 } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
+import { ArrowLeftRight, Eye, Plus, ScrollText, Trash2, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -32,9 +32,11 @@ import { useStudents } from "@/hooks/useStudents";
 import { useAccountCharts } from "@/hooks/useAccountCharts";
 import {
   useCreateStudentJournalTransfer,
+  useStudentAccountBalance,
   useStudentJournalTransfersList,
 } from "@/hooks/useStudentJournalTransfers";
 import type { StudentJournalTransferGroup } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 type EntryDraft = {
   id: string;
@@ -110,6 +112,28 @@ function isAllStudentsSelection(id: string): boolean {
 
 function transferModeFromParam(value: string | null): TransferMode {
   return value === "Journal" ? "Journal" : "Payment";
+}
+
+function parseBalanceAmount(v: string | number): number {
+  const n = typeof v === "number" ? v : parseFloat(String(v).replace(/,/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function isoToDateInput(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
+  return d.toISOString().slice(0, 10);
+}
+
+function studentTransactionLogHref(studentId: string, dateTo: string): string {
+  const params = new URLSearchParams({ studentId });
+  if (dateTo) {
+    params.set("dateTo", dateTo);
+    const from = new Date(`${dateTo}T12:00:00`);
+    from.setFullYear(from.getFullYear() - 1);
+    params.set("datefrom", from.toISOString().slice(0, 10));
+  }
+  return `/reports/student-transaction-log?${params.toString()}`;
 }
 
 export default function StudentJournalTransfers() {
@@ -219,6 +243,21 @@ export default function StudentJournalTransfers() {
     [entries]
   );
   const isPaymentMode = transferMode === "Payment";
+
+  const selectedStudentIdForBalance = isAllStudentsSelection(studentId)
+    ? null
+    : studentId;
+
+  const {
+    data: studentBalance,
+    isLoading: studentBalanceLoading,
+    isError: studentBalanceError,
+    error: studentBalanceErr,
+  } = useStudentAccountBalance(selectedStudentIdForBalance);
+
+  const balanceAmount = studentBalance
+    ? parseBalanceAmount(studentBalance.balanceAsAtDate)
+    : 0;
 
   const handleTransferModeChange = (mode: TransferMode) => {
     setTransferMode(mode);
@@ -412,6 +451,54 @@ export default function StudentJournalTransfers() {
                     searchPlaceholder="Admission no or name…"
                   />
                 )}
+                {!isAllStudentsSelection(studentId) ? (
+                  <div className="rounded-md border bg-muted/30 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Wallet className="h-4 w-4 shrink-0" />
+                      <span>
+                        Current balance
+                        
+                      </span>
+                    </div>
+                    {studentBalanceLoading ? (
+                      <p className="text-sm text-muted-foreground">Loading balance…</p>
+                    ) : studentBalanceError ? (
+                      <p className="text-sm text-destructive">
+                        {(studentBalanceErr as Error)?.message ?? "Could not load balance"}
+                      </p>
+                    ) : studentBalance ? (
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                          <p
+                            className={cn(
+                              "text-xl font-semibold tabular-nums",
+                              balanceAmount < 0 && "text-destructive",
+                              balanceAmount > 0 && "text-green-700 dark:text-green-400"
+                            )}
+                          >
+                            {formatAmountDisplay(balanceAmount)}
+                          </p>
+                          <p className="text-xs text-muted-foreground tabular-nums">
+                            Credit {formatAmountDisplay(parseBalanceAmount(studentBalance.sumCredit))}
+                            {" · "}
+                            Debit {formatAmountDisplay(parseBalanceAmount(studentBalance.sumDebit))}
+                          </p>
+                        </div>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link
+                            to={studentTransactionLogHref(
+                              studentId,
+                              isoToDateInput(studentBalance.asAtDate)
+                            )}
+                          >
+                            <ScrollText className="mr-1.5 h-3.5 w-3.5" />
+                            Transaction log
+                          </Link>
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
               <div className="space-y-2">
                 <Label>Transfer type</Label>
