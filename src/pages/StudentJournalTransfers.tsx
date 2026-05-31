@@ -43,6 +43,26 @@ type EntryDraft = {
   remarks: string;
 };
 
+/** Header-level mode: Payment (cash accounts, debit only) vs Journal (full behavior). */
+type TransferMode = "Payment" | "Journal";
+
+function createEmptyEntry(transactionType: EntryDraft["transactionType"]): EntryDraft {
+  return {
+    id: crypto.randomUUID(),
+    accountId: "",
+    amount: "",
+    transactionType,
+    remarks: "",
+  };
+}
+
+function defaultEntriesForMode(mode: TransferMode): EntryDraft[] {
+  if (mode === "Payment") {
+    return [createEmptyEntry("debit")];
+  }
+  return [createEmptyEntry("debit"), createEmptyEntry("credit")];
+}
+
 const amountFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
   minimumFractionDigits: 0,
@@ -105,7 +125,11 @@ export default function StudentJournalTransfers() {
     limit: 500,
     status: "Active",
   });
-  const { charts: accountCharts = [] } = useAccountCharts({ status: "All" });
+  const { charts: allAccountCharts = [] } = useAccountCharts({ status: "All" });
+  const { charts: cashAccountCharts = [] } = useAccountCharts({
+    status: "All",
+    accountType: "Cash",
+  });
 
   const studentOptions = useMemo(
     () =>
@@ -129,34 +153,29 @@ export default function StudentJournalTransfers() {
     return m;
   }, [students]);
 
+  const [transferMode, setTransferMode] = useState<TransferMode>("Payment");
+
+  const accountChartsForMode =
+    transferMode === "Payment" ? cashAccountCharts : allAccountCharts;
+
+  const cashAccountIdSet = useMemo(
+    () => new Set(cashAccountCharts.map((a) => String(a.id))),
+    [cashAccountCharts]
+  );
+
   const accountOptions = useMemo(() => {
-    const mapped = accountCharts.map((a) => ({
+    const mapped = accountChartsForMode.map((a) => ({
       value: String(a.id),
       label: `${a.accountNo?.trim() ? `${a.accountNo} — ` : ""}${a.accountDescription}`,
     }));
     mapped.sort((x, y) => x.label.localeCompare(y.label));
     return mapped;
-  }, [accountCharts]);
+  }, [accountChartsForMode]);
 
   const [studentId, setStudentId] = useState(ALL_STUDENTS_VALUE);
   const [manualRef, setManualRef] = useState("");
   const [transactionDate, setTransactionDate] = useState(defaultTo);
-  const [entries, setEntries] = useState<EntryDraft[]>(() => [
-    {
-      id: crypto.randomUUID(),
-      accountId: "",
-      amount: "",
-      transactionType: "debit",
-      remarks: "",
-    },
-    // {
-    //   id: crypto.randomUUID(),
-    //   accountId: "",
-    //   amount: "",
-    //   transactionType: "credit",
-    //   remarks: "",
-    // },
-  ]);
+  const [entries, setEntries] = useState<EntryDraft[]>(() => defaultEntriesForMode("Payment"));
 
   const [historyStudentId, setHistoryStudentId] = useState(ALL_STUDENTS_VALUE);
   const [historyDateFrom, setHistoryDateFrom] = useState(defaultFrom);
@@ -183,17 +202,33 @@ export default function StudentJournalTransfers() {
       ),
     [entries]
   );
+  const isPaymentMode = transferMode === "Payment";
+
+  const handleTransferModeChange = (mode: TransferMode) => {
+    setTransferMode(mode);
+    if (mode === "Payment") {
+      setEntries((prev) =>
+        prev.map((e) => ({
+          ...e,
+          transactionType: "debit" as const,
+          accountId:
+            e.accountId && cashAccountIdSet.has(e.accountId) ? e.accountId : "",
+        }))
+      );
+    } else {
+      setEntries((prev) => {
+        if (prev.length >= 2) return prev;
+        if (prev.length === 0) return defaultEntriesForMode("Journal");
+        const hasCredit = prev.some((e) => e.transactionType === "credit");
+        if (hasCredit) return prev;
+        return [...prev, createEmptyEntry("credit")];
+      });
+    }
+  };
+
   const addRow = (type: EntryDraft["transactionType"]) => {
-    setEntries((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        accountId: "",
-        amount: "",
-        transactionType: type,
-        remarks: "",
-      },
-    ]);
+    const rowType = isPaymentMode ? "debit" : type;
+    setEntries((prev) => [...prev, createEmptyEntry(rowType)]);
   };
 
   const removeRow = (id: string) => {
@@ -201,7 +236,16 @@ export default function StudentJournalTransfers() {
   };
 
   const updateRow = (id: string, patch: Partial<EntryDraft>) => {
-    setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
+    setEntries((prev) =>
+      prev.map((e) => {
+        if (e.id !== id) return e;
+        const next = { ...e, ...patch };
+        if (transferMode === "Payment") {
+          return { ...next, transactionType: "debit" };
+        }
+        return next;
+      })
+    );
   };
 
   const createMutation = useCreateStudentJournalTransfer();
@@ -243,22 +287,7 @@ export default function StudentJournalTransfers() {
     );
     setHistoryDateTo(transactionDate);
     if (res.data?.ref) setManualRef("");
-    setEntries([
-      {
-        id: crypto.randomUUID(),
-        accountId: "",
-        amount: "",
-        transactionType: "debit",
-        remarks: "",
-      },
-      {
-        id: crypto.randomUUID(),
-        accountId: "",
-        amount: "",
-        transactionType: "credit",
-        remarks: "",
-      },
-    ]);
+    setEntries(defaultEntriesForMode(transferMode));
     setTab("history");
   };
 
@@ -340,8 +369,8 @@ export default function StudentJournalTransfers() {
             <CardHeader>
               <CardTitle className="text-lg">Transfer details</CardTitle>
               <CardDescription>
-                Choose a student (not All) and transaction date. Debits and credits do not need
-                to match before posting.
+                Choose a student (not All), transfer type, and transaction date. Payment posts
+                debits to cash accounts only; Journal allows debit and credit on any account.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -358,6 +387,21 @@ export default function StudentJournalTransfers() {
                     searchPlaceholder="Admission no or name…"
                   />
                 )}
+              </div>
+              <div className="space-y-2">
+                <Label>Transfer type</Label>
+                <Select
+                  value={transferMode}
+                  onValueChange={(v) => handleTransferModeChange(v as TransferMode)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Payment">Payment</SelectItem>
+                    <SelectItem value="Journal">Journal</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label>Manual reference</Label>
@@ -382,20 +426,24 @@ export default function StudentJournalTransfers() {
             <div className="flex gap-2">
               <Button type="button" variant="outline" onClick={() => addRow("debit")}>
                 <Plus className="mr-2 h-4 w-4" />
-                Add debit
+                {isPaymentMode ? "Add line" : "Add debit"}
               </Button>
-              <Button type="button" variant="outline" onClick={() => addRow("credit")}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add credit
-              </Button>
+              {!isPaymentMode ? (
+                <Button type="button" variant="outline" onClick={() => addRow("credit")}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add credit
+                </Button>
+              ) : null}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary">
                 Debit: {formatAmountDisplay(totalDebit)}
               </Badge>
-              <Badge variant="secondary">
-                Credit: {formatAmountDisplay(totalCredit)}
-              </Badge>
+              {!isPaymentMode ? (
+                <Badge variant="secondary">
+                  Credit: {formatAmountDisplay(totalCredit)}
+                </Badge>
+              ) : null}
             </div>
           </div>
 
@@ -415,22 +463,28 @@ export default function StudentJournalTransfers() {
                   {entries.map((row) => (
                     <TableRow key={row.id}>
                       <TableCell>
-                        <Select
-                          value={row.transactionType}
-                          onValueChange={(v) =>
-                            updateRow(row.id, {
-                              transactionType: v as EntryDraft["transactionType"],
-                            })
-                          }
-                        >
-                          <SelectTrigger className="h-9">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="debit">Debit</SelectItem>
-                            <SelectItem value="credit">Credit</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        {isPaymentMode ? (
+                          <Badge variant="secondary" className="font-normal">
+                            Debit
+                          </Badge>
+                        ) : (
+                          <Select
+                            value={row.transactionType}
+                            onValueChange={(v) =>
+                              updateRow(row.id, {
+                                transactionType: v as EntryDraft["transactionType"],
+                              })
+                            }
+                          >
+                            <SelectTrigger className="h-9">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="debit">Debit</SelectItem>
+                              <SelectItem value="credit">Credit</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Combobox

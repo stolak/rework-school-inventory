@@ -5,8 +5,10 @@ import {
   createAccountSubhead,
   updateAccountSubhead,
   deleteAccountSubhead,
+  subheadAccountType,
   type AccountHead,
   type AccountSubhead,
+  type AccountType,
 } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
@@ -42,9 +44,8 @@ export type CreateAccountSubheadInput = {
   headId: number;
   code?: string;
   name: string;
-  status: string;
   rank: number;
-  paymentMethod: string;
+  accountType: AccountType;
 };
 
 export type UpdateAccountSubheadInput = {
@@ -52,24 +53,35 @@ export type UpdateAccountSubheadInput = {
   name?: string;
   status?: string;
   rank?: number;
-  paymentMethod?: string;
+  accountType?: AccountType;
 };
 
 /** `"all"` loads every subhead (no `headId` query); a positive number filters by head. */
 export type AccountSubheadsListFilter = "all" | number;
 
-export function useAccountSubheads(headFilter: AccountSubheadsListFilter | undefined) {
+export function useAccountSubheads(
+  headFilter: AccountSubheadsListFilter | undefined,
+  options?: { accountType?: AccountType; status?: string }
+) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const accountType = options?.accountType;
+  const status = options?.status;
 
   const listQuery = useQuery({
-    queryKey: ["account-subheads", headFilter],
+    queryKey: ["account-subheads", headFilter, accountType, status],
     queryFn: async () => {
+      const params = {
+        ...(accountType ? { accountType } : {}),
+        ...(status ? { status } : {}),
+      };
       if (headFilter === "all") {
-        return unwrapSubheads(await fetchAccountSubheads());
+        return unwrapSubheads(await fetchAccountSubheads(params));
       }
       if (typeof headFilter === "number" && headFilter > 0) {
-        return unwrapSubheads(await fetchAccountSubheads({ headId: headFilter }));
+        return unwrapSubheads(
+          await fetchAccountSubheads({ headId: headFilter, ...params })
+        );
       }
       return [];
     },
@@ -156,4 +168,5 @@ export function useAccountSubheads(headFilter: AccountSubheadsListFilter | undef
   };
 }
 
-export type { AccountHead, AccountSubhead };
+export { subheadAccountType };
+export type { AccountHead, AccountSubhead, AccountType };

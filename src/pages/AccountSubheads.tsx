@@ -11,6 +11,13 @@ import { Combobox } from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -22,7 +29,9 @@ import { AccountSubheadDialog } from "@/components/dialogs/AccountSubheadDialog"
 import {
   useAccountHeads,
   useAccountSubheads,
+  subheadAccountType,
   type AccountSubhead,
+  type AccountType,
 } from "@/hooks/useAccountSubheads";
 import type { AccountSubheadAddFormData, AccountSubheadEditFormData } from "@/components/forms/AccountSubheadForm";
 import {
@@ -38,6 +47,8 @@ import {
 
 /** Combobox value that loads all subheads (no `headId` query param). */
 const ALL_HEADS_VALUE = "__all__";
+/** Radix Select cannot use empty string as SelectItem value */
+const ANY_ACCOUNT_TYPE = "__all__";
 
 export function AccountSubheadsSection() {
   const { data: accountHeads = [], isLoading: headsLoading, isError: headsError } =
@@ -45,6 +56,7 @@ export function AccountSubheadsSection() {
   const [selectedHeadIdStr, setSelectedHeadIdStr] = useState<string>(ALL_HEADS_VALUE);
   const [manualHeadId, setManualHeadId] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [accountTypeFilter, setAccountTypeFilter] = useState<string>(ANY_ACCOUNT_TYPE);
 
   const headFilter = useMemo(() => {
     if (selectedHeadIdStr === ALL_HEADS_VALUE) return "all" as const;
@@ -62,13 +74,20 @@ export function AccountSubheadsSection() {
   const canAddSubhead =
     typeof headFilter === "number" && headFilter > 0;
 
+  const listAccountType = useMemo((): AccountType | undefined => {
+    if (accountTypeFilter === "Cash" || accountTypeFilter === "NonCash") {
+      return accountTypeFilter;
+    }
+    return undefined;
+  }, [accountTypeFilter]);
+
   const {
     subheads,
     isLoading: subheadsLoading,
     createSubhead,
     updateSubhead,
     deleteSubhead,
-  } = useAccountSubheads(headFilter);
+  } = useAccountSubheads(headFilter, { accountType: listAccountType });
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"add" | "edit">("add");
@@ -103,7 +122,7 @@ export function AccountSubheadsSection() {
       (s) =>
         s.name.toLowerCase().includes(q) ||
         (s.code ?? "").toLowerCase().includes(q) ||
-        s.paymentMethod.toLowerCase().includes(q)
+        (subheadAccountType(s) ?? "").toLowerCase().includes(q)
     );
   }, [subheads, searchTerm]);
 
@@ -147,9 +166,8 @@ export function AccountSubheadsSection() {
         headId: selectedHeadId,
         ...(codeTrimmed !== "" ? { code: codeTrimmed } : {}),
         name: d.name,
-        status: "Active",
         rank: d.rank,
-        paymentMethod: d.paymentMethod,
+        accountType: d.accountType,
       });
     } else if (dialogMode === "edit" && selectedSubhead) {
       const d = data as AccountSubheadEditFormData;
@@ -160,7 +178,7 @@ export function AccountSubheadsSection() {
           name: d.name,
           status: d.status,
           rank: d.rank,
-          paymentMethod: d.paymentMethod,
+          accountType: d.accountType,
         },
       });
     }
@@ -170,7 +188,7 @@ export function AccountSubheadsSection() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <p className="text-sm text-muted-foreground max-w-xl">
-          Manage subheads under each account head (code, rank, payment method).
+          Manage subheads under each account head (code, rank, account type).
         </p>
         <Button
           onClick={handleAdd}
@@ -243,15 +261,28 @@ export function AccountSubheadsSection() {
         </div>
       ) : (
         <>
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1 max-w-sm">
+          <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
+            <div className="relative flex-1 max-w-sm min-w-[200px]">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by code, name, payment method…"
+                placeholder="Search by code, name, account type…"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-8"
               />
+            </div>
+            <div className="w-full sm:w-[180px]">
+              <Label className="sr-only">Account type</Label>
+              <Select value={accountTypeFilter} onValueChange={setAccountTypeFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Any account type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ANY_ACCOUNT_TYPE}>Any account type</SelectItem>
+                  <SelectItem value="Cash">Cash</SelectItem>
+                  <SelectItem value="NonCash">Non-cash</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -269,7 +300,7 @@ export function AccountSubheadsSection() {
                       <TableHead>Name</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Rank</TableHead>
-                      <TableHead>Payment</TableHead>
+                      <TableHead>Account type</TableHead>
                       <TableHead>Group</TableHead>
                       <TableHead>Head</TableHead>
                       <TableHead className="text-right w-[100px]">Actions</TableHead>
@@ -294,7 +325,9 @@ export function AccountSubheadsSection() {
                         <TableCell className="text-right tabular-nums">
                           {row.rank}
                         </TableCell>
-                        <TableCell>{row.paymentMethod}</TableCell>
+                        <TableCell>
+                          {subheadAccountType(row) ?? "—"}
+                        </TableCell>
                         <TableCell className="text-muted-foreground text-sm">
                           {row.group?.name ?? "—"}
                         </TableCell>

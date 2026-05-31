@@ -2354,12 +2354,14 @@ export const fetchAccountHeads = (params?: { groupId?: number }) => {
 export const fetchAccountSubheads = (params?: {
   headId?: number;
   status?: string;
+  accountType?: AccountType;
 }) => {
   const sp = new URLSearchParams();
   if (params?.headId != null) sp.append("headId", String(params.headId));
   if (params?.status != null && params.status !== "") {
     sp.append("status", params.status);
   }
+  if (params?.accountType) sp.append("accountType", params.accountType);
   const qs = sp.toString();
   return get<ApiResponse<{ accountSubheads: AccountSubhead[]; count: number }>>(
     `/api/v1/account-subheads${qs ? `?${qs}` : ""}`
@@ -2424,9 +2426,8 @@ export const createAccountSubhead = (body: {
   headId: number;
   code?: string;
   name: string;
-  status: string;
   rank: number;
-  paymentMethod: string;
+  accountType: AccountType;
 }) =>
   post<ApiResponse<AccountSubhead>, typeof body>(
     "/api/v1/account-subheads",
@@ -2440,7 +2441,7 @@ export const updateAccountSubhead = (
     name?: string;
     status?: string;
     rank?: number;
-    paymentMethod?: string;
+    accountType?: AccountType;
   }
 ) =>
   put<ApiResponse<AccountSubhead>, typeof body>(

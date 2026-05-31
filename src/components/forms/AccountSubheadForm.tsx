@@ -19,12 +19,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { AccountSubhead } from "@/hooks/useAccountSubheads";
+import { subheadAccountType } from "@/lib/api";
+import type { AccountType } from "@/lib/api";
+
+const accountTypeSchema = z.enum(["Cash", "NonCash"], {
+  required_error: "Account type is required",
+});
 
 const addSchema = z.object({
   code: z.string(),
   name: z.string().min(1, "Name is required"),
   rank: z.coerce.number().int().min(0, "Rank must be 0 or greater"),
-  paymentMethod: z.string().min(1, "Payment method is required"),
+  accountType: accountTypeSchema,
 });
 
 const editSchema = z.object({
@@ -32,7 +38,7 @@ const editSchema = z.object({
   name: z.string().min(1, "Name is required"),
   status: z.enum(["Active", "Inactive"]),
   rank: z.coerce.number().int().min(0, "Rank must be 0 or greater"),
-  paymentMethod: z.string().min(1, "Payment method is required"),
+  accountType: accountTypeSchema,
 });
 
 export type AccountSubheadAddFormData = z.infer<typeof addSchema>;
@@ -42,6 +48,44 @@ function normalizeStatus(s: string | undefined): "Active" | "Inactive" {
   if (!s) return "Active";
   const lower = s.toLowerCase();
   return lower === "inactive" ? "Inactive" : "Active";
+}
+
+function normalizeAccountType(
+  subhead: AccountSubhead
+): AccountType {
+  return subheadAccountType(subhead) ?? "Cash";
+}
+
+function AccountTypeField({
+  control,
+  name,
+}: {
+  control: ReturnType<typeof useForm<AccountSubheadAddFormData>>["control"];
+  name: "accountType";
+}) {
+  return (
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>Account type</FormLabel>
+          <Select onValueChange={field.onChange} value={field.value}>
+            <FormControl>
+              <SelectTrigger>
+                <SelectValue placeholder="Select account type" />
+              </SelectTrigger>
+            </FormControl>
+            <SelectContent>
+              <SelectItem value="Cash">Cash</SelectItem>
+              <SelectItem value="NonCash">Non-cash</SelectItem>
+            </SelectContent>
+          </Select>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
 }
 
 function AccountSubheadAddForm({
@@ -57,7 +101,7 @@ function AccountSubheadAddForm({
       code: "",
       name: "",
       rank: 1,
-      paymentMethod: "cash",
+      accountType: "Cash",
     },
   });
 
@@ -74,7 +118,7 @@ function AccountSubheadAddForm({
             <FormItem>
               <FormLabel>Code (optional)</FormLabel>
               <FormControl>
-                <Input placeholder="e.g. 7888" {...field} />
+                <Input placeholder="e.g. 1101" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -106,19 +150,7 @@ function AccountSubheadAddForm({
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="paymentMethod"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Payment method</FormLabel>
-              <FormControl>
-                <Input placeholder="e.g. cash" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <AccountTypeField control={form.control} name="accountType" />
         <div className="flex justify-end gap-2 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
@@ -146,7 +178,7 @@ function AccountSubheadEditForm({
       name: initialData.name,
       status: normalizeStatus(initialData.status),
       rank: initialData.rank,
-      paymentMethod: initialData.paymentMethod,
+      accountType: normalizeAccountType(initialData),
     },
   });
 
@@ -213,19 +245,7 @@ function AccountSubheadEditForm({
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="paymentMethod"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Payment method</FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <AccountTypeField control={form.control} name="accountType" />
         <div className="flex justify-end gap-2 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
