@@ -1,87 +1,45 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { formatDistanceToNow } from "date-fns"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { formatDistanceToNow } from "date-fns";
+import { useMyAuditLogs } from "@/hooks/useAuditLogs";
 
-interface ActivityItem {
-  id: string
-  type: "purchase" | "sale" | "distribution" | "low_stock"
-  title: string
-  description: string
-  timestamp: Date
-  user?: string
-  status?: "completed" | "pending" | "cancelled"
+function formatActionLabel(action: string): string {
+  return action
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-// Mock data for demonstration
-const mockActivities: ActivityItem[] = [
-  {
-    id: "1",
-    type: "purchase",
-    title: "New inventory received",
-    description: "Mathematics Textbooks (Grade 5) - 50 units",
-    timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-    user: "John Smith",
-    status: "completed"
-  },
-  {
-    id: "2",
-    type: "distribution",
-    title: "Class distribution completed",
-    description: "English Notebooks distributed to Class 3A",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-    user: "Sarah Wilson",
-    status: "completed"
-  },
-  {
-    id: "3",
-    type: "low_stock",
-    title: "Low stock alert",
-    description: "Science Workbooks - Only 5 units remaining",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4), // 4 hours ago
-    status: "pending"
-  },
-  {
-    id: "4",
-    type: "sale",
-    title: "Item sold",
-    description: "Calculator (Scientific) - 3 units",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 6), // 6 hours ago
-    user: "Mike Johnson",
-    status: "completed"
+function getStatusBadgeClass(status: string): string {
+  const normalized = status.toUpperCase();
+  if (normalized === "SUCCESS") return "bg-success/10 text-success";
+  if (normalized === "FAILED" || normalized === "FAILURE" || normalized === "ERROR") {
+    return "bg-destructive/10 text-destructive";
   }
-]
+  if (normalized === "PENDING") return "bg-warning/10 text-warning";
+  return "bg-muted text-muted-foreground";
+}
+
+function getActionAvatarClass(action: string): string {
+  const normalized = action.toUpperCase();
+  if (normalized.includes("LOGIN") || normalized.includes("LOGOUT")) {
+    return "bg-primary/10 text-primary";
+  }
+  if (normalized.includes("CREATE") || normalized.includes("ADD")) {
+    return "bg-success/10 text-success";
+  }
+  if (normalized.includes("UPDATE") || normalized.includes("EDIT")) {
+    return "bg-accent/10 text-accent";
+  }
+  if (normalized.includes("DELETE") || normalized.includes("REMOVE")) {
+    return "bg-destructive/10 text-destructive";
+  }
+  return "bg-muted text-muted-foreground";
+}
 
 export function RecentActivity() {
-  const getActivityIcon = (type: string) => {
-    const firstLetter = type.charAt(0).toUpperCase()
-    const colors = {
-      purchase: "bg-success/10 text-success",
-      sale: "bg-primary/10 text-primary",
-      distribution: "bg-accent/10 text-accent",
-      low_stock: "bg-warning/10 text-warning"
-    }
-    return {
-      letter: firstLetter,
-      className: colors[type as keyof typeof colors] || "bg-muted text-muted-foreground"
-    }
-  }
-
-  const getStatusBadge = (status?: string) => {
-    if (!status) return null
-    
-    const variants = {
-      completed: "bg-success/10 text-success",
-      pending: "bg-warning/10 text-warning",
-      cancelled: "bg-destructive/10 text-destructive"
-    }
-    
-    return (
-      <Badge variant="secondary" className={variants[status as keyof typeof variants]}>
-        {status}
-      </Badge>
-    )
-  }
+  const { auditLogs, isLoading, error } = useMyAuditLogs({ page: 1, limit: 5 });
 
   return (
     <Card className="shadow-card">
@@ -89,55 +47,67 @@ export function RecentActivity() {
         <CardTitle className="text-lg font-semibold">Recent Activity</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="space-y-1">
-          {mockActivities.map((activity, index) => {
-            const icon = getActivityIcon(activity.type)
-            return (
-              <div 
-                key={activity.id} 
-                className={`p-4 hover:bg-muted/30 transition-colors ${
-                  index !== mockActivities.length - 1 ? 'border-b border-border/50' : ''
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <Avatar className={`h-8 w-8 ${icon.className}`}>
-                    <AvatarFallback className="text-xs font-medium">
-                      {icon.letter}
-                    </AvatarFallback>
-                  </Avatar>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-foreground">
-                          {activity.title}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {activity.description}
-                        </p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <p className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(activity.timestamp, { addSuffix: true })}
+        {isLoading ? (
+          <p className="p-4 text-sm text-muted-foreground">Loading activity…</p>
+        ) : error ? (
+          <p className="p-4 text-sm text-destructive">
+            {error instanceof Error ? error.message : "Failed to load activity"}
+          </p>
+        ) : auditLogs.length === 0 ? (
+          <p className="p-4 text-sm text-muted-foreground">No recent activity.</p>
+        ) : (
+          <div className="space-y-1">
+            {auditLogs.map((log, index) => {
+              const avatarClass = getActionAvatarClass(log.action);
+              const actionLabel = formatActionLabel(log.action);
+              const timestamp = new Date(log.createdAt);
+
+              return (
+                <div
+                  key={log.id}
+                  className={`p-4 hover:bg-muted/30 transition-colors ${
+                    index !== auditLogs.length - 1 ? "border-b border-border/50" : ""
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <Avatar className={`h-8 w-8 ${avatarClass}`}>
+                      <AvatarFallback className="text-xs font-medium">
+                        {log.action.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground">
+                            {actionLabel}
                           </p>
-                          {activity.user && (
-                            <>
-                              <span className="text-xs text-muted-foreground">•</span>
-                              <p className="text-xs text-muted-foreground">
-                                by {activity.user}
-                              </p>
-                            </>
-                          )}
+                          {log.description ? (
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                              {log.description}
+                            </p>
+                          ) : null}
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {Number.isNaN(timestamp.getTime())
+                              ? log.createdAt
+                              : formatDistanceToNow(timestamp, { addSuffix: true })}
+                          </p>
                         </div>
+                        <Badge
+                          variant="secondary"
+                          className={`shrink-0 ${getStatusBadgeClass(log.status)}`}
+                        >
+                          {log.status}
+                        </Badge>
                       </div>
-                      {getStatusBadge(activity.status)}
                     </div>
                   </div>
                 </div>
-              </div>
-            )
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </CardContent>
     </Card>
-  )
+  );
 }

@@ -1834,6 +1834,37 @@ export const cashiersApi = {
   update: updateCashier,
 };
 
+export type AuditLog = {
+  id: string;
+  action: string;
+  entityType?: string;
+  entityId?: string;
+  performedById?: string;
+  description?: string | null;
+  status: string;
+  createdAt: string;
+  performedBy?: {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  } | null;
+};
+
+export const fetchMyAuditLogs = (params?: { page?: number; limit?: number }) => {
+  const searchParams = new URLSearchParams();
+  if (params?.page) searchParams.append("page", String(params.page));
+  if (params?.limit) searchParams.append("limit", String(params.limit));
+  const qs = searchParams.toString();
+  return get<ApiResponse<{ auditLogs: AuditLog[]; pagination: Pagination }>>(
+    `/api/v1/audit-logs/me${qs ? `?${qs}` : ""}`
+  );
+};
+
+export const auditLogsApi = {
+  listMine: fetchMyAuditLogs,
+};
+
 // Student-specific helpers
 export const fetchStudents = (params?: {
   page?: number;
